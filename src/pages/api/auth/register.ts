@@ -14,6 +14,7 @@ export const POST: APIRoute = async ({ request }) => {
     password?: string;
     phone?: string;
     city?: string;
+    country?: string;
     slug?: string;
   }>(request);
 
@@ -22,7 +23,7 @@ export const POST: APIRoute = async ({ request }) => {
   const email = String(body.email || '').trim();
   const password = String(body.password || '');
 
-  if (businessName.length < 2) return bad('Indica el nombre del salón');
+  if (businessName.length < 2) return bad('Indica el nombre del local');
   if (ownerName.length < 2) return bad('Indica tu nombre');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad('Email inválido');
   if (password.length < 6) return bad('La contraseña debe tener al menos 6 caracteres');
@@ -35,6 +36,7 @@ export const POST: APIRoute = async ({ request }) => {
       password,
       phone: body.phone,
       city: body.city,
+      country: body.country,
       slug: body.slug,
     });
 

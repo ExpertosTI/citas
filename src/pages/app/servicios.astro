@@ -10,7 +10,7 @@ const services = await getServices(tenantId);
 <AppLayout title="Servicios" active="servicios">
   <div class="mb-6 flex items-end justify-between gap-3">
     <div>
-      <h1 class="font-display text-3xl font-bold">Servicios</h1>
+      <h1 class="brand-mark text-3xl font-bold">Servicios</h1>
       <p class="mt-1 text-sm text-ink-soft">Catálogo del salón con color en la bahía</p>
     </div>
     <button id="new-svc" type="button" class="btn-primary">+ Servicio</button>
@@ -18,7 +18,7 @@ const services = await getServices(tenantId);
 
   <div class="grid gap-3 sm:grid-cols-2">
     {services.map((s) => {
-      const color = APPOINTMENT_COLORS.find((c) => c.id === s.color)?.hex || '#e879a9';
+      const color = APPOINTMENT_COLORS.find((c) => c.id === s.color)?.hex || '#e8b923';
       return (
         <article class="card flex items-start gap-4 p-4" data-id={s.id}>
           <span class="mt-1 h-10 w-10 shrink-0 rounded-xl" style={`background:${color}`}></span>
@@ -41,9 +41,9 @@ const services = await getServices(tenantId);
     })}
   </div>
 
-  <dialog id="svc-modal" class="w-[min(100%,420px)] rounded-2xl border border-cream-dark p-0 shadow-xl backdrop:bg-ink/40">
+  <dialog id="svc-modal" class="w-[min(100%,420px)] rounded-xl border border-border bg-surface p-0 shadow-xl backdrop:bg-black/60">
     <form id="svc-form" class="p-6">
-      <h2 class="font-display text-2xl font-bold" id="svc-title">Nuevo servicio</h2>
+      <h2 class="brand-mark text-2xl font-bold" id="svc-title">Nuevo servicio</h2>
       <input type="hidden" name="id" id="svc-id" />
       <div class="mt-4 space-y-3">
         <div>
@@ -96,7 +96,7 @@ const services = await getServices(tenantId);
         (document.getElementById('svc-name') as HTMLInputElement).value = el.dataset.name || '';
         (document.getElementById('svc-duration') as HTMLInputElement).value = el.dataset.duration || '30';
         (document.getElementById('svc-price') as HTMLInputElement).value = el.dataset.price || '0';
-        (document.getElementById('svc-color') as HTMLSelectElement).value = el.dataset.color || 'rose';
+        (document.getElementById('svc-color') as HTMLSelectElement).value = el.dataset.color || 'gold';
         modal.showModal();
       });
     });

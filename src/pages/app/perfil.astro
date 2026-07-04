@@ -11,13 +11,13 @@ const publicUrl = `${siteUrl}/s/${tenant.slug}`;
 
 <AppLayout title="Perfil" active="perfil">
   <div class="mb-6">
-    <h1 class="font-display text-3xl font-bold">Perfil del salón</h1>
+    <h1 class="brand-mark text-3xl">Perfil del local</h1>
     <p class="mt-1 text-sm text-ink-soft">Tu marca pública y horarios de la bahía</p>
   </div>
 
   <div class="card mb-4 p-4">
     <p class="text-xs font-bold uppercase tracking-wider text-muted">Enlace público</p>
-    <a class="mt-1 block break-all font-semibold text-rose-deep" href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
+    <a class="mt-1 block break-all font-semibold text-gold" href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
   </div>
 
   <form id="profile-form" class="card space-y-4 p-5 sm:p-6">
@@ -69,7 +69,7 @@ const publicUrl = `${siteUrl}/s/${tenant.slug}`;
         <input class="input" id="accentColor" name="accentColor" type="color" value={tenant.accentColor} />
       </div>
     </div>
-    <p id="profile-msg" class="hidden text-sm font-medium text-rose-deep"></p>
+    <p id="profile-msg" class="hidden text-sm font-medium text-gold"></p>
     <button type="submit" class="btn-primary">Guardar perfil</button>
   </form>
 

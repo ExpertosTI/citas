@@ -17,7 +17,7 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
 <AppLayout title="Bahía de citas" active="bahia">
   <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <h1 class="font-display text-3xl font-bold">Bahía de citas</h1>
+      <h1 class="brand-mark text-3xl font-bold">Bahía de citas</h1>
       <p class="mt-1 text-sm text-ink-soft">Vista del día con colores de peluquería</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
@@ -29,19 +29,19 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
   <div class="mb-6 grid gap-3 sm:grid-cols-4">
     <div class="card p-4">
       <p class="text-xs font-bold uppercase tracking-wider text-muted">Hoy</p>
-      <p class="mt-1 font-display text-3xl font-bold text-rose-deep">{stats.todayCount}</p>
+      <p class="mt-1 brand-mark text-3xl text-gold">{stats.todayCount}</p>
     </div>
     <div class="card p-4">
       <p class="text-xs font-bold uppercase tracking-wider text-muted">Pendientes</p>
-      <p class="mt-1 font-display text-3xl font-bold">{stats.pendingCount}</p>
+      <p class="mt-1 brand-mark text-3xl font-bold">{stats.pendingCount}</p>
     </div>
     <div class="card p-4">
       <p class="text-xs font-bold uppercase tracking-wider text-muted">Clientes</p>
-      <p class="mt-1 font-display text-3xl font-bold">{stats.clientsCount}</p>
+      <p class="mt-1 brand-mark text-3xl font-bold">{stats.clientsCount}</p>
     </div>
     <div class="card p-4">
       <p class="text-xs font-bold uppercase tracking-wider text-muted">Servicios</p>
-      <p class="mt-1 font-display text-3xl font-bold">{stats.servicesCount}</p>
+      <p class="mt-1 brand-mark text-3xl font-bold">{stats.servicesCount}</p>
     </div>
   </div>
 
@@ -80,9 +80,9 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
   </div>
 
   <!-- Modal nueva cita -->
-  <dialog id="apt-modal" class="w-[min(100%,440px)] rounded-2xl border border-cream-dark p-0 shadow-xl backdrop:bg-ink/40">
+  <dialog id="apt-modal" class="w-[min(100%,440px)] rounded-xl border border-border bg-surface p-0 shadow-xl backdrop:bg-black/60">
     <form id="apt-form" class="p-5 sm:p-6">
-      <h2 class="font-display text-2xl font-bold">Nueva cita</h2>
+      <h2 class="brand-mark text-2xl font-bold">Nueva cita</h2>
       <div class="mt-4 space-y-3">
         <div>
           <label class="label" for="clientName">Cliente</label>

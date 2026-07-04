@@ -1,61 +1,93 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { geoFromRequest } from '../lib/geo';
 import { tenantIdFromRequest } from '../lib/auth';
 
 if (tenantIdFromRequest(Astro.request)) {
   return Astro.redirect('/app');
 }
+
+const geo = geoFromRequest(Astro.request);
 ---
 
-<BaseLayout title="Crear salón · Citas">
-  <div class="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-4 py-10">
-    <a href="/" class="mb-8 font-display text-2xl font-bold text-rose-deep">Citas</a>
+<BaseLayout title="Crear barbería · Citas">
+  <div class="barber-stripe"></div>
+  <div class="urban-grid mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-4 py-10">
+    <a href="/" class="brand-mark mb-6 text-4xl">Citas</a>
     <div class="card p-6 sm:p-8">
-      <h1 class="font-display text-3xl font-bold">Registra tu salón</h1>
-      <p class="mt-2 text-sm text-ink-soft">Crea tu perfil y empieza a recibir citas hoy.</p>
+      <div class="geo-badge mb-4">
+        <span>📍</span>
+        <span id="geo-label">{geo.name} · {geo.city}</span>
+      </div>
+      <h1 class="brand-mark text-4xl leading-none">Registra tu barbería</h1>
+      <p class="mt-2 text-sm text-ink-soft">Agenda citas, controla tu bahía y recibe reservas en línea.</p>
 
       <form id="register-form" class="mt-6 space-y-4">
+        <input type="hidden" name="country" id="country" value={geo.country} />
         <div>
-          <label class="label" for="businessName">Nombre del salón</label>
-          <input class="input" id="businessName" name="businessName" required placeholder="Studio Belleza" />
+          <label class="label" for="businessName">Nombre del local</label>
+          <input class="input" id="businessName" name="businessName" required placeholder="Barber Shop 809" />
         </div>
         <div>
           <label class="label" for="ownerName">Tu nombre</label>
-          <input class="input" id="ownerName" name="ownerName" required placeholder="Ana Pérez" />
+          <input class="input" id="ownerName" name="ownerName" required placeholder="Carlos Marte" />
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
             <label class="label" for="email">Email</label>
-            <input class="input" id="email" name="email" type="email" required placeholder="hola@salon.com" />
+            <input class="input" id="email" name="email" type="email" required placeholder="hola@tubarberia.com" />
           </div>
           <div>
             <label class="label" for="phone">Teléfono</label>
-            <input class="input" id="phone" name="phone" type="tel" placeholder="+58..." />
+            <input class="input" id="phone" name="phone" type="tel" placeholder={geo.phonePrefix} />
           </div>
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
             <label class="label" for="city">Ciudad</label>
-            <input class="input" id="city" name="city" placeholder="Caracas" />
+            <input class="input" id="city" name="city" value={geo.city} placeholder={geo.city} />
           </div>
           <div>
             <label class="label" for="password">Contraseña</label>
             <input class="input" id="password" name="password" type="password" required minlength="6" />
           </div>
         </div>
-        <p id="form-error" class="hidden text-sm font-medium text-red-600"></p>
+        <p id="form-error" class="hidden text-sm font-medium text-danger"></p>
         <button class="btn-primary w-full !py-3" type="submit">Crear cuenta</button>
       </form>
 
       <p class="mt-5 text-center text-sm text-muted">
-        ¿Ya tienes cuenta? <a class="font-semibold text-rose-deep" href="/login">Entrar</a>
+        ¿Ya tienes cuenta? <a class="font-semibold text-gold" href="/login">Entrar</a>
       </p>
     </div>
   </div>
 
-  <script>
-    const form = document.getElementById('register-form') as HTMLFormElement;
-    const errorEl = document.getElementById('form-error')!;
+  <script define:vars={{ geoCountry: geo.country, geoName: geo.name, geoCity: geo.city, geoPrefix: geo.phonePrefix }}>
+    const form = document.getElementById('register-form');
+    const errorEl = document.getElementById('form-error');
+    const cityEl = document.getElementById('city');
+    const countryEl = document.getElementById('country');
+    const geoLabel = document.getElementById('geo-label');
+    const phoneEl = document.getElementById('phone');
+
+    function applyGeo(data) {
+      if (!data?.country) return;
+      countryEl.value = data.country;
+      if (geoLabel) geoLabel.textContent = `${data.name} · ${data.city}`;
+      if (cityEl && !cityEl.dataset.userEdited) cityEl.value = data.city;
+      if (phoneEl && !phoneEl.value) phoneEl.placeholder = data.phonePrefix;
+    }
+
+    cityEl?.addEventListener('input', () => {
+      cityEl.dataset.userEdited = '1';
+    });
+
+    fetch('/api/geo')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.country && data.country !== geoCountry) applyGeo(data);
+      })
+      .catch(() => {});
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();

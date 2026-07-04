@@ -73,20 +73,20 @@ function wrap(title: string, body: string, brand = 'Citas') {
   return `<!doctype html>
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#faf6f1;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#2d1b2e">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#faf6f1;padding:28px 12px">
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:'Segoe UI',Helvetica,Arial,sans-serif;color:#f5f5f4">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0a0a0a;padding:28px 12px">
     <tr><td align="center">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:18px;border:1px solid #f0e4dc;overflow:hidden">
-        <tr><td style="padding:28px 28px 12px;text-align:center;background:linear-gradient(135deg,#fff5f8,#ffffff)">
-          <p style="margin:0;font-size:22px;font-weight:800;color:#c45c8a;letter-spacing:-0.02em">${escapeHtml(brand)}</p>
-          <p style="margin:6px 0 0;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9a7b6a;font-weight:700">Peluquería &amp; belleza</p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#141414;border-radius:12px;border:1px solid #2a2a2a;overflow:hidden">
+        <tr><td style="padding:28px 28px 12px;text-align:center;background:#1c1c1c">
+          <p style="margin:0;font-size:22px;font-weight:800;color:#e8b923;letter-spacing:0.06em;text-transform:uppercase">${escapeHtml(brand)}</p>
+          <p style="margin:6px 0 0;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#78716c;font-weight:700">Barbería urbana</p>
         </td></tr>
         <tr><td style="padding:8px 28px 28px">
-          <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25;color:#2d1b2e;font-weight:700">${escapeHtml(title)}</h1>
+          <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25;color:#f5f5f4;font-weight:700">${escapeHtml(title)}</h1>
           ${body}
         </td></tr>
-        <tr><td style="padding:16px 28px 24px;border-top:1px solid #f0e4dc;text-align:center">
-          <p style="margin:0;font-size:12px;color:#9a7b6a">Powered by <a href="https://citas.renace.tech" style="color:#c45c8a;text-decoration:none;font-weight:600">citas.renace.tech</a></p>
+        <tr><td style="padding:16px 28px 24px;border-top:1px solid #2a2a2a;text-align:center">
+          <p style="margin:0;font-size:12px;color:#78716c">Powered by <a href="https://citas.renace.tech" style="color:#e8b923;text-decoration:none;font-weight:600">citas.renace.tech</a></p>
         </td></tr>
       </table>
     </td></tr>
@@ -135,11 +135,11 @@ export async function sendWelcomeEmail(tenant: Tenant) {
     'Tu salón ya está listo',
     `<p style="color:#4a3548;line-height:1.55">Hola ${escapeHtml(tenant.ownerName)},</p>
      <p style="color:#4a3548;line-height:1.55">Bienvenido a <strong>Citas</strong>. Tu perfil <strong>${escapeHtml(tenant.businessName)}</strong> ya puede recibir reservas.</p>
-     <p style="margin:16px 0;padding:12px 14px;border-radius:12px;background:#fff5f8;border:1px solid #f0e4dc;font-weight:700;color:#c45c8a">
+     <p style="margin:16px 0;padding:12px 14px;border-radius:8px;background:#1c1c1c;border:1px solid #2a2a2a;font-weight:700;color:#e8b923">
        Página pública: ${escapeHtml(m.siteUrl)}/s/${escapeHtml(tenant.slug)}
      </p>
      <p style="text-align:center;margin:22px 0 8px">
-       <a href="${m.siteUrl}/app" style="display:inline-block;background:linear-gradient(135deg,#e879a9,#c45c8a);color:#fff;text-decoration:none;font-weight:700;font-size:13px;padding:12px 22px;border-radius:999px">Abrir bahía de citas</a>
+       <a href="${m.siteUrl}/app" style="display:inline-block;background:linear-gradient(135deg,#e8b923,#c9970a);color:#0a0a0a;text-decoration:none;font-weight:700;font-size:13px;padding:12px 22px;border-radius:8px">Abrir bahía de citas</a>
      </p>`,
     tenant.businessName,
   );

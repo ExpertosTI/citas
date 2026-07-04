@@ -16,10 +16,11 @@ const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
 ---
 
 <BaseLayout title={`Reservar · ${t.businessName}`} description={t.bio}>
-  <div class="salon-pattern min-h-dvh">
+  <div class="barber-stripe"></div>
+  <div class="urban-grid min-h-dvh">
     <header class="mx-auto max-w-lg px-4 py-8 text-center">
       <p class="text-xs font-bold uppercase tracking-[0.2em] text-muted">Reserva en línea</p>
-      <h1 class="mt-2 font-display text-4xl font-bold" style={`color:${t.accentColor}`}>{t.businessName}</h1>
+      <h1 class="brand-mark mt-2 text-5xl" style={`color:${t.accentColor}`}>{t.businessName}</h1>
       <p class="mt-2 text-sm text-ink-soft">{t.bio}</p>
       {(t.city || t.phone) && (
         <p class="mt-3 text-sm text-muted">
@@ -36,7 +37,7 @@ const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
           <label class="label" for="serviceId">Servicio</label>
           <select class="input" id="serviceId" name="serviceId" required>
             {services.map((s) => (
-              <option value={s.id}>{s.name} · {s.durationMin} min · ${s.price}</option>
+              <option value={s.id}>{s.name} · {s.durationMin} min · RD${s.price}</option>
             ))}
           </select>
         </div>
@@ -70,19 +71,19 @@ const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(
 
         <div>
           <label class="label" for="notes">Notas</label>
-          <textarea class="input" id="notes" name="notes" rows="2" placeholder="Preferencias, alergias..."></textarea>
+          <textarea class="input" id="notes" name="notes" rows="2" placeholder="Fade bajo, línea, etc."></textarea>
         </div>
 
-        <p id="book-error" class="hidden text-sm font-medium text-red-600"></p>
-        <p id="book-ok" class="hidden text-sm font-medium text-emerald-700"></p>
+        <p id="book-error" class="hidden text-sm font-medium text-danger"></p>
+        <p id="book-ok" class="hidden text-sm font-medium text-gold"></p>
 
-        <button type="submit" class="btn-primary w-full !py-3" style={`background:linear-gradient(135deg,${t.accentColor},${t.accentColor})`}>
+        <button type="submit" class="btn-primary w-full !py-3">
           Confirmar cita
         </button>
       </form>
 
       <p class="mt-6 text-center text-xs text-muted">
-        Powered by <a class="font-semibold text-rose-deep" href="https://citas.renace.tech">Citas · renace.tech</a>
+        Powered by <a class="font-semibold text-gold" href="https://citas.renace.tech">Citas · renace.tech</a>
       </p>
     </main>
   </div>

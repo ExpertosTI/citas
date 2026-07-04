@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { geoFromRequest } from '../lib/geo';
 
 interface Props {
   title?: string;
@@ -8,12 +9,13 @@ interface Props {
 }
 
 const {
-  title = 'Citas · SaaS de reservas para peluquerías',
-  description = 'Agenda profesional estilo Fresha para salones de belleza. Multitenant, bahía de citas con colores y notificaciones.',
+  title = 'Citas · Agenda para barberías urbanas',
+  description = 'SaaS de reservas para barberías y peluquerías urbanas. Bahía de citas, booking público y notificaciones.',
   bodyClass = '',
 } = Astro.props;
 
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
+const geo = geoFromRequest(Astro.request);
 ---
 
 <!doctype html>
@@ -22,18 +24,18 @@ const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech')
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#c45c8a" />
+    <meta name="theme-color" content="#0a0a0a" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="canonical" href={siteUrl} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <title>{title}</title>
   </head>
-  <body class={bodyClass}>
+  <body class={bodyClass} data-country={geo.country}>
     <slot />
   </body>
 </html>

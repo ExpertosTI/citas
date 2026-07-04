@@ -32,13 +32,13 @@ const nav = [
 ] as const;
 ---
 
-<BaseLayout title={`${title} · ${t.businessName}`} bodyClass="bg-cream">
+<BaseLayout title={`${title} · ${t.businessName}`} bodyClass="">
   <div class="min-h-dvh">
-    <header class="sticky top-0 z-40 border-b border-cream-dark/80 bg-white/80 backdrop-blur-md">
+    <header class="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-md">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <div class="min-w-0">
-          <p class="font-display text-lg font-bold tracking-tight text-rose-deep">{t.businessName}</p>
-          <a class="truncate text-xs text-muted hover:text-rose-deep" href={publicUrl} target="_blank" rel="noreferrer">
+          <p class="brand-mark text-xl text-gold">{t.businessName}</p>
+          <a class="truncate text-xs text-muted hover:text-gold" href={publicUrl} target="_blank" rel="noreferrer">
             {publicUrl.replace('https://', '')}
           </a>
         </div>
@@ -47,10 +47,10 @@ const nav = [
             <a
               href={item.href}
               class:list={[
-                'rounded-full px-3.5 py-2 text-sm font-semibold transition',
+                'rounded-md px-3.5 py-2 text-sm font-semibold uppercase tracking-wide transition',
                 active === item.id
-                  ? 'bg-rose/15 text-rose-deep'
-                  : 'text-ink-soft hover:bg-blush',
+                  ? 'bg-gold-dim text-gold'
+                  : 'text-ink-soft hover:text-gold',
               ]}
             >
               {item.label}
@@ -59,13 +59,13 @@ const nav = [
           <button id="logout-btn" type="button" class="btn-ghost ml-2 !py-2 !text-xs">Salir</button>
         </nav>
       </div>
-      <nav class="flex gap-1 overflow-x-auto border-t border-cream-dark/60 px-2 py-2 sm:hidden">
+      <nav class="flex gap-1 overflow-x-auto border-t border-border px-2 py-2 sm:hidden">
         {nav.map((item) => (
           <a
             href={item.href}
             class:list={[
               'chip whitespace-nowrap',
-              active === item.id ? 'bg-rose text-white' : 'bg-white text-ink-soft',
+              active === item.id ? 'bg-gold text-void' : 'border border-border text-ink-soft',
             ]}
           >
             {item.icon} {item.label}

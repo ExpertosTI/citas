@@ -1,55 +1,62 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { geoFromRequest } from '../lib/geo';
+
+const geo = geoFromRequest(Astro.request);
 ---
 
 <BaseLayout>
-  <div class="salon-pattern">
+  <div class="barber-stripe"></div>
+  <div class="urban-grid">
     <header class="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-      <a href="/" class="font-display text-2xl font-bold text-rose-deep">Citas</a>
+      <a href="/" class="brand-mark text-3xl">Citas</a>
       <div class="flex items-center gap-2">
+        <span class="geo-badge hidden sm:inline-flex">{geo.name}</span>
         <a href="/login" class="btn-ghost">Entrar</a>
-        <a href="/registro" class="btn-primary">Crear salón</a>
+        <a href="/registro" class="btn-primary">Crear barbería</a>
       </div>
     </header>
 
     <section class="mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-8 lg:grid-cols-2 lg:items-center lg:pt-16">
       <div>
-        <p class="chip bg-rose/15 text-rose-deep">SaaS multitenant · peluquerías</p>
-        <h1 class="mt-4 font-display text-4xl font-bold leading-[1.1] tracking-tight text-ink sm:text-5xl lg:text-6xl">
-          Tu bahía de citas, con colores y estilo salón
+        <p class="chip border border-gold/30 bg-gold-dim text-gold">Barberías urbanas · {geo.city}</p>
+        <h1 class="brand-mark mt-4 text-5xl leading-[0.95] sm:text-6xl lg:text-7xl">
+          Tu bahía de citas.<br />Estilo calle, control total.
         </h1>
         <p class="mt-5 max-w-xl text-lg leading-relaxed text-ink-soft">
-          Como <a class="font-semibold text-rose-deep underline-offset-2 hover:underline" href="https://www.fresha.com/en-GB" target="_blank" rel="noreferrer">Fresha</a>,
-          pero pensado para que cada salón se registre, tenga su perfil y reciba reservas de sus clientes — con notificaciones y un tablero visual del día.
+          Agenda para barberías y peluquerías urbanas. Cada local se registra, tiene su perfil y recibe reservas — con bahía visual del día y notificaciones.
         </p>
         <div class="mt-8 flex flex-wrap gap-3">
           <a href="/registro" class="btn-primary !px-6 !py-3">Empezar gratis</a>
-          <a href="#features" class="btn-ghost !px-6 !py-3">Ver cómo funciona</a>
+          <a href="#features" class="btn-ghost !px-6 !py-3">Cómo funciona</a>
         </div>
-        <p class="mt-6 text-sm text-muted">Powered by <span class="font-semibold text-ink">renace.tech</span> · citas.renace.tech</p>
+        <p class="mt-6 text-sm text-muted">renace.tech · citas.renace.tech</p>
       </div>
 
       <div class="card relative overflow-hidden p-4 sm:p-6">
         <div class="mb-4 flex items-center justify-between">
           <div>
             <p class="text-xs font-bold uppercase tracking-wider text-muted">Hoy</p>
-            <p class="font-display text-xl font-bold">Bahía de citas</p>
+            <p class="brand-mark text-2xl">Bahía de citas</p>
           </div>
           <div class="flex gap-1">
-            <span class="h-3 w-3 rounded-full bg-[#e879a9]"></span>
-            <span class="h-3 w-3 rounded-full bg-[#a78bfa]"></span>
-            <span class="h-3 w-3 rounded-full bg-[#34d399]"></span>
-            <span class="h-3 w-3 rounded-full bg-[#d4a574]"></span>
+            <span class="h-3 w-3 rounded-sm bg-[#e8b923]"></span>
+            <span class="h-3 w-3 rounded-sm bg-[#64748b]"></span>
+            <span class="h-3 w-3 rounded-sm bg-[#dc2626]"></span>
+            <span class="h-3 w-3 rounded-sm bg-[#374151]"></span>
           </div>
         </div>
         <div class="space-y-3">
           {[
-            { t: '09:00', n: 'María López', s: 'Coloración', c: '#a78bfa' },
-            { t: '10:30', n: 'Carlos R.', s: 'Corte + barba', c: '#34d399' },
-            { t: '12:00', n: 'Ana V.', s: 'Brushing', c: '#d4a574' },
-            { t: '15:00', n: 'Lucía M.', s: 'Corte mujer', c: '#e879a9' },
+            { t: '09:00', n: 'Junior P.', s: 'Fade / Degradé', c: '#64748b' },
+            { t: '10:30', n: 'Manuel R.', s: 'Corte + barba', c: '#e8b923', dark: true },
+            { t: '12:00', n: 'Díaz K.', s: 'Diseño / Línea', c: '#dc2626' },
+            { t: '15:00', n: 'Luis M.', s: 'Corte clásico', c: '#374151' },
           ].map((row) => (
-            <div class="flex items-center gap-3 rounded-2xl border border-white/40 p-3 text-white shadow-sm" style={`background:${row.c}`}>
+            <div
+              class:list={['flex items-center gap-3 rounded-lg border border-white/10 p-3 shadow-sm', row.dark ? 'text-void' : 'text-white']}
+              style={`background:${row.c}`}
+            >
               <span class="w-12 text-sm font-bold opacity-90">{row.t}</span>
               <div class="min-w-0">
                 <p class="truncate font-bold">{row.n}</p>
@@ -61,26 +68,26 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
     </section>
 
-    <section id="features" class="border-t border-cream-dark/80 bg-white/50 py-16">
+    <section id="features" class="border-t border-border py-16">
       <div class="mx-auto grid max-w-6xl gap-6 px-4 sm:grid-cols-2 lg:grid-cols-3">
         {[
-          { t: 'Multitenant', d: 'Cada salón se registra, tiene su perfil y su enlace público de reservas.' },
+          { t: 'Multitenant', d: 'Cada barbería se registra, tiene su perfil y enlace público de reservas.' },
           { t: 'Bahía visual', d: 'Tablero del día con bloques de color por servicio o cliente.' },
-          { t: 'Notificaciones', d: 'Confirmación y recordatorios por email con credenciales renace.tech.' },
+          { t: 'Notificaciones', d: 'Confirmación y recordatorios por email.' },
           { t: 'Clientes', d: 'Agenda interna: crea citas, gestiona clientes y servicios.' },
-          { t: 'Booking público', d: 'Tus clientes reservan en /s/tu-salon sin instalar nada.' },
-          { t: 'Stack moderno', d: 'Astro SSR, Tailwind, Docker Swarm y Traefik en RenaceNet.' },
+          { t: 'Booking público', d: 'Tus clientes reservan en /s/tu-barberia sin app.' },
+          { t: 'Geo local', d: 'Detecta el país del visitante y prellena ciudad y zona horaria.' },
         ].map((f) => (
           <article class="card p-5">
-            <h3 class="font-display text-xl font-bold text-ink">{f.t}</h3>
+            <h3 class="brand-mark text-2xl text-gold">{f.t}</h3>
             <p class="mt-2 text-sm leading-relaxed text-ink-soft">{f.d}</p>
           </article>
         ))}
       </div>
     </section>
 
-    <footer class="border-t border-cream-dark/80 py-10 text-center text-sm text-muted">
-      <p>Citas · MVP por <a class="font-semibold text-rose-deep" href="https://renace.tech">renace.tech</a></p>
+    <footer class="border-t border-border py-10 text-center text-sm text-muted">
+      <p>Citas · renace.tech</p>
     </footer>
   </div>
 </BaseLayout>

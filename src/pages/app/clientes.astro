@@ -10,14 +10,14 @@ const clients = await getClients(tenantId);
 <AppLayout title="Clientes" active="clientes">
   <div class="mb-6 flex items-end justify-between gap-3">
     <div>
-      <h1 class="font-display text-3xl font-bold">Clientes</h1>
+      <h1 class="brand-mark text-3xl font-bold">Clientes</h1>
       <p class="mt-1 text-sm text-ink-soft">Tu agenda de clientes del salón</p>
     </div>
     <button id="new-cli" type="button" class="btn-primary">+ Cliente</button>
   </div>
 
   <div class="card overflow-hidden">
-    <div class="divide-y divide-cream-dark">
+    <div class="divide-y divide-border">
       {clients.length === 0 && (
         <p class="p-6 text-sm text-muted">Aún no hay clientes. Se crean al agendar citas o aquí.</p>
       )}
@@ -32,9 +32,9 @@ const clients = await getClients(tenantId);
     </div>
   </div>
 
-  <dialog id="cli-modal" class="w-[min(100%,420px)] rounded-2xl border border-cream-dark p-0 shadow-xl backdrop:bg-ink/40">
+  <dialog id="cli-modal" class="w-[min(100%,420px)] rounded-xl border border-border bg-surface p-0 shadow-xl backdrop:bg-black/60">
     <form id="cli-form" class="p-6">
-      <h2 class="font-display text-2xl font-bold">Nuevo cliente</h2>
+      <h2 class="brand-mark text-2xl font-bold">Nuevo cliente</h2>
       <div class="mt-4 space-y-3">
         <div>
           <label class="label" for="cli-name">Nombre</label>

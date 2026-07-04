@@ -1,18 +1,19 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { hashPassword, newId, slugify } from './auth';
+import { countryPreset } from './geo';
 
 const DATA_DIR = process.env.CITAS_DATA_DIR || path.join(process.cwd(), 'data');
 
 export const APPOINTMENT_COLORS = [
-  { id: 'rose', hex: '#e879a9', label: 'Rosa' },
-  { id: 'lavender', hex: '#a78bfa', label: 'Lavanda' },
-  { id: 'mint', hex: '#34d399', label: 'Menta' },
-  { id: 'peach', hex: '#fb923c', label: 'Durazno' },
-  { id: 'sky', hex: '#38bdf8', label: 'Cielo' },
-  { id: 'gold', hex: '#d4a574', label: 'Oro' },
-  { id: 'plum', hex: '#c084fc', label: 'Ciruela' },
-  { id: 'coral', hex: '#f87171', label: 'Coral' },
+  { id: 'gold', hex: '#e8b923', label: 'Oro' },
+  { id: 'steel', hex: '#64748b', label: 'Acero' },
+  { id: 'amber', hex: '#f59e0b', label: 'Ámbar' },
+  { id: 'crimson', hex: '#dc2626', label: 'Rojo' },
+  { id: 'teal', hex: '#14b8a6', label: 'Verde azul' },
+  { id: 'navy', hex: '#1e3a5f', label: 'Marino' },
+  { id: 'olive', hex: '#65a30d', label: 'Oliva' },
+  { id: 'charcoal', hex: '#374151', label: 'Carbón' },
 ] as const;
 
 export type AppointmentColor = (typeof APPOINTMENT_COLORS)[number]['id'];
@@ -27,6 +28,7 @@ export type Tenant = {
   phone: string;
   address: string;
   city: string;
+  country: string;
   bio: string;
   accentColor: string;
   timezone: string;
@@ -100,11 +102,11 @@ async function writeJson<T>(file: string, data: T) {
 
 function defaultServices(tenantId: string): Service[] {
   return [
-    { id: newId('svc'), tenantId, name: 'Corte mujer', durationMin: 45, price: 25, color: 'rose', active: true },
-    { id: newId('svc'), tenantId, name: 'Corte hombre', durationMin: 30, price: 18, color: 'sky', active: true },
-    { id: newId('svc'), tenantId, name: 'Coloración', durationMin: 90, price: 55, color: 'lavender', active: true },
-    { id: newId('svc'), tenantId, name: 'Peinado / Brushing', durationMin: 40, price: 22, color: 'gold', active: true },
-    { id: newId('svc'), tenantId, name: 'Barba', durationMin: 20, price: 12, color: 'mint', active: true },
+    { id: newId('svc'), tenantId, name: 'Corte clásico', durationMin: 30, price: 500, color: 'gold', active: true },
+    { id: newId('svc'), tenantId, name: 'Fade / Degradé', durationMin: 40, price: 700, color: 'steel', active: true },
+    { id: newId('svc'), tenantId, name: 'Barba', durationMin: 20, price: 350, color: 'charcoal', active: true },
+    { id: newId('svc'), tenantId, name: 'Corte + barba', durationMin: 45, price: 900, color: 'amber', active: true },
+    { id: newId('svc'), tenantId, name: 'Diseño / Línea', durationMin: 25, price: 400, color: 'crimson', active: true },
   ];
 }
 
@@ -145,6 +147,7 @@ export async function createTenant(input: {
   password: string;
   phone?: string;
   city?: string;
+  country?: string;
   slug?: string;
 }) {
   const tenants = await getTenants();
@@ -153,12 +156,14 @@ export async function createTenant(input: {
     throw new Error('email_taken');
   }
 
-  let base = slugify(input.slug || input.businessName) || 'salon';
+  let base = slugify(input.slug || input.businessName) || 'barberia';
   let slug = base;
   let n = 1;
   while (tenants.some((t) => t.slug === slug)) {
     slug = `${base}-${n++}`;
   }
+
+  const preset = countryPreset(input.country || 'DO');
 
   const tenant: Tenant = {
     id: newId('ten'),
@@ -169,12 +174,13 @@ export async function createTenant(input: {
     passwordHash: hashPassword(input.password),
     phone: (input.phone || '').trim(),
     address: '',
-    city: (input.city || '').trim(),
-    bio: 'Salón de belleza · Reserva tu cita en línea',
-    accentColor: '#c45c8a',
-    timezone: 'America/Caracas',
+    city: (input.city || preset.city).trim(),
+    country: preset.code,
+    bio: 'Barbería urbana · Reserva tu cita en línea',
+    accentColor: '#e8b923',
+    timezone: preset.timezone,
     openHour: 9,
-    closeHour: 19,
+    closeHour: 20,
     createdAt: new Date().toISOString(),
   };
 
@@ -247,7 +253,7 @@ export async function saveService(tenantId: string, input: Partial<Service> & { 
     name: input.name.trim(),
     durationMin: Number(input.durationMin || 30),
     price: Number(input.price || 0),
-    color: (input.color || 'rose') as AppointmentColor,
+    color: (input.color || 'gold') as AppointmentColor,
     active: input.active ?? true,
   };
   all.push(service);
@@ -474,7 +480,7 @@ export async function getBoardDay(tenantId: string, dateIso: string) {
     ...a,
     client: clients.find((c) => c.id === a.clientId) || null,
     service: services.find((s) => s.id === a.serviceId) || null,
-    colorHex: APPOINTMENT_COLORS.find((c) => c.id === a.color)?.hex || '#e879a9',
+    colorHex: APPOINTMENT_COLORS.find((c) => c.id === a.color)?.hex || '#e8b923',
   }));
 
   return {
@@ -520,7 +526,7 @@ export async function getDashboardStats(tenantId: string) {
         ...a,
         client: clients.find((c) => c.id === a.clientId) || null,
         service: services.find((s) => s.id === a.serviceId) || null,
-        colorHex: APPOINTMENT_COLORS.find((c) => c.id === a.color)?.hex || '#e879a9',
+        colorHex: APPOINTMENT_COLORS.find((c) => c.id === a.color)?.hex || '#e8b923',
       })),
   };
 }

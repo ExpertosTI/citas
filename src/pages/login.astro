@@ -8,10 +8,11 @@ if (tenantIdFromRequest(Astro.request)) {
 ---
 
 <BaseLayout title="Entrar · Citas">
-  <div class="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
-    <a href="/" class="mb-8 font-display text-2xl font-bold text-rose-deep">Citas</a>
+  <div class="barber-stripe"></div>
+  <div class="urban-grid mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
+    <a href="/" class="brand-mark mb-8 text-4xl">Citas</a>
     <div class="card p-6 sm:p-8">
-      <h1 class="font-display text-3xl font-bold">Entrar al salón</h1>
+      <h1 class="brand-mark text-4xl leading-none">Entrar</h1>
       <p class="mt-2 text-sm text-ink-soft">Accede a tu bahía de citas.</p>
 
       <form id="login-form" class="mt-6 space-y-4">
@@ -23,12 +24,12 @@ if (tenantIdFromRequest(Astro.request)) {
           <label class="label" for="password">Contraseña</label>
           <input class="input" id="password" name="password" type="password" required />
         </div>
-        <p id="form-error" class="hidden text-sm font-medium text-red-600"></p>
+        <p id="form-error" class="hidden text-sm font-medium text-danger"></p>
         <button class="btn-primary w-full !py-3" type="submit">Entrar</button>
       </form>
 
       <p class="mt-5 text-center text-sm text-muted">
-        ¿Nuevo? <a class="font-semibold text-rose-deep" href="/registro">Crear salón</a>
+        ¿Nuevo? <a class="font-semibold text-gold" href="/registro">Crear barbería</a>
       </p>
     </div>
   </div>
