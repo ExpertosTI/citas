@@ -1,48 +1,51 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
-import { baySlotClass, statusLabel } from '../../lib/appointment-status';
+import { statusLabel } from '../../lib/appointment-status';
+import { buildDayBoard } from '../../lib/day-board';
 import { tenantIdFromRequest } from '../../lib/auth';
-import { getBoardDay, getBoardWeek, getDashboardStats } from '../../lib/store';
 import { cutStyleLabel } from '../../lib/cut-styles';
+import { getBoardDay, getBoardWeek, getDashboardStats, getTenantById } from '../../lib/store';
 
 const tenantId = tenantIdFromRequest(Astro.request)!;
 const today = new Date();
 const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 const qDate = Astro.url.searchParams.get('date') || '';
 const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : todayStr;
-const [board, stats, week] = await Promise.all([
+
+const [board, stats, week, tenant] = await Promise.all([
   getBoardDay(tenantId, dateStr),
   getDashboardStats(tenantId),
   getBoardWeek(tenantId, todayStr),
+  getTenantById(tenantId),
 ]);
-const openHour = board.tenant?.openHour ?? 9;
-const closeHour = board.tenant?.closeHour ?? 19;
-const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + i);
+
+const daySlots = tenant ? buildDayBoard(tenant, dateStr, board.appointments) : [];
 const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.currency || 'RD$';
+const defaultServiceId = board.services[0]?.id || '';
 ---
 
-<AppLayout title="Bahía de citas" active="bahia">
-  <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+<AppLayout title="Centro de comandos" active="bahia">
+  <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Panel del día</p>
-      <h1 class="font-display mt-1 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">Bahía de citas</h1>
-      <p class="mt-1 text-sm text-muted">Gestiona reservas, recepción y facturación</p>
+      <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-navy">Centro de comandos</p>
+      <h1 class="font-display mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Bahía del día</h1>
+      <p class="mt-1 text-sm text-muted">Todos los horarios visibles · acciones directas en cada cita</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      <input id="bay-date" class="input !w-auto" type="date" value={dateStr} />
+      <input id="bay-date" class="input !w-auto !rounded-lg" type="date" value={dateStr} />
       <button id="print-day" type="button" class="btn-ghost btn-sm">Imprimir</button>
       <a href="/app/waitlist" class="btn-ghost btn-sm">Espera ({stats.waitlistCount})</a>
-      <button id="new-apt-btn" type="button" class="btn-primary">+ Nueva cita</button>
+      <button id="new-apt-btn" type="button" class="btn-primary btn-sm">+ Nueva cita</button>
     </div>
   </div>
 
-  <div class="mb-4 flex gap-2 overflow-x-auto pb-1">
+  <div class="mb-4 flex gap-1.5 overflow-x-auto pb-1">
     {week.map((d) => (
       <a
         href={`/app?date=${d.date}`}
         class:list={[
-          'chip shrink-0 border',
-          d.date === dateStr ? 'border-mustard bg-gold-dim text-mustard-deep' : 'border-border text-muted',
+          'chip shrink-0 border rounded-md',
+          d.date === dateStr ? 'border-navy bg-violet-dim text-navy font-bold' : 'border-border text-muted bg-surface',
         ]}
       >
         {d.date.slice(5)} · {d.count}
@@ -50,98 +53,125 @@ const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.curren
     ))}
   </div>
 
-  <div class="mb-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-    <div class="card p-4">
-      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Hoy</p>
-      <p class="mt-1 font-display text-3xl font-semibold text-ink">{stats.todayCount}</p>
+  <div class="mb-5 grid gap-2 grid-cols-3 lg:grid-cols-6">
+    <div class="stat-card">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Hoy</p>
+      <p class="stat-card__value mt-1">{stats.todayCount}</p>
     </div>
-    <div class="card p-4">
-      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Pendientes</p>
-      <p class="mt-1 font-display text-3xl font-semibold text-mustard-deep">{stats.pendingCount}</p>
+    <div class="stat-card">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Pendientes</p>
+      <p class="stat-card__value stat-card__value--warn mt-1">{stats.pendingCount}</p>
     </div>
-    <div class="card p-4">
-      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Clientes</p>
-      <p class="mt-1 font-display text-3xl font-semibold text-ink">{stats.clientsCount}</p>
+    <div class="stat-card">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Clientes</p>
+      <p class="stat-card__value mt-1">{stats.clientsCount}</p>
     </div>
-    <div class="card p-4">
-      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Servicios</p>
-      <p class="mt-1 font-display text-3xl font-semibold text-ink">{stats.servicesCount}</p>
+    <div class="stat-card">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Servicios</p>
+      <p class="stat-card__value mt-1">{stats.servicesCount}</p>
     </div>
-    <div class="card p-4">
-      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Semana {currency}</p>
-      <p class="mt-1 font-display text-2xl font-semibold text-mustard-deep">{currency}{stats.weekRevenue.toLocaleString('es-DO')}</p>
+    <div class="stat-card">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Semana</p>
+      <p class="stat-card__value stat-card__value--accent mt-1 text-xl">{currency}{stats.weekRevenue.toLocaleString('es-DO')}</p>
     </div>
-    <div class="card p-4">
-      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">No-show</p>
-      <p class="mt-1 font-display text-3xl font-semibold text-ink">{stats.noShowCount}</p>
+    <div class="stat-card">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">No-show</p>
+      <p class="stat-card__value mt-1">{stats.noShowCount}</p>
     </div>
   </div>
 
-  {stats.upcoming.length > 0 && (
-    <div class="card mb-6 p-4">
-      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Próximas citas</p>
-      <div class="mt-3 space-y-2">
-        {stats.upcoming.map((a) => (
-          <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-white/60 px-3 py-2 text-sm">
-            <div>
-              <span class="font-semibold text-ink">{a.client?.name || 'Cliente'}</span>
-              <span class="text-muted"> · {a.service?.name}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-xs text-muted">{new Date(a.startAt).toLocaleString('es-DO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-              <span class:list={['status-badge', `status-badge--${a.status}`]}>{statusLabel(a.status)}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+  <div id="print-area" class="card p-4 sm:p-5">
+    <div class="cmd-board__header">
+      <span>Hora</span>
+      <span>Estado / acciones</span>
     </div>
-  )}
+    <div class="cmd-board mt-2">
+      {daySlots.length === 0 && (
+        <p class="py-8 text-center text-sm text-muted">Día cerrado o sin horario configurado.</p>
+      )}
+      {daySlots.map((slot) => (
+        <div class="cmd-row" style={slot.span > 1 ? `min-height:${slot.span * 4.5}rem` : undefined}>
+          <div class="cmd-row__time">{slot.time}</div>
 
-  <div id="print-area" class="card overflow-hidden">
-    <div class="bay" id="bay" data-open={openHour} data-close={closeHour} data-date={dateStr}>
-      <div class="bay__hours">
-        {hours.map((h) => (
-          <div class="bay__hour">{String(h).padStart(2, '0')}:00</div>
-        ))}
-      </div>
-      <div class="bay__track" id="bay-track" style={`height:${hours.length * 64}px`}>
-        {board.appointments.map((a) => {
-          const start = new Date(a.startAt);
-          const end = new Date(a.endAt);
-          const startMin = start.getHours() * 60 + start.getMinutes();
-          const endMin = end.getHours() * 60 + end.getMinutes();
-          const openMin = openHour * 60;
-          const top = ((startMin - openMin) / 60) * 64;
-          const height = Math.max(((endMin - startMin) / 60) * 64, 36);
-          const time = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
-          return (
+          {slot.kind === 'free' && (
             <button
               type="button"
-              class={baySlotClass(a.status)}
-              style={`top:${top}px;height:${height}px;background:${a.colorHex}`}
-              data-id={a.id}
-              data-status={a.status}
-              data-client={a.client?.name || 'Cliente'}
-              data-phone={a.client?.phone || ''}
-              data-email={a.client?.email || ''}
-              data-service={a.service?.name || 'Servicio'}
-              data-price={a.service?.price || 0}
-              data-time={time}
-              data-code={a.code || ''}
-              data-style={a.haircutStyle ? cutStyleLabel(a.haircutStyle) : ''}
-              data-notes={a.notes || ''}
+              class="cmd-slot cmd-slot--free cmd-free-slot"
+              data-time={slot.time}
+              data-start={slot.startAt}
             >
-              <div class="bay__slot-title">{a.client?.name || 'Cliente'}</div>
-              <div class="bay__slot-meta">
-                {time} · {a.service?.name || 'Servicio'}
-                {a.haircutStyle ? ` · ${cutStyleLabel(a.haircutStyle)}` : ''}
-                {a.status === 'pending' ? ' · Pendiente' : ''}
-                {a.status === 'invoiced' ? ' · Facturada' : ''}
-              </div>
+              <span class="cmd-slot__label">+ Disponible — reservar</span>
+              <span class="text-[11px] text-muted">Clic para agendar</span>
             </button>
-          );
-        })}
-      </div>
+          )}
+
+          {slot.kind === 'past' && (
+            <div class="cmd-slot cmd-slot--past">
+              <span class="text-xs text-muted">Horario pasado</span>
+            </div>
+          )}
+
+          {slot.kind === 'lunch' && (
+            <div class="cmd-slot cmd-slot--lunch">
+              <span>Almuerzo</span>
+            </div>
+          )}
+
+          {slot.kind === 'booked' && slot.appointment && (
+            <div
+              class:list={[
+                'cmd-slot cmd-slot--booked',
+                `is-${slot.appointment.status}`,
+              ]}
+              style={slot.span > 1 ? `min-height:${slot.span * 4.25 - 0.25}rem` : undefined}
+              data-id={slot.appointment.id}
+            >
+              <div class="cmd-slot__top">
+                <div>
+                  <p class="cmd-slot__client">{slot.appointment.client?.name || 'Cliente'}</p>
+                  <p class="cmd-slot__meta">
+                    {slot.appointment.service?.name}
+                    {slot.appointment.haircutStyle ? ` · ${cutStyleLabel(slot.appointment.haircutStyle)}` : ''}
+                    · {currency}{slot.appointment.service?.price || 0}
+                    {slot.appointment.code ? ` · ${slot.appointment.code}` : ''}
+                  </p>
+                </div>
+                <span class={`status-badge status-badge--${slot.appointment.status}`}>
+                  {statusLabel(slot.appointment.status)}
+                </span>
+              </div>
+              <div class="cmd-slot__actions">
+                {slot.appointment.status === 'pending' && (
+                  <>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="confirmed" data-notify="1">Confirmar</button>
+                    <button type="button" class="btn-action btn-action--danger cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">Rechazar</button>
+                  </>
+                )}
+                {slot.appointment.status === 'confirmed' && (
+                  <>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="received">Recibir</button>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">Hecho</button>
+                    <button type="button" class="btn-action cmd-act-reschedule" data-id={slot.appointment.id} data-time={slot.time}>Cambiar hora</button>
+                    <button type="button" class="btn-action btn-action--danger cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">Quitar</button>
+                  </>
+                )}
+                {slot.appointment.status === 'received' && (
+                  <>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">Hecho</button>
+                    <button type="button" class="btn-action cmd-act-reschedule" data-id={slot.appointment.id} data-time={slot.time}>Cambiar hora</button>
+                  </>
+                )}
+                {slot.appointment.status === 'completed' && (
+                  <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="invoiced">Facturar</button>
+                )}
+                {(slot.appointment.status === 'confirmed' || slot.appointment.status === 'received') && (
+                  <button type="button" class="btn-action cmd-act" data-id={slot.appointment.id} data-action="no_show">No-show</button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   </div>
 
@@ -153,7 +183,7 @@ const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.curren
           <label class="label" for="clientName">Cliente</label>
           <input class="input" id="clientName" name="clientName" list="clients-list" required />
           <datalist id="clients-list">
-            {board.clients.map((c) => <option value={c.name} data-id={c.id} data-email={c.email} data-phone={c.phone} />)}
+            {board.clients.map((c) => <option value={c.name} />)}
           </datalist>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -170,8 +200,8 @@ const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.curren
           <label class="label" for="serviceId">Servicio</label>
           <select class="input" id="serviceId" name="serviceId" required>
             {board.services.map((s) => (
-              <option value={s.id} data-color={s.color} data-duration={s.durationMin}>
-                {s.name} · {s.durationMin} min · ${s.price}
+              <option value={s.id} selected={s.id === defaultServiceId}>
+                {s.name} · {s.durationMin} min · {currency}{s.price}
               </option>
             ))}
           </select>
@@ -187,12 +217,6 @@ const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.curren
           </div>
         </div>
         <div>
-          <label class="label" for="color">Color</label>
-          <select class="input" id="color" name="color">
-            {board.colors.map((c) => <option value={c.id}>{c.label}</option>)}
-          </select>
-        </div>
-        <div>
           <label class="label" for="notes">Notas</label>
           <textarea class="input" id="notes" name="notes" rows="2"></textarea>
         </div>
@@ -200,71 +224,34 @@ const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.curren
       </div>
       <div class="mt-5 flex justify-end gap-2">
         <button type="button" class="btn-ghost" id="apt-cancel">Cancelar</button>
-        <button type="submit" class="btn-primary">Guardar cita</button>
+        <button type="submit" class="btn-primary">Guardar</button>
       </div>
     </form>
   </dialog>
 
-  <dialog id="detail-modal" class="apt-dialog">
-    <div class="p-5 sm:p-6">
-      <div class="flex items-start justify-between gap-3">
-        <div>
-          <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Detalle de cita</p>
-          <h2 id="detail-client" class="font-display mt-1 text-xl font-semibold text-ink"></h2>
-          <p id="detail-meta" class="mt-1 text-sm text-muted"></p>
-        </div>
-        <span id="detail-status" class="status-badge"></span>
-      </div>
-      <dl class="mt-4 space-y-2 text-sm">
-        <div class="flex justify-between gap-4"><dt class="text-muted">Servicio</dt><dd id="detail-service" class="font-medium text-ink"></dd></div>
-        <div class="flex justify-between gap-4"><dt class="text-muted">Hora</dt><dd id="detail-time" class="font-medium text-ink"></dd></div>
-        <div class="flex justify-between gap-4"><dt class="text-muted">Código</dt><dd id="detail-code" class="font-medium text-ink"></dd></div>
-        <div class="flex justify-between gap-4"><dt class="text-muted">Precio</dt><dd id="detail-price" class="font-medium text-ink"></dd></div>
-        <div id="detail-style-row" class="hidden flex justify-between gap-4"><dt class="text-muted">Estilo</dt><dd id="detail-style" class="font-medium text-ink"></dd></div>
-        <div id="detail-notes-row" class="hidden"><dt class="text-muted">Notas</dt><dd id="detail-notes" class="mt-1 text-ink-soft"></dd></div>
-      </dl>
-      <div id="detail-actions" class="mt-5 flex flex-wrap gap-2"></div>
-      <div class="mt-4 flex justify-end">
-        <button type="button" class="btn-ghost" id="detail-close">Cerrar</button>
-      </div>
-    </div>
-  </dialog>
-
-  <script define:vars={{ currency }}>
+  <script define:vars={{ currency, dateStr }}>
     const bayDate = document.getElementById('bay-date');
     const modal = document.getElementById('apt-modal');
-    const detailModal = document.getElementById('detail-modal');
     const form = document.getElementById('apt-form');
     const errorEl = document.getElementById('apt-error');
-    const serviceSelect = document.getElementById('serviceId');
-    const colorSelect = document.getElementById('color');
-
-    const STATUS_LABELS = {
-      pending: 'Pendiente',
-      confirmed: 'Confirmada',
-      received: 'Recibida',
-      completed: 'Completada',
-      invoiced: 'Facturada',
-      cancelled: 'Cancelada',
-      no_show: 'No-show',
-    };
+    const aptTime = document.getElementById('aptTime');
 
     bayDate?.addEventListener('change', () => {
       location.href = `/app?date=${bayDate.value}`;
     });
 
-    document.getElementById('new-apt-btn')?.addEventListener('click', () => {
-      const opt = serviceSelect?.selectedOptions[0];
-      if (opt?.dataset.color) colorSelect.value = opt.dataset.color;
+    function openModal(time) {
+      if (aptTime && time) aptTime.value = time;
       modal?.showModal();
-    });
+    }
 
+    document.getElementById('new-apt-btn')?.addEventListener('click', () => openModal('10:00'));
     document.getElementById('apt-cancel')?.addEventListener('click', () => modal?.close());
-    document.getElementById('detail-close')?.addEventListener('click', () => detailModal?.close());
 
-    serviceSelect?.addEventListener('change', () => {
-      const opt = serviceSelect.selectedOptions[0];
-      if (opt?.dataset.color) colorSelect.value = opt.dataset.color;
+    document.querySelectorAll('.cmd-free-slot').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        openModal(btn.dataset.time || '10:00');
+      });
     });
 
     form?.addEventListener('submit', async (e) => {
@@ -284,7 +271,6 @@ const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.curren
           clientEmail: fd.get('clientEmail'),
           serviceId: fd.get('serviceId'),
           startAt,
-          color: fd.get('color'),
           notes: fd.get('notes'),
           notify: true,
         }),
@@ -313,89 +299,26 @@ const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.curren
       return true;
     }
 
-    function actionBtn(label, status, extra = {}) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = status === 'cancelled' ? 'btn-ghost !text-xs' : 'btn-primary !text-xs';
-      btn.textContent = label;
-      btn.addEventListener('click', () => patchAppointment(extra.id, { status, ...extra.payload }));
-      return btn;
-    }
+    document.querySelectorAll('.cmd-act').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const action = btn.dataset.action;
+        if (!id || !action) return;
+        const payload = { status: action };
+        if (btn.dataset.notify === '1') payload.notify = true;
+        if (action === 'cancelled' && !confirm('¿Cancelar esta cita?')) return;
+        await patchAppointment(id, payload);
+      });
+    });
 
-    document.querySelectorAll('.bay__slot').forEach((el) => {
-      el.addEventListener('click', () => {
-        const ds = el.dataset;
-        const status = ds.status || 'confirmed';
-        if (status === 'cancelled') return;
-
-        document.getElementById('detail-client').textContent = ds.client || 'Cliente';
-        document.getElementById('detail-meta').textContent = [ds.phone, ds.email].filter(Boolean).join(' · ') || '—';
-        document.getElementById('detail-service').textContent = ds.service || '—';
-        document.getElementById('detail-time').textContent = ds.time || '—';
-        document.getElementById('detail-code').textContent = ds.code || '—';
-        document.getElementById('detail-price').textContent = `${currency}${Number(ds.price || 0).toLocaleString('es-DO')}`;
-
-        const statusEl = document.getElementById('detail-status');
-        if (statusEl) {
-          statusEl.textContent = STATUS_LABELS[status] || status;
-          statusEl.className = `status-badge status-badge--${status}`;
-        }
-
-        const styleRow = document.getElementById('detail-style-row');
-        if (ds.style) {
-          styleRow?.classList.remove('hidden');
-          document.getElementById('detail-style').textContent = ds.style;
-        } else {
-          styleRow?.classList.add('hidden');
-        }
-
-        const notesRow = document.getElementById('detail-notes-row');
-        if (ds.notes) {
-          notesRow?.classList.remove('hidden');
-          document.getElementById('detail-notes').textContent = ds.notes;
-        } else {
-          notesRow?.classList.add('hidden');
-        }
-
-        const actions = document.getElementById('detail-actions');
-        if (actions) {
-          actions.innerHTML = '';
-          const id = ds.id;
-          const base = { id };
-
-          if (status === 'pending') {
-            actions.appendChild(actionBtn('Aceptar', 'confirmed', { ...base, payload: { notify: true } }));
-            actions.appendChild(actionBtn('Rechazar', 'cancelled', { ...base, payload: { notify: true } }));
-          }
-          if (status === 'confirmed') {
-            actions.appendChild(actionBtn('Recibir cliente', 'received', base));
-            actions.appendChild(actionBtn('Completada', 'completed', base));
-            actions.appendChild(actionBtn('No-show', 'no_show', base));
-            actions.appendChild(actionBtn('Cancelar', 'cancelled', { ...base, payload: { notify: true } }));
-          }
-          if (status === 'received') {
-            actions.appendChild(actionBtn('Completada', 'completed', base));
-            actions.appendChild(actionBtn('No-show', 'no_show', base));
-          }
-          if (status === 'completed') {
-            actions.appendChild(actionBtn('Marcar facturada', 'invoiced', base));
-          }
-
-          const reschedule = document.createElement('button');
-          reschedule.type = 'button';
-          reschedule.className = 'btn-ghost !text-xs';
-          reschedule.textContent = 'Reagendar';
-          reschedule.addEventListener('click', async () => {
-            const time = prompt('Nueva hora (HH:MM)', ds.time || '10:00');
-            if (!time) return;
-            const date = bayDate?.value || '';
-            const startAt = new Date(`${date}T${time}:00`).toISOString();
-            await patchAppointment(id, { startAt, notify: true });
-          });
-          if (status !== 'invoiced' && status !== 'completed') actions.appendChild(reschedule);
-        }
-
-        detailModal?.showModal();
+    document.querySelectorAll('.cmd-act-reschedule').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const time = prompt('Nueva hora (HH:MM)', btn.dataset.time || '10:00');
+        if (!time || !id) return;
+        const date = bayDate?.value || dateStr;
+        const startAt = new Date(`${date}T${time}:00`).toISOString();
+        await patchAppointment(id, { startAt, notify: true });
       });
     });
 
