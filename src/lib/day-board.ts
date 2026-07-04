@@ -46,6 +46,9 @@ export function buildDayBoard(
 ): DayBoardSlot[] {
   const openMin = tenant.openHour * 60;
   const closeMin = tenant.closeHour * 60;
+  if (!Number.isFinite(openMin) || !Number.isFinite(closeMin) || closeMin <= openMin) {
+    return [];
+  }
   const now = Date.now();
   const dayAppts = enriched.filter(
     (a) => localDate(a.startAt) === date && a.status !== 'cancelled',

@@ -13,6 +13,8 @@ export function normalizeTenant(t: Tenant): Tenant {
     slotBufferMin: t.slotBufferMin ?? 5,
     lunchStartHour: t.lunchStartHour ?? 13,
     lunchEndHour: t.lunchEndHour ?? 14,
+    openHour: t.openHour ?? 9,
+    closeHour: t.closeHour ?? 19,
     instagram: t.instagram || '',
     whatsapp: t.whatsapp || t.phone || '',
     logoUrl: t.logoUrl || '',

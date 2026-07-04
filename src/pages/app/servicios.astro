@@ -1,9 +1,11 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
-import { tenantIdFromRequest } from '../../lib/auth';
+import { guardAppPage } from '../../lib/page-auth';
 import { APPOINTMENT_COLORS, getServices } from '../../lib/store';
 
-const tenantId = tenantIdFromRequest(Astro.request)!;
+const auth = await guardAppPage(Astro.request);
+if ('redirect' in auth) return Astro.redirect(auth.redirect);
+const { tenantId } = auth;
 const services = await getServices(tenantId);
 ---
 

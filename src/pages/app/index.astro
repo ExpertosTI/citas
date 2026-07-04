@@ -2,24 +2,26 @@
 import AppLayout from '../../layouts/AppLayout.astro';
 import { statusLabel } from '../../lib/appointment-status';
 import { buildDayBoard } from '../../lib/day-board';
-import { tenantIdFromRequest } from '../../lib/auth';
 import { cutStyleLabel } from '../../lib/cut-styles';
-import { getBoardDay, getBoardWeek, getDashboardStats, getTenantById } from '../../lib/store';
+import { guardAppPage } from '../../lib/page-auth';
+import { getBoardDay, getBoardWeek, getDashboardStats } from '../../lib/store';
 
-const tenantId = tenantIdFromRequest(Astro.request)!;
+const auth = await guardAppPage(Astro.request);
+if ('redirect' in auth) return Astro.redirect(auth.redirect);
+const { tenantId, tenant } = auth;
+
 const today = new Date();
 const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 const qDate = Astro.url.searchParams.get('date') || '';
 const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : todayStr;
 
-const [board, stats, week, tenant] = await Promise.all([
+const [board, stats, week] = await Promise.all([
   getBoardDay(tenantId, dateStr),
   getDashboardStats(tenantId),
   getBoardWeek(tenantId, todayStr),
-  getTenantById(tenantId),
 ]);
 
-const daySlots = tenant ? buildDayBoard(tenant, dateStr, board.appointments) : [];
+const daySlots = buildDayBoard(tenant, dateStr, board.appointments);
 const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.currency || 'RD$';
 const defaultServiceId = board.services[0]?.id || '';
 
@@ -95,7 +97,7 @@ function aptDay(iso: string) {
     </div>
   </div>
 
-  {stats.pendingList.length > 0 && (
+  {stats.pendingList?.length > 0 && (
     <div class="card mb-4 border-2 border-gold/40 bg-gold-dim p-4">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 class="font-display text-lg font-bold text-ink">

@@ -19,7 +19,7 @@ export function initAssistantPanel() {
   const form = document.getElementById('assistant-form');
   const input = document.getElementById('assistant-input');
   const applyBtn = document.getElementById('assistant-apply');
-  const greeting = root.dataset.greeting || '';
+  const greeting = JSON.parse(root.dataset.greeting || '""');
   const currency = root.dataset.currency || 'RD$';
 
   /** @type {Msg[]} */
