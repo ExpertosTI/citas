@@ -1,0 +1,78 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { tenantIdFromRequest } from '../lib/auth';
+
+if (tenantIdFromRequest(Astro.request)) {
+  return Astro.redirect('/app');
+}
+---
+
+<BaseLayout title="Crear salón · Citas">
+  <div class="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-4 py-10">
+    <a href="/" class="mb-8 font-display text-2xl font-bold text-rose-deep">Citas</a>
+    <div class="card p-6 sm:p-8">
+      <h1 class="font-display text-3xl font-bold">Registra tu salón</h1>
+      <p class="mt-2 text-sm text-ink-soft">Crea tu perfil y empieza a recibir citas hoy.</p>
+
+      <form id="register-form" class="mt-6 space-y-4">
+        <div>
+          <label class="label" for="businessName">Nombre del salón</label>
+          <input class="input" id="businessName" name="businessName" required placeholder="Studio Belleza" />
+        </div>
+        <div>
+          <label class="label" for="ownerName">Tu nombre</label>
+          <input class="input" id="ownerName" name="ownerName" required placeholder="Ana Pérez" />
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="label" for="email">Email</label>
+            <input class="input" id="email" name="email" type="email" required placeholder="hola@salon.com" />
+          </div>
+          <div>
+            <label class="label" for="phone">Teléfono</label>
+            <input class="input" id="phone" name="phone" type="tel" placeholder="+58..." />
+          </div>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="label" for="city">Ciudad</label>
+            <input class="input" id="city" name="city" placeholder="Caracas" />
+          </div>
+          <div>
+            <label class="label" for="password">Contraseña</label>
+            <input class="input" id="password" name="password" type="password" required minlength="6" />
+          </div>
+        </div>
+        <p id="form-error" class="hidden text-sm font-medium text-red-600"></p>
+        <button class="btn-primary w-full !py-3" type="submit">Crear cuenta</button>
+      </form>
+
+      <p class="mt-5 text-center text-sm text-muted">
+        ¿Ya tienes cuenta? <a class="font-semibold text-rose-deep" href="/login">Entrar</a>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('register-form') as HTMLFormElement;
+    const errorEl = document.getElementById('form-error')!;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.classList.add('hidden');
+      const data = Object.fromEntries(new FormData(form).entries());
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        errorEl.textContent = json.error || 'Error al registrar';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      location.href = '/app';
+    });
+  </script>
+</BaseLayout>

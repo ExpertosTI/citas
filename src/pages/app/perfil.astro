@@ -1,0 +1,96 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { tenantIdFromRequest } from '../../lib/auth';
+import { getTenantById, safeTenant } from '../../lib/store';
+
+const tenantId = tenantIdFromRequest(Astro.request)!;
+const tenant = safeTenant((await getTenantById(tenantId))!);
+const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
+const publicUrl = `${siteUrl}/s/${tenant.slug}`;
+---
+
+<AppLayout title="Perfil" active="perfil">
+  <div class="mb-6">
+    <h1 class="font-display text-3xl font-bold">Perfil del salón</h1>
+    <p class="mt-1 text-sm text-ink-soft">Tu marca pública y horarios de la bahía</p>
+  </div>
+
+  <div class="card mb-4 p-4">
+    <p class="text-xs font-bold uppercase tracking-wider text-muted">Enlace público</p>
+    <a class="mt-1 block break-all font-semibold text-rose-deep" href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
+  </div>
+
+  <form id="profile-form" class="card space-y-4 p-5 sm:p-6">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label" for="businessName">Nombre del salón</label>
+        <input class="input" id="businessName" name="businessName" value={tenant.businessName} required />
+      </div>
+      <div>
+        <label class="label" for="ownerName">Responsable</label>
+        <input class="input" id="ownerName" name="ownerName" value={tenant.ownerName} required />
+      </div>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label" for="slug">Slug (URL)</label>
+        <input class="input" id="slug" name="slug" value={tenant.slug} required />
+      </div>
+      <div>
+        <label class="label" for="phone">Teléfono</label>
+        <input class="input" id="phone" name="phone" value={tenant.phone} />
+      </div>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label" for="city">Ciudad</label>
+        <input class="input" id="city" name="city" value={tenant.city} />
+      </div>
+      <div>
+        <label class="label" for="address">Dirección</label>
+        <input class="input" id="address" name="address" value={tenant.address} />
+      </div>
+    </div>
+    <div>
+      <label class="label" for="bio">Bio</label>
+      <textarea class="input" id="bio" name="bio" rows="3">{tenant.bio}</textarea>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <label class="label" for="openHour">Abre</label>
+        <input class="input" id="openHour" name="openHour" type="number" min="0" max="23" value={tenant.openHour} />
+      </div>
+      <div>
+        <label class="label" for="closeHour">Cierra</label>
+        <input class="input" id="closeHour" name="closeHour" type="number" min="1" max="24" value={tenant.closeHour} />
+      </div>
+      <div>
+        <label class="label" for="accentColor">Color marca</label>
+        <input class="input" id="accentColor" name="accentColor" type="color" value={tenant.accentColor} />
+      </div>
+    </div>
+    <p id="profile-msg" class="hidden text-sm font-medium text-rose-deep"></p>
+    <button type="submit" class="btn-primary">Guardar perfil</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('profile-form') as HTMLFormElement;
+    const msg = document.getElementById('profile-msg')!;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const payload = Object.fromEntries(fd.entries());
+      payload.openHour = Number(payload.openHour);
+      payload.closeHour = Number(payload.closeHour);
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      msg.classList.remove('hidden');
+      msg.textContent = res.ok ? 'Perfil guardado' : json.error || 'Error';
+      if (res.ok) setTimeout(() => location.reload(), 600);
+    });
+  </script>
+</AppLayout>

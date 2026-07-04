@@ -1,0 +1,88 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { tenantIdFromRequest } from '../lib/auth';
+import { getTenantById, safeTenant } from '../lib/store';
+
+interface Props {
+  title?: string;
+  active?: 'bahia' | 'servicios' | 'clientes' | 'perfil';
+}
+
+const { title = 'Panel', active = 'bahia' } = Astro.props;
+const tenantId = tenantIdFromRequest(Astro.request);
+
+if (!tenantId) {
+  return Astro.redirect('/login');
+}
+
+const tenant = await getTenantById(tenantId);
+if (!tenant) {
+  return Astro.redirect('/login');
+}
+
+const t = safeTenant(tenant);
+const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
+const publicUrl = `${siteUrl}/s/${t.slug}`;
+
+const nav = [
+  { id: 'bahia', href: '/app', label: 'Bahía', icon: '◈' },
+  { id: 'servicios', href: '/app/servicios', label: 'Servicios', icon: '✂' },
+  { id: 'clientes', href: '/app/clientes', label: 'Clientes', icon: '◎' },
+  { id: 'perfil', href: '/app/perfil', label: 'Perfil', icon: '✦' },
+] as const;
+---
+
+<BaseLayout title={`${title} · ${t.businessName}`} bodyClass="bg-cream">
+  <div class="min-h-dvh">
+    <header class="sticky top-0 z-40 border-b border-cream-dark/80 bg-white/80 backdrop-blur-md">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div class="min-w-0">
+          <p class="font-display text-lg font-bold tracking-tight text-rose-deep">{t.businessName}</p>
+          <a class="truncate text-xs text-muted hover:text-rose-deep" href={publicUrl} target="_blank" rel="noreferrer">
+            {publicUrl.replace('https://', '')}
+          </a>
+        </div>
+        <nav class="hidden items-center gap-1 sm:flex">
+          {nav.map((item) => (
+            <a
+              href={item.href}
+              class:list={[
+                'rounded-full px-3.5 py-2 text-sm font-semibold transition',
+                active === item.id
+                  ? 'bg-rose/15 text-rose-deep'
+                  : 'text-ink-soft hover:bg-blush',
+              ]}
+            >
+              {item.label}
+            </a>
+          ))}
+          <button id="logout-btn" type="button" class="btn-ghost ml-2 !py-2 !text-xs">Salir</button>
+        </nav>
+      </div>
+      <nav class="flex gap-1 overflow-x-auto border-t border-cream-dark/60 px-2 py-2 sm:hidden">
+        {nav.map((item) => (
+          <a
+            href={item.href}
+            class:list={[
+              'chip whitespace-nowrap',
+              active === item.id ? 'bg-rose text-white' : 'bg-white text-ink-soft',
+            ]}
+          >
+            {item.icon} {item.label}
+          </a>
+        ))}
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-6">
+      <slot />
+    </main>
+  </div>
+
+  <script>
+    document.getElementById('logout-btn')?.addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      location.href = '/login';
+    });
+  </script>
+</BaseLayout>

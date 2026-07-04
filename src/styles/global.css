@@ -1,0 +1,218 @@
+@import "tailwindcss";
+
+@theme {
+  --color-blush: #fff5f8;
+  --color-cream: #faf6f1;
+  --color-cream-dark: #f0e4dc;
+  --color-ink: #2d1b2e;
+  --color-ink-soft: #4a3548;
+  --color-muted: #9a7b6a;
+  --color-rose: #e879a9;
+  --color-rose-deep: #c45c8a;
+  --color-gold: #d4a574;
+  --color-plum: #5b2c6f;
+  --color-glass: rgba(255, 255, 255, 0.78);
+
+  --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background: var(--color-cream);
+    color: var(--color-ink);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background:
+      radial-gradient(1000px 500px at 8% -8%, rgba(232, 121, 169, 0.16), transparent 55%),
+      radial-gradient(800px 420px at 100% 0%, rgba(212, 165, 116, 0.12), transparent 50%),
+      var(--color-cream);
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background: rgba(232, 121, 169, 0.35);
+  }
+}
+
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: transform 0.15s ease, filter 0.15s ease, background 0.15s ease;
+  }
+
+  .btn:active {
+    transform: scale(0.98);
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, var(--color-rose), var(--color-rose-deep));
+    box-shadow: 0 8px 20px rgba(196, 92, 138, 0.25);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.05);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: 1px solid var(--color-cream-dark);
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--color-ink);
+  }
+
+  .btn-ghost:hover {
+    background: #fff;
+  }
+
+  .card {
+    border-radius: 1rem;
+    border: 1px solid var(--color-cream-dark);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 1px 2px rgba(45, 27, 46, 0.04);
+    backdrop-filter: blur(8px);
+  }
+
+  .input {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-cream-dark);
+    background: #fff;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    color: var(--color-ink);
+    outline: none;
+  }
+
+  .input:focus {
+    border-color: var(--color-rose);
+    box-shadow: 0 0 0 3px rgba(232, 121, 169, 0.2);
+  }
+
+  .label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+}
+
+/* Appointment board */
+.bay {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 0;
+  min-height: 640px;
+}
+
+.bay__hours {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-cream-dark);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.bay__hour {
+  height: 64px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 4px 8px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-muted);
+  border-bottom: 1px dashed rgba(240, 228, 220, 0.9);
+}
+
+.bay__track {
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 63px,
+      rgba(240, 228, 220, 0.9) 63px,
+      rgba(240, 228, 220, 0.9) 64px
+    );
+}
+
+.bay__slot {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  border-radius: 14px;
+  padding: 8px 10px;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(45, 27, 46, 0.12);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.bay__slot:hover {
+  transform: translateY(-1px) scale(1.01);
+  filter: brightness(1.05);
+}
+
+.bay__slot.is-cancelled {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+.bay__slot-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.bay__slot-meta {
+  font-size: 11px;
+  opacity: 0.92;
+  margin-top: 2px;
+}
+
+.salon-pattern {
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(232, 121, 169, 0.08) 0 2px, transparent 3px),
+    radial-gradient(circle at 80% 40%, rgba(212, 165, 116, 0.1) 0 2px, transparent 3px);
+  background-size: 28px 28px;
+}

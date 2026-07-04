@@ -1,0 +1,96 @@
+# ── Citas · Renace — Docker Swarm + Traefik (RenaceNet) ──
+#  Stack name: citas
+#  Domain:     citas.renace.tech
+#  Repo:       https://github.com/ExpertosTI/citas
+#  Network:    RenaceNet (external overlay)
+#  Entrypoints: web (:80), websecure (:443)
+#  Cert resolver: letsencryptresolver
+
+services:
+  web:
+    image: citas-web:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4321
+      CITAS_DATA_DIR: /app/data
+      SMTP_HOST: ${SMTP_HOST:-smtp.hostinger.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-info@renace.tech}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Citas · Renace}
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-info@renace.tech}
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://citas.renace.tech}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-info@renace.tech}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      REMINDER_SECRET: ${REMINDER_SECRET:-}
+    volumes:
+      - citas_data:/app/data
+    networks:
+      - RenaceNet
+    deploy:
+      mode: replicated
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        order: start-first
+        parallelism: 1
+        failure_action: rollback
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=RenaceNet
+        - traefik.constraint-label=traefik-public
+
+        # HTTP → HTTPS
+        - traefik.http.routers.citas-http.rule=Host(`citas.renace.tech`)
+        - traefik.http.routers.citas-http.entrypoints=web
+        - traefik.http.routers.citas-http.middlewares=citas-redirect-https
+
+        # HTTPS
+        - traefik.http.routers.citas.rule=Host(`citas.renace.tech`)
+        - traefik.http.routers.citas.entrypoints=websecure
+        - traefik.http.routers.citas.tls=true
+        - traefik.http.routers.citas.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.citas.service=citas-svc
+        - traefik.http.routers.citas.middlewares=citas-security
+
+        - traefik.http.services.citas-svc.loadbalancer.server.port=4321
+        - traefik.http.services.citas-svc.loadbalancer.healthcheck.path=/healthz
+        - traefik.http.services.citas-svc.loadbalancer.healthcheck.interval=30s
+
+        - traefik.http.middlewares.citas-redirect-https.redirectscheme.scheme=https
+        - traefik.http.middlewares.citas-redirect-https.redirectscheme.permanent=true
+
+        - traefik.http.middlewares.citas-security.headers.stsSeconds=31536000
+        - traefik.http.middlewares.citas-security.headers.stsIncludeSubdomains=true
+        - traefik.http.middlewares.citas-security.headers.stsPreload=true
+        - traefik.http.middlewares.citas-security.headers.contentTypeNosniff=true
+        - traefik.http.middlewares.citas-security.headers.browserXssFilter=true
+        - traefik.http.middlewares.citas-security.headers.referrerPolicy=strict-origin-when-cross-origin
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  citas_data:
+
+networks:
+  RenaceNet:
+    external: true

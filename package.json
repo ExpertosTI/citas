@@ -1,0 +1,25 @@
+{
+  "name": "citas-renace",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev --host",
+    "build": "astro build",
+    "preview": "astro preview --host",
+    "start": "node --env-file=.env ./dist/server/entry.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.5.1",
+    "@tailwindcss/vite": "^4.3.2",
+    "astro": "^5.16.6",
+    "nodemailer": "^9.0.3",
+    "tailwindcss": "^4.3.2"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^8.0.1"
+  }
+}

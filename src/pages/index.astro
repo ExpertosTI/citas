@@ -1,0 +1,86 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout>
+  <div class="salon-pattern">
+    <header class="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+      <a href="/" class="font-display text-2xl font-bold text-rose-deep">Citas</a>
+      <div class="flex items-center gap-2">
+        <a href="/login" class="btn-ghost">Entrar</a>
+        <a href="/registro" class="btn-primary">Crear salón</a>
+      </div>
+    </header>
+
+    <section class="mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-8 lg:grid-cols-2 lg:items-center lg:pt-16">
+      <div>
+        <p class="chip bg-rose/15 text-rose-deep">SaaS multitenant · peluquerías</p>
+        <h1 class="mt-4 font-display text-4xl font-bold leading-[1.1] tracking-tight text-ink sm:text-5xl lg:text-6xl">
+          Tu bahía de citas, con colores y estilo salón
+        </h1>
+        <p class="mt-5 max-w-xl text-lg leading-relaxed text-ink-soft">
+          Como <a class="font-semibold text-rose-deep underline-offset-2 hover:underline" href="https://www.fresha.com/en-GB" target="_blank" rel="noreferrer">Fresha</a>,
+          pero pensado para que cada salón se registre, tenga su perfil y reciba reservas de sus clientes — con notificaciones y un tablero visual del día.
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="/registro" class="btn-primary !px-6 !py-3">Empezar gratis</a>
+          <a href="#features" class="btn-ghost !px-6 !py-3">Ver cómo funciona</a>
+        </div>
+        <p class="mt-6 text-sm text-muted">Powered by <span class="font-semibold text-ink">renace.tech</span> · citas.renace.tech</p>
+      </div>
+
+      <div class="card relative overflow-hidden p-4 sm:p-6">
+        <div class="mb-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wider text-muted">Hoy</p>
+            <p class="font-display text-xl font-bold">Bahía de citas</p>
+          </div>
+          <div class="flex gap-1">
+            <span class="h-3 w-3 rounded-full bg-[#e879a9]"></span>
+            <span class="h-3 w-3 rounded-full bg-[#a78bfa]"></span>
+            <span class="h-3 w-3 rounded-full bg-[#34d399]"></span>
+            <span class="h-3 w-3 rounded-full bg-[#d4a574]"></span>
+          </div>
+        </div>
+        <div class="space-y-3">
+          {[
+            { t: '09:00', n: 'María López', s: 'Coloración', c: '#a78bfa' },
+            { t: '10:30', n: 'Carlos R.', s: 'Corte + barba', c: '#34d399' },
+            { t: '12:00', n: 'Ana V.', s: 'Brushing', c: '#d4a574' },
+            { t: '15:00', n: 'Lucía M.', s: 'Corte mujer', c: '#e879a9' },
+          ].map((row) => (
+            <div class="flex items-center gap-3 rounded-2xl border border-white/40 p-3 text-white shadow-sm" style={`background:${row.c}`}>
+              <span class="w-12 text-sm font-bold opacity-90">{row.t}</span>
+              <div class="min-w-0">
+                <p class="truncate font-bold">{row.n}</p>
+                <p class="text-xs opacity-90">{row.s}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="border-t border-cream-dark/80 bg-white/50 py-16">
+      <div class="mx-auto grid max-w-6xl gap-6 px-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[
+          { t: 'Multitenant', d: 'Cada salón se registra, tiene su perfil y su enlace público de reservas.' },
+          { t: 'Bahía visual', d: 'Tablero del día con bloques de color por servicio o cliente.' },
+          { t: 'Notificaciones', d: 'Confirmación y recordatorios por email con credenciales renace.tech.' },
+          { t: 'Clientes', d: 'Agenda interna: crea citas, gestiona clientes y servicios.' },
+          { t: 'Booking público', d: 'Tus clientes reservan en /s/tu-salon sin instalar nada.' },
+          { t: 'Stack moderno', d: 'Astro SSR, Tailwind, Docker Swarm y Traefik en RenaceNet.' },
+        ].map((f) => (
+          <article class="card p-5">
+            <h3 class="font-display text-xl font-bold text-ink">{f.t}</h3>
+            <p class="mt-2 text-sm leading-relaxed text-ink-soft">{f.d}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <footer class="border-t border-cream-dark/80 py-10 text-center text-sm text-muted">
+      <p>Citas · MVP por <a class="font-semibold text-rose-deep" href="https://renace.tech">renace.tech</a></p>
+    </footer>
+  </div>
+</BaseLayout>
