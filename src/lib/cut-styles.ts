@@ -42,8 +42,8 @@ export const CUT_STYLES: CutStyle[] = [
     id: 'lineup',
     label: 'Line Up / Diseño',
     tagline: 'Contornos · líneas · detalle',
-    gradient: 'linear-gradient(145deg, #831843 0%, #ec4899 45%, #500724 100%)',
-    glow: '#f472b6',
+    gradient: 'linear-gradient(145deg, #0f1729 0%, #c41e3a 45%, #1e3a5f 100%)',
+    glow: '#c9a227',
   },
   {
     id: 'mullet',
@@ -56,8 +56,8 @@ export const CUT_STYLES: CutStyle[] = [
     id: 'curly',
     label: 'Rizado / Textura',
     tagline: 'Volumen · definición de rizos',
-    gradient: 'linear-gradient(145deg, #581c87 0%, #a855f7 50%, #3b0764 100%)',
-    glow: '#c084fc',
+    gradient: 'linear-gradient(145deg, #1e3a5f 0%, #2563eb 50%, #0a0a0a 100%)',
+    glow: '#c9a227',
   },
   {
     id: 'afro',
