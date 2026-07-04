@@ -4,7 +4,15 @@ function pad(n: number) {
   return String(n).padStart(2, '0');
 }
 
-function toMin(iso: string) {
+function localDate(iso: string) {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function toLocalMin(iso: string) {
   const d = new Date(iso);
   return d.getHours() * 60 + d.getMinutes();
 }
@@ -38,8 +46,9 @@ export function buildDayBoard(
 ): DayBoardSlot[] {
   const openMin = tenant.openHour * 60;
   const closeMin = tenant.closeHour * 60;
-  const now = Date.now();
-  const active = enriched.filter((a) => a.status !== 'cancelled');
+  const dayAppts = enriched.filter(
+    (a) => localDate(a.startAt) === date && a.status !== 'cancelled',
+  );
 
   const rows: DayBoardSlot[] = [];
   const skipUntil = new Set<number>();
@@ -58,9 +67,9 @@ export function buildDayBoard(
       continue;
     }
 
-    const apt = active.find((a) => {
-      const aMin = toMin(a.startAt);
-      return Math.abs(aMin - cursor) < stepMin / 2;
+    const apt = dayAppts.find((a) => {
+      const aMin = toLocalMin(a.startAt);
+      return aMin >= cursor && aMin < cursor + stepMin;
     });
 
     if (apt) {
@@ -73,7 +82,7 @@ export function buildDayBoard(
       rows.push({
         time,
         startAt,
-        kind: start.getTime() < now ? 'past' : 'booked',
+        kind: 'booked',
         span,
         appointment: apt,
       });

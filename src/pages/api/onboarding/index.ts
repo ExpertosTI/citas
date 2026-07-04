@@ -13,6 +13,7 @@ import {
   type ChatMessage,
   type OnboardingSetupDraft,
 } from '../../../lib/onboarding-ai';
+import { answerAppointmentQuery } from '../../../lib/assistant-queries';
 import { getServices, getTenantById, safeTenant } from '../../../lib/store';
 
 export const prerender = false;
@@ -79,6 +80,13 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const existingServices = await getServices(tenantId);
+
+  if (mode === 'assistant') {
+    const queryAnswer = await answerAppointmentQuery(tenantId, last.content);
+    if (queryAnswer) {
+      return json({ ok: true, ...queryAnswer, fallback: true });
+    }
+  }
 
   if (!isGeminiConfigured()) {
     const ai = chatOnboardingFallback(tenant, messages, {}, mode, existingServices);

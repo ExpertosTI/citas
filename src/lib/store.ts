@@ -628,6 +628,14 @@ export async function getDashboardStats(tenantId: string) {
   return {
     todayCount: todayAppts.length,
     pendingCount: appointments.filter((a) => a.status === 'pending').length,
+    pendingList: appointments
+      .filter((a) => a.status === 'pending')
+      .sort((a, b) => a.startAt.localeCompare(b.startAt))
+      .map((a) => ({
+        ...a,
+        client: clients.find((c) => c.id === a.clientId) || null,
+        service: services.find((s) => s.id === a.serviceId) || null,
+      })),
     clientsCount: clients.length,
     servicesCount: services.filter((s) => s.active).length,
     upcoming: appointments

@@ -22,6 +22,21 @@ const [board, stats, week, tenant] = await Promise.all([
 const daySlots = tenant ? buildDayBoard(tenant, dateStr, board.appointments) : [];
 const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.currency || 'RD$';
 const defaultServiceId = board.services[0]?.id || '';
+
+function formatWhen(iso: string) {
+  return new Intl.DateTimeFormat('es', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso));
+}
+
+function aptDay(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 ---
 
 <AppLayout title="Centro de comandos" active="bahia">
@@ -79,6 +94,35 @@ const defaultServiceId = board.services[0]?.id || '';
       <p class="stat-card__value mt-1">{stats.noShowCount}</p>
     </div>
   </div>
+
+  {stats.pendingList.length > 0 && (
+    <div class="card mb-4 border-2 border-amber-300 bg-amber-50/90 p-4">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="font-display text-lg font-bold text-ink">
+          Pendientes de confirmar ({stats.pendingCount})
+        </h2>
+        <p class="text-xs text-muted">Confirma o rechaza antes de atender</p>
+      </div>
+      <div class="space-y-2">
+        {stats.pendingList.map((a) => (
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-3">
+            <div>
+              <p class="text-sm font-semibold text-ink">{a.client?.name || 'Cliente'}</p>
+              <p class="text-xs text-muted">
+                {a.service?.name} · {formatWhen(a.startAt)}
+                {a.code ? ` · ${a.code}` : ''}
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <a href={`/app?date=${aptDay(a.startAt)}`} class="btn-ghost btn-sm">Ver en bahía</a>
+              <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={a.id} data-action="confirmed" data-notify="1">Confirmar</button>
+              <button type="button" class="btn-action btn-action--danger cmd-act" data-id={a.id} data-action="cancelled" data-notify="1">Rechazar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
 
   <div id="print-area" class="card p-4 sm:p-5">
     <div class="cmd-board__header">

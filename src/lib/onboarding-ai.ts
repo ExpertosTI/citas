@@ -3,6 +3,8 @@ import { formatHour, parseScheduleFromText, weekdayLabels } from './schedule-par
 import {
   APPOINTMENT_COLORS,
   type AppointmentColor,
+  getAppointments,
+  getClients,
   getServices,
   getTenantById,
   mergeTenantServices,
@@ -82,7 +84,11 @@ Si dice "listo", "aplica", "dale" y hay datos mínimos → readyToApply=true.
 Responde SOLO JSON:
 {"reply":"...","setup":{...},"readyToApply":boolean}`;
 
-const ASSISTANT_PROMPT = `Eres el asistente permanente de Citas. El negocio YA está configurado — ayudas con CAMBIOS en cualquier momento.
+const ASSISTANT_PROMPT = `Eres el asistente permanente de Citas. El negocio YA está configurado.
+
+Dos modos:
+1. **Consultas de agenda** — usa appointments del contexto: pendientes, hoy, próximas, resumen. readyToApply=false, setup vacío.
+2. **Cambios de configuración** — servicios, precios, horarios, etc.
 
 Puedes modificar: servicios/precios/duración, horarios, almuerzo, días cerrados, bio, teléfono, WhatsApp, Instagram, dirección, nombre del local.
 
@@ -100,7 +106,7 @@ Reglas:
 Responde SOLO JSON:
 {"reply":"...","setup":{...},"readyToApply":boolean}`;
 
-function tenantContext(tenant: Tenant, services: Service[]) {
+function tenantContext(tenant: Tenant, services: Service[], appointments?: Array<{ code: string; status: string; startAt: string; clientName?: string; serviceName?: string }>) {
   return {
     businessName: tenant.businessName,
     ownerName: tenant.ownerName,
@@ -123,6 +129,7 @@ function tenantContext(tenant: Tenant, services: Service[]) {
       price: s.price,
       durationMin: s.durationMin,
     })),
+    appointments: appointments || [],
   };
 }
 
@@ -393,7 +400,25 @@ export async function chatOnboarding(
   if (!tenant) throw new Error('tenant_not_found');
 
   const existingServices = await getServices(tenantId);
-  const ctx = tenantContext(tenant, existingServices);
+  let apptCtx: Array<{ code: string; status: string; startAt: string; clientName?: string; serviceName?: string }> = [];
+  if (mode === 'assistant') {
+    const [appointments, clients] = await Promise.all([
+      getAppointments(tenantId),
+      getClients(tenantId),
+    ]);
+    apptCtx = appointments
+      .filter((a) => a.status !== 'cancelled')
+      .sort((a, b) => a.startAt.localeCompare(b.startAt))
+      .slice(0, 30)
+      .map((a) => ({
+        code: a.code,
+        status: a.status,
+        startAt: a.startAt,
+        clientName: clients.find((c) => c.id === a.clientId)?.name,
+        serviceName: existingServices.find((s) => s.id === a.serviceId)?.name,
+      }));
+  }
+  const ctx = tenantContext(tenant, existingServices, apptCtx);
   const systemPrompt = mode === 'assistant' ? ASSISTANT_PROMPT : ONBOARDING_PROMPT;
 
   const historyText = messages
@@ -509,17 +534,21 @@ export function needsOnboarding(tenant: Tenant) {
 export function initialAssistantMessage(tenant: Tenant, mode: AssistantMode = 'onboarding') {
   const first = tenant.ownerName.split(' ')[0];
   if (mode === 'assistant') {
-    return `Hola ${first}. Soy tu asistente — siempre disponible para cambios.
+    return `Hola ${first}. Soy tu asistente — siempre disponible.
 
-Puedo ajustar **servicios, precios, horarios, días cerrados, bio** y contacto.
+Puedo **consultar tu agenda** o **cambiar configuración**.
 
-Ejemplos:
+Agenda:
+• "¿Cuáles citas tengo pendientes?"
+• "Citas de hoy"
+• "Próximas citas"
+
+Configuración:
 • "Sube el corte a 600"
 • "Abre de 10am a 9pm, cerrado domingos"
-• "Almuerzo de 12 a 2"
 • "Agrega tinte 3500, 90 min"
 
-¿Qué quieres cambiar?`;
+¿Qué necesitas?`;
   }
   return `Hola ${first}. Vamos a dejar **${tenant.businessName}** listo.
 
