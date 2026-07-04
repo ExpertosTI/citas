@@ -1,5 +1,5 @@
 ---
-import AppLayout from '../../layouts/AppLayout.astro';
+import OnboardingLayout from '../../layouts/OnboardingLayout.astro';
 import { tenantIdFromRequest } from '../../lib/auth';
 import { isGeminiConfigured } from '../../lib/gemini';
 import { initialAssistantMessage } from '../../lib/onboarding-ai';
@@ -11,7 +11,8 @@ if (!tenantId) return Astro.redirect('/login');
 const tenant = await getTenantById(tenantId);
 if (!tenant) return Astro.redirect('/login');
 
-if (tenant.onboardingComplete !== false && !Astro.url.searchParams.has('open')) {
+const isReopen = Astro.url.searchParams.has('open');
+if (tenant.onboardingComplete !== false && !isReopen) {
   return Astro.redirect('/app');
 }
 
@@ -19,51 +20,65 @@ const t = safeTenant(tenant);
 const geminiOk = isGeminiConfigured();
 const greeting = initialAssistantMessage(tenant);
 const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;
+const firstName = tenant.ownerName.split(' ')[0];
 ---
 
-<AppLayout title="Configuración rápida" active="perfil">
+<OnboardingLayout title={`Bienvenido · ${t.businessName}`} businessName={t.businessName}>
   <div
     id="onboarding-root"
-    class="mx-auto max-w-xl"
+    class="w-full max-w-lg"
     data-greeting={greeting}
     data-gemini={geminiOk ? '1' : '0'}
     data-currency={currencyLabel}
+    data-business={t.businessName}
+    data-reopen={isReopen ? '1' : '0'}
   >
-    <div class="mb-4">
-      <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Opcional</p>
-      <h1 class="font-display mt-1 text-2xl font-semibold tracking-tight text-ink">Asistente de configuración</h1>
-      <p class="mt-1 text-xs text-muted">
-        Describe servicios, precios y horario — aplica cuando quieras.
-      </p>
+    <div id="onboarding-main">
+      <div class="onboarding-hero">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">
+          Bienvenido, {firstName}
+        </p>
+        <h1 class="font-display mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          Armemos {t.businessName}
+        </h1>
+        <p class="mt-2 text-sm text-muted">
+          Servicios, precios y horario — en una conversación corta.
+        </p>
+        <div class="onboarding-steps" id="onboarding-steps">
+          <span class="onboarding-steps__dot is-active" data-step="0"></span>
+          <span class="onboarding-steps__dot" data-step="1"></span>
+          <span class="onboarding-steps__dot" data-step="2"></span>
+          <span class="onboarding-steps__dot" data-step="3"></span>
+        </div>
+      </div>
+
+      <div class="onboarding-chat glass mt-5 overflow-hidden rounded-[1.75rem]">
+        <div id="chat-messages" class="onboarding-chat__messages"></div>
+        <div id="setup-preview" class="onboarding-chat__preview hidden"></div>
+        <form id="chat-form" class="onboarding-chat__input-row">
+          <input
+            id="chat-input"
+            class="input"
+            type="text"
+            placeholder="Ej. Corte 500, Barba 300, Pies 700…"
+            autocomplete="off"
+          />
+          <button type="submit" class="btn-primary btn-sm">Enviar</button>
+        </form>
+      </div>
+
+      <div class="mt-4 flex flex-wrap justify-center gap-3">
+        <button id="apply-btn" type="button" class="btn-accent hidden">Aplicar y abrir bahía</button>
+        {!isReopen && (
+          <button id="skip-btn" type="button" class="btn-ghost btn-sm">Saltar · configurar manual</button>
+        )}
+      </div>
     </div>
 
-    {!geminiOk && (
-      <p class="mb-3 text-[11px] text-muted">
-        Asistente no disponible en servidor. Configura en Perfil y Servicios.
-      </p>
-    )}
-
-    <div class="onboarding-chat card glass-panel overflow-hidden">
-      <div id="chat-messages" class="onboarding-chat__messages"></div>
-
-      <div id="setup-preview" class="onboarding-chat__preview hidden"></div>
-
-      <form id="chat-form" class="onboarding-chat__input-row border-t border-border p-3">
-        <input
-          id="chat-input"
-          class="input flex-1"
-          type="text"
-          placeholder={geminiOk ? 'Escribe tu respuesta…' : 'Asistente no disponible'}
-          autocomplete="off"
-          disabled={!geminiOk}
-        />
-        <button type="submit" class="btn-primary shrink-0" disabled={!geminiOk}>Enviar</button>
-      </form>
-    </div>
-
-    <div class="mt-4 flex flex-wrap justify-center gap-3">
-      <button id="apply-btn" type="button" class="btn-primary hidden">Aplicar y abrir bahía</button>
-      <button id="skip-btn" type="button" class="btn-ghost">Saltar · configurar manual</button>
+    <div id="onboarding-done" class="onboarding-success hidden">
+      <div class="onboarding-success__icon">✓</div>
+      <h2 class="font-display text-2xl font-semibold text-ink">¡Listo!</h2>
+      <p class="mt-2 text-sm text-muted">Tu bahía está configurada. Abriendo panel…</p>
     </div>
   </div>
 
@@ -79,12 +94,15 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
     };
 
     const root = document.getElementById('onboarding-root')!;
+    const mainEl = document.getElementById('onboarding-main')!;
+    const doneEl = document.getElementById('onboarding-done')!;
     const messagesEl = document.getElementById('chat-messages')!;
     const previewEl = document.getElementById('setup-preview')!;
     const form = document.getElementById('chat-form') as HTMLFormElement;
     const input = document.getElementById('chat-input') as HTMLInputElement;
     const applyBtn = document.getElementById('apply-btn')!;
-    const skipBtn = document.getElementById('skip-btn')!;
+    const skipBtn = document.getElementById('skip-btn');
+    const stepsEl = document.getElementById('onboarding-steps');
     const greeting = root.dataset.greeting || '';
     const currency = root.dataset.currency || 'RD$';
 
@@ -101,6 +119,36 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
       return esc(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
     }
 
+    function updateSteps() {
+      const svc = draftSetup.services?.length || 0;
+      const hasHours = draftSetup.openHour !== undefined;
+      let step = 0;
+      if (svc > 0) step = 1;
+      if (svc >= 2) step = 2;
+      if (hasHours && readyToApply) step = 3;
+      stepsEl?.querySelectorAll('.onboarding-steps__dot').forEach((dot, i) => {
+        dot.classList.toggle('is-active', i === step);
+        dot.classList.toggle('is-done', i < step);
+      });
+    }
+
+    function showTyping() {
+      const el = document.createElement('div');
+      el.id = 'typing-indicator';
+      el.className = 'onboarding-chat__bubble onboarding-chat__bubble--assistant';
+      el.innerHTML = `
+        <span class="onboarding-chat__avatar">AI</span>
+        <div class="onboarding-chat__text onboarding-chat__typing">
+          <span></span><span></span><span></span>
+        </div>`;
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function hideTyping() {
+      document.getElementById('typing-indicator')?.remove();
+    }
+
     function renderMessages() {
       messagesEl.innerHTML = messages
         .map(
@@ -112,6 +160,7 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
         )
         .join('');
       messagesEl.scrollTop = messagesEl.scrollHeight;
+      updateSteps();
     }
 
     function weekdayLabel(d: number) {
@@ -131,12 +180,11 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
 
       previewEl.innerHTML = `
         <div class="p-4">
-          <p class="text-xs font-semibold uppercase tracking-wider text-gold">Resumen listo</p>
-          <p class="mt-1 font-semibold text-ink">${esc(draftSetup.businessName || 'Tu negocio')}</p>
-          ${draftSetup.bio ? `<p class="mt-1 text-sm text-ink-soft">${esc(draftSetup.bio)}</p>` : ''}
-          ${draftSetup.openHour !== undefined ? `<p class="mt-2 text-sm">Horario: ${draftSetup.openHour}:00 – ${draftSetup.closeHour}:00</p>` : ''}
-          ${draftSetup.closedWeekdays?.length ? `<p class="text-sm text-muted">Cierra: ${draftSetup.closedWeekdays.map(weekdayLabel).join(', ')}</p>` : ''}
-          ${svcs ? `<ul class="mt-2 space-y-1 text-sm">${svcs}</ul>` : ''}
+          <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-mustard-deep">Resumen</p>
+          <p class="mt-1 font-semibold text-ink">${esc(draftSetup.businessName || root.dataset.business || 'Tu negocio')}</p>
+          ${draftSetup.openHour !== undefined ? `<p class="mt-2 text-sm text-ink-soft">Horario: ${draftSetup.openHour}:00 – ${draftSetup.closeHour}:00</p>` : ''}
+          ${draftSetup.closedWeekdays?.length ? `<p class="text-xs text-muted">Cierra: ${draftSetup.closedWeekdays.map(weekdayLabel).join(', ')}</p>` : ''}
+          ${svcs ? `<ul class="mt-2 space-y-1 text-sm text-ink-soft">${svcs}</ul>` : ''}
         </div>`;
       previewEl.classList.remove('hidden');
       applyBtn.classList.remove('hidden');
@@ -144,10 +192,20 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
 
     function mergeSetup(next?: Setup) {
       if (!next) return;
+      const mergedServices = next.services?.length
+        ? [...(draftSetup.services || []), ...next.services].reduce(
+            (acc, s) => {
+              const key = s.name.toLowerCase();
+              if (!acc.some((x) => x.name.toLowerCase() === key)) acc.push(s);
+              return acc;
+            },
+            [] as NonNullable<Setup['services']>,
+          )
+        : draftSetup.services;
       draftSetup = {
         ...draftSetup,
         ...next,
-        services: next.services?.length ? next.services : draftSetup.services,
+        services: mergedServices,
         closedWeekdays: next.closedWeekdays?.length ? next.closedWeekdays : draftSetup.closedWeekdays,
       };
     }
@@ -156,10 +214,17 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
       const res = await fetch('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify(body),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Error');
+      const raw = await res.text();
+      let json: Record<string, unknown>;
+      try {
+        json = JSON.parse(raw);
+      } catch {
+        throw new Error('Respuesta inválida del servidor. Recarga e intenta de nuevo.');
+      }
+      if (!res.ok) throw new Error(String(json.error || 'Error'));
       return json;
     }
 
@@ -170,27 +235,39 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
 
       messages.push({ role: 'user', content: text });
       renderMessages();
+      showTyping();
 
       try {
         const json = await post({ action: 'chat', messages });
-        messages.push({ role: 'assistant', content: json.reply });
-        mergeSetup(json.setup);
+        hideTyping();
+        messages.push({ role: 'assistant', content: String(json.reply) });
+        mergeSetup(json.setup as Setup);
         readyToApply = Boolean(json.readyToApply);
         renderMessages();
         renderPreview();
       } catch (err) {
+        hideTyping();
         const msg = err instanceof Error ? err.message : 'Error';
-        messages.push({ role: 'assistant', content: `Ups, algo falló: ${msg}. Intenta otra vez.` });
+        messages.push({ role: 'assistant', content: `Ups: ${msg}` });
         renderMessages();
       } finally {
         busy = false;
-        input.disabled = root.dataset.gemini !== '1';
+        input.disabled = false;
         input.focus();
       }
     }
 
+    function showSuccess() {
+      mainEl.classList.add('hidden');
+      doneEl.classList.remove('hidden');
+      setTimeout(() => {
+        location.href = '/app';
+      }, 1800);
+    }
+
     messages.push({ role: 'assistant', content: greeting });
     renderMessages();
+    input.focus();
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -205,7 +282,7 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
       applyBtn.setAttribute('disabled', 'true');
       try {
         await post({ action: 'apply', setup: draftSetup });
-        location.href = '/app';
+        showSuccess();
       } catch (err) {
         applyBtn.textContent = 'Aplicar y abrir bahía';
         applyBtn.removeAttribute('disabled');
@@ -213,10 +290,10 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
       }
     });
 
-    skipBtn.addEventListener('click', async () => {
+    skipBtn?.addEventListener('click', async () => {
       skipBtn.setAttribute('disabled', 'true');
       await post({ action: 'skip' });
       location.href = '/app';
     });
   </script>
-</AppLayout>
+</OnboardingLayout>

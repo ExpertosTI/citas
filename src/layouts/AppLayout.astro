@@ -21,8 +21,12 @@ if (!tenant) {
   return Astro.redirect('/login');
 }
 
+const isOnboardingPage = Astro.url.pathname.startsWith('/app/onboarding');
+if (!isOnboardingPage && tenant.onboardingComplete === false) {
+  return Astro.redirect('/app/onboarding');
+}
+
 const t = safeTenant(tenant);
-const showAiNudge = tenant.onboardingComplete === false;
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
 const publicUrl = `${siteUrl}/s/${t.slug}`;
 
@@ -58,19 +62,9 @@ const nav = [
               {item.label}
             </a>
           ))}
-          <button id="logout-btn" type="button" class="btn-ghost ml-2 !py-2 !text-xs">Salir</button>
+          <button id="logout-btn" type="button" class="btn-ghost btn-sm ml-2">Salir</button>
         </nav>
       </div>
-      {showAiNudge && (
-        <div id="ai-nudge" class="border-t border-border/60 bg-cream/80 px-4 py-1.5">
-          <p class="mx-auto max-w-6xl text-[10px] leading-snug text-muted">
-            Configuración asistida disponible —
-            <a href="/app/onboarding?open=1" class="text-mustard-deep hover:underline">abrir asistente</a>
-            ·
-            <button type="button" id="ai-nudge-dismiss" class="text-muted hover:text-ink">ocultar</button>
-          </p>
-        </div>
-      )}
       <nav class="flex gap-1 overflow-x-auto border-t border-border px-2 py-2 sm:hidden">
         {nav.map((item) => (
           <a
@@ -95,15 +89,6 @@ const nav = [
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
       location.href = '/login';
-    });
-
-    document.getElementById('ai-nudge-dismiss')?.addEventListener('click', async () => {
-      document.getElementById('ai-nudge')?.remove();
-      await fetch('/api/onboarding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'skip' }),
-      });
     });
   </script>
 </BaseLayout>

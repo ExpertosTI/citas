@@ -30,8 +30,8 @@ const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.curren
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <input id="bay-date" class="input !w-auto" type="date" value={dateStr} />
-      <button id="print-day" type="button" class="btn-ghost !text-xs">Imprimir</button>
-      <a href="/app/waitlist" class="btn-ghost !text-xs">Espera ({stats.waitlistCount})</a>
+      <button id="print-day" type="button" class="btn-ghost btn-sm">Imprimir</button>
+      <a href="/app/waitlist" class="btn-ghost btn-sm">Espera ({stats.waitlistCount})</a>
       <button id="new-apt-btn" type="button" class="btn-primary">+ Nueva cita</button>
     </div>
   </div>

@@ -106,6 +106,81 @@ function validColor(index: number): AppointmentColor {
   return APPOINTMENT_COLORS[index % APPOINTMENT_COLORS.length].id;
 }
 
+export function parseServicesHeuristic(text: string) {
+  const services: OnboardingServiceDraft[] = [];
+  const segments = text.split(/[,;\n]+/);
+  for (const seg of segments) {
+    const trimmed = seg.trim();
+    const m = trimmed.match(/^(.+?)\s+(?:\$|rd\$)?\s*(\d+)\s*$/i);
+    if (m) {
+      const name = m[1].trim();
+      const price = Number(m[2]);
+      if (name.length >= 2 && price > 0) {
+        services.push({
+          name: name.charAt(0).toUpperCase() + name.slice(1),
+          price,
+          durationMin: /barba|ceja|uñ|pie|manic|pedic/i.test(name) ? 20 : 30,
+        });
+      }
+    }
+  }
+  return services;
+}
+
+function parseHoursHeuristic(text: string) {
+  const m = text.match(/(\d{1,2})\s*(?:a|hasta|-|–|—)\s*(\d{1,2})/i);
+  if (!m) return null;
+  const openHour = Math.min(23, Math.max(0, Number(m[1])));
+  const closeHour = Math.min(24, Math.max(openHour + 1, Number(m[2])));
+  return { openHour, closeHour };
+}
+
+export function chatOnboardingFallback(
+  tenant: Tenant,
+  messages: ChatMessage[],
+  priorSetup: OnboardingSetupDraft = {},
+): OnboardingAiResponse {
+  const userTexts = messages.filter((m) => m.role === 'user').map((m) => m.content);
+  let setup: OnboardingSetupDraft = {
+    ...priorSetup,
+    businessName: priorSetup.businessName || tenant.businessName,
+    services: [...(priorSetup.services || [])],
+  };
+
+  for (const text of userTexts) {
+    const services = parseServicesHeuristic(text);
+    const hours = parseHoursHeuristic(text);
+    if (services.length) {
+      const merged = [...(setup.services || [])];
+      for (const s of services) {
+        if (!merged.some((x) => x.name.toLowerCase() === s.name.toLowerCase())) merged.push(s);
+      }
+      setup.services = merged;
+    }
+    if (hours) {
+      setup.openHour = hours.openHour;
+      setup.closeHour = hours.closeHour;
+    }
+  }
+
+  const svcCount = setup.services?.length || 0;
+  const hasHours = setup.openHour !== undefined && setup.closeHour !== undefined;
+  const readyToApply = svcCount >= 2 && hasHours;
+
+  let reply: string;
+  if (svcCount === 0) {
+    reply = `Cuéntame qué servicios ofreces y a qué precio — por ejemplo: "Corte 500, Pies 700, Cejas 1200".`;
+  } else if (!hasHours) {
+    reply = `Perfecto, anoté ${setup.services!.map((s) => `**${s.name}** ${s.price}`).join(', ')}. ¿A qué hora abres y cierras? (ej. 9 a 20)`;
+  } else if (readyToApply) {
+    reply = `Listo. Tengo ${svcCount} servicios y horario ${setup.openHour}:00–${setup.closeHour}:00. Pulsa **Aplicar y abrir bahía** cuando quieras.`;
+  } else {
+    reply = `Anoté ${setup.services!.map((s) => s.name).join(', ')}. ¿Algún servicio más o el horario?`;
+  }
+
+  return { reply, setup, readyToApply };
+}
+
 export async function chatOnboarding(
   tenantId: string,
   messages: ChatMessage[],
@@ -139,8 +214,13 @@ ${historyText || '(inicio — saluda y pregunta por el negocio)'}
 
 Responde el siguiente turno del asistente en JSON.`;
 
-  const text = await generateGeminiText(prompt, { json: true });
-  return parseAiJson(text);
+  try {
+    const text = await generateGeminiText(prompt, { json: true });
+    return parseAiJson(text);
+  } catch {
+    const prior = messages.length > 1 ? chatOnboardingFallback(tenant, messages.slice(0, -1)).setup : {};
+    return chatOnboardingFallback(tenant, messages, prior);
+  }
 }
 
 export async function applyOnboardingSetup(tenantId: string, setup: OnboardingSetupDraft) {

@@ -62,26 +62,29 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  if (!isGeminiConfigured()) {
-    return bad('Asistente AI no configurado', 503);
-  }
-
-  const limited = rateLimit(`onboarding:chat:${tenantId}`, 40, 60 * 60_000);
-  if (limited) return bad(limited, 429);
-
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const last = messages[messages.length - 1];
   if (!last || last.role !== 'user' || !last.content.trim()) {
     return bad('Mensaje requerido');
   }
 
+  if (!isGeminiConfigured()) {
+    const { chatOnboardingFallback } = await import('../../../lib/onboarding-ai');
+    const ai = chatOnboardingFallback(tenant, messages);
+    return json({ ok: true, ...ai, fallback: true });
+  }
+
+  const limited = rateLimit(`onboarding:chat:${tenantId}`, 40, 60 * 60_000);
+  if (limited) return bad(limited, 429);
+
   try {
     const ai = await chatOnboarding(tenantId, messages);
     return json({ ok: true, ...ai });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
-    if (msg === 'gemini_not_configured') return bad('Asistente AI no configurado', 503);
-    console.error('[onboarding/chat] request failed');
-    return bad('El asistente no pudo responder. Intenta de nuevo.', 502);
+    console.error('[onboarding/chat] request failed', msg);
+    const { chatOnboardingFallback } = await import('../../../lib/onboarding-ai');
+    const ai = chatOnboardingFallback(tenant, messages);
+    return json({ ok: true, ...ai, fallback: true });
   }
 };

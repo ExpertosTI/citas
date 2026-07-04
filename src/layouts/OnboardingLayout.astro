@@ -1,0 +1,25 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title?: string;
+  businessName?: string;
+}
+
+const { title = 'Configura tu negocio', businessName = '' } = Astro.props;
+---
+
+<BaseLayout title={title}>
+  <div class="onboarding-scene">
+    <div class="onboarding-scene__mesh" aria-hidden="true"></div>
+    <header class="relative z-10 flex items-center justify-between px-4 py-4 sm:px-6">
+      <p class="font-display text-lg font-semibold tracking-tight text-ink">Citas</p>
+      {businessName && (
+        <span class="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">{businessName}</span>
+      )}
+    </header>
+    <div class="onboarding-scene__content">
+      <slot />
+    </div>
+  </div>
+</BaseLayout>
