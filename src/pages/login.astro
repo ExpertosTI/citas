@@ -51,7 +51,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         errorEl.classList.remove('hidden');
         return;
       }
-      location.href = json.tenant?.onboardingComplete === false ? '/app/onboarding' : '/app';
+      location.href = json.tenant?.onboardingComplete === true ? '/app' : '/app/onboarding';
     });
   </script>
 </BaseLayout>

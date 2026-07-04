@@ -102,7 +102,7 @@ const geo = geoFromRequest(Astro.request);
         errorEl.classList.remove('hidden');
         return;
       }
-      location.href = json.tenant?.onboardingComplete === false ? '/app/onboarding' : '/app';
+      location.href = '/app/onboarding';
     });
   </script>
 </BaseLayout>

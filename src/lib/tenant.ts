@@ -20,7 +20,7 @@ export function normalizeTenant(t: Tenant): Tenant {
     logoUrl: t.logoUrl || '',
     accentColor: t.accentColor || '#e8b923',
     bio: t.bio || 'Reserva tu cita en línea · Servicio profesional',
-    onboardingComplete: t.onboardingComplete !== false,
+    onboardingComplete: t.onboardingComplete === true,
   };
 }
 

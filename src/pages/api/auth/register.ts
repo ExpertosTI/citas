@@ -54,6 +54,7 @@ export const POST: APIRoute = async ({ request }) => {
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
+    console.error('[auth/register]', msg, err);
     if (msg === 'email_taken') return bad('No se pudo crear la cuenta con esos datos', 409);
     return bad('No se pudo crear la cuenta', 500);
   }

@@ -12,7 +12,7 @@ const { title = 'Panel', active = 'bahia' } = Astro.props;
 const tenantId = Astro.locals.tenantId!;
 const tenant = Astro.locals.tenant!;
 const t = safeTenant(tenant);
-const showAssistant = tenant.onboardingComplete !== false;
+const showAssistant = tenant.onboardingComplete === true;
 const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
 const publicUrl = `${siteUrl}/s/${t.slug}`;

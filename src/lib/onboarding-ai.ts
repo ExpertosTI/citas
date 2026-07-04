@@ -465,10 +465,10 @@ export async function applyOnboardingSetup(
   const tenant = await getTenantById(tenantId);
   if (!tenant) throw new Error('tenant_not_found');
 
-  const merge = opts.merge ?? tenant.onboardingComplete !== false;
+  const merge = opts.merge ?? tenant.onboardingComplete === true;
   const patch: Record<string, unknown> = {};
 
-  if (!merge || tenant.onboardingComplete === false) {
+  if (!merge || tenant.onboardingComplete !== true) {
     patch.onboardingComplete = true;
   }
 
@@ -541,7 +541,7 @@ export async function skipOnboarding(tenantId: string) {
 }
 
 export function needsOnboarding(tenant: Tenant) {
-  return tenant.onboardingComplete === false;
+  return tenant.onboardingComplete !== true;
 }
 
 export function initialAssistantMessage(tenant: Tenant, mode: AssistantMode = 'onboarding') {

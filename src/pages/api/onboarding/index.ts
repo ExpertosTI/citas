@@ -31,7 +31,7 @@ export const GET: APIRoute = async ({ request }) => {
   return json({
     ok: true,
     geminiConfigured: isGeminiConfigured(),
-    onboardingComplete: tenant.onboardingComplete !== false,
+    onboardingComplete: tenant.onboardingComplete === true,
     tenant: safeTenant(tenant),
     greeting: initialAssistantMessage(tenant, mode),
     mode,
@@ -64,7 +64,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (!body.setup || !Object.keys(body.setup).length) {
       return bad('No hay configuración para aplicar');
     }
-    const merge = mode === 'assistant' || tenant.onboardingComplete !== false;
+    const merge = mode === 'assistant' || tenant.onboardingComplete === true;
     const result = await applyOnboardingSetup(tenantId, body.setup, { merge });
     return json({
       ok: true,

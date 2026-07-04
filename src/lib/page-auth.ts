@@ -6,7 +6,7 @@ export type AppPageAuth =
   | { tenantId: string; tenant: Tenant };
 
 export function postAuthPath(tenant: Pick<Tenant, 'onboardingComplete'>) {
-  return tenant.onboardingComplete === false ? '/app/onboarding' : '/app';
+  return tenant.onboardingComplete === true ? '/app' : '/app/onboarding';
 }
 
 export async function guardAppPage(
@@ -21,7 +21,7 @@ export async function guardAppPage(
 
   const path = new URL(request.url).pathname;
   const onOnboarding = path.startsWith('/app/onboarding');
-  if (!opts.allowOnboarding && !onOnboarding && tenant.onboardingComplete === false) {
+  if (!opts.allowOnboarding && !onOnboarding && tenant.onboardingComplete !== true) {
     return { redirect: '/app/onboarding' };
   }
 
