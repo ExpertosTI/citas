@@ -453,10 +453,14 @@ async function getAllAppointments() {
   return readJson<Appointment[]>('appointments.json', []);
 }
 
+function validAppointment(a: Appointment) {
+  return Boolean(a?.startAt && a?.endAt);
+}
+
 export async function getAppointments(tenantId: string, from?: string, to?: string) {
   const all = await getAllAppointments();
   return all
-    .filter((a) => a.tenantId === tenantId)
+    .filter((a) => a.tenantId === tenantId && validAppointment(a))
     .filter((a) => {
       if (!from && !to) return true;
       const t = new Date(a.startAt).getTime();
@@ -567,7 +571,18 @@ export async function updateAppointment(
 }
 
 export async function getBoardDay(tenantId: string, dateIso: string) {
-  const day = dateIso.slice(0, 10);
+  const day = String(dateIso || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return {
+      date: day || '',
+      tenant: null,
+      appointments: [],
+      services: [],
+      clients: [],
+      colors: APPOINTMENT_COLORS,
+      range: { from: '', to: '' },
+    };
+  }
   const from = `${day}T00:00:00.000Z`;
   const to = `${day}T23:59:59.999Z`;
 
@@ -580,7 +595,9 @@ export async function getBoardDay(tenantId: string, dateIso: string) {
     new Date(toLocal.getTime() + 12 * 3600_000).toISOString(),
   );
 
-  const dayAppts = appointments.filter((a) => a.startAt.slice(0, 10) === day || localDate(a.startAt) === day);
+  const dayAppts = appointments.filter(
+    (a) => a.startAt!.slice(0, 10) === day || localDate(a.startAt!) === day,
+  );
   const [services, clients, tenant] = await Promise.all([
     getServices(tenantId),
     getClients(tenantId),
@@ -726,7 +743,9 @@ export async function getClientHistory(tenantId: string, clientId: string) {
 }
 
 export async function getBoardWeek(tenantId: string, startDate: string) {
-  const start = new Date(`${startDate.slice(0, 10)}T00:00:00`);
+  const base = String(startDate || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(base)) return [];
+  const start = new Date(`${base}T00:00:00`);
   const days: { date: string; count: number; revenue: number }[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);

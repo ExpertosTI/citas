@@ -63,7 +63,7 @@ function aptDay(iso: string) {
           d.date === dateStr ? 'border-navy bg-violet-dim text-navy font-bold' : 'border-border text-muted bg-surface',
         ]}
       >
-        {d.date.slice(5)} · {d.count}
+        {d.date?.slice(5) ?? '—'} · {d.count}
       </a>
     ))}
   </div>
