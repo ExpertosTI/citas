@@ -1063,8 +1063,8 @@
   align-items: center;
   gap: 0.5rem;
   border: none;
-  border-radius: 999px;
-  padding: 0.75rem 1.15rem;
+  padding: 0.7rem;
+  border-radius: 50%;
   background: linear-gradient(135deg, var(--color-navy), var(--color-navy-deep));
   color: #fff;
   font-size: 0.8125rem;
@@ -1091,34 +1091,53 @@ body.assistant-open .assistant-fab {
 }
 
 .assistant-backdrop {
-  pointer-events: auto;
+  pointer-events: none;
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(15, 36, 56, 0.35);
-  backdrop-filter: blur(4px);
-  animation: fade-up 0.25s ease both;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.assistant-backdrop.is-open {
+  pointer-events: auto;
+  opacity: 1;
+  background: rgba(15, 23, 42, 0.08);
 }
 
 .assistant-drawer {
-  pointer-events: auto;
+  pointer-events: none;
   position: fixed;
   right: 1rem;
   bottom: 1rem;
   top: auto;
   z-index: 51;
-  width: min(calc(100vw - 2rem), 24rem);
-  height: min(32rem, calc(100dvh - 6rem));
-  max-height: calc(100dvh - 6rem);
+  width: min(calc(100vw - 1.5rem), 19rem);
+  height: min(22rem, calc(100dvh - 5rem));
+  max-height: calc(100dvh - 5rem);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px) scale(0.98);
   background: var(--color-glass);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.55);
-  border-radius: 1rem;
-  box-shadow: 0 20px 50px rgba(91, 33, 182, 0.18);
-  animation: assistant-rise 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  border-radius: 0.875rem;
+  box-shadow: 0 12px 32px rgba(91, 33, 182, 0.14);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0.22s;
+}
+
+.assistant-drawer.is-open {
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
 }
 
 .assistant-drawer__head {
@@ -1140,6 +1159,8 @@ body.assistant-open .assistant-fab {
   line-height: 1;
   color: var(--color-muted);
   cursor: pointer;
+  flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .assistant-drawer__messages {
@@ -1245,9 +1266,84 @@ body.assistant-open .assistant-fab {
     left: 0;
     width: 100%;
     height: auto;
-    max-height: 88dvh;
-    border-radius: 1.25rem 1.25rem 0 0;
+    max-height: 72dvh;
+    border-radius: 1rem 1rem 0 0;
   }
+
+  .assistant-fab__label {
+    display: none;
+  }
+}
+
+/* In-app toast + confirm (no browser alerts) */
+.app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  z-index: 80;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.65rem 1rem;
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.app-toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.app-toast[data-kind='success'] {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(236, 253, 245, 0.98);
+}
+
+.app-toast[data-kind='error'] {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(254, 242, 242, 0.98);
+}
+
+.app-confirm {
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  max-width: min(22rem, calc(100vw - 2rem));
+}
+
+.app-confirm::backdrop {
+  background: rgba(15, 23, 42, 0.25);
+  backdrop-filter: blur(2px);
+}
+
+.app-confirm__box {
+  margin: 0;
+  padding: 1.25rem;
+  border-radius: 0.875rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+}
+
+.app-confirm__msg {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--color-ink-soft);
+}
+
+.app-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 @media print {

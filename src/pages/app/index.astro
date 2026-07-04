@@ -273,12 +273,15 @@ function aptDay(iso: string) {
     </form>
   </dialog>
 
-  <script define:vars={{ currency, dateStr }}>
+  <script>
+    import { confirmAction, promptText, toast } from '../../scripts/ui-feedback.js';
+
     const bayDate = document.getElementById('bay-date');
     const modal = document.getElementById('apt-modal');
     const form = document.getElementById('apt-form');
     const errorEl = document.getElementById('apt-error');
     const aptTime = document.getElementById('aptTime');
+    const dateStr = document.getElementById('bay-date')?.value || '';
 
     bayDate?.addEventListener('change', () => {
       location.href = `/app?date=${bayDate.value}`;
@@ -336,7 +339,7 @@ function aptDay(iso: string) {
       });
       if (!res.ok) {
         const json = await res.json();
-        alert(json.error || 'No se pudo actualizar');
+        toast(json.error || 'No se pudo actualizar', 'error');
         return false;
       }
       location.reload();
@@ -350,7 +353,13 @@ function aptDay(iso: string) {
         if (!id || !action) return;
         const payload = { status: action };
         if (btn.dataset.notify === '1') payload.notify = true;
-        if (action === 'cancelled' && !confirm('¿Cancelar esta cita?')) return;
+        if (action === 'cancelled') {
+          const ok = await confirmAction('¿Cancelar esta cita?', {
+            confirmLabel: 'Sí, cancelar',
+            cancelLabel: 'No',
+          });
+          if (!ok) return;
+        }
         await patchAppointment(id, payload);
       });
     });
@@ -358,7 +367,7 @@ function aptDay(iso: string) {
     document.querySelectorAll('.cmd-act-reschedule').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const id = btn.dataset.id;
-        const time = prompt('Nueva hora (HH:MM)', btn.dataset.time || '10:00');
+        const time = await promptText('Nueva hora (HH:MM)', btn.dataset.time || '10:00');
         if (!time || !id) return;
         const date = bayDate?.value || dateStr;
         const startAt = new Date(`${date}T${time}:00`).toISOString();

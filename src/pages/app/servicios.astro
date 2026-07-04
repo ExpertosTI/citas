@@ -75,6 +75,8 @@ const services = await getServices(tenantId);
   </dialog>
 
   <script>
+    import { confirmAction } from '../../scripts/ui-feedback.js';
+
     const modal = document.getElementById('svc-modal') as HTMLDialogElement;
     const form = document.getElementById('svc-form') as HTMLFormElement;
 
@@ -103,7 +105,11 @@ const services = await getServices(tenantId);
 
     document.querySelectorAll('.del-svc').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('¿Eliminar servicio?')) return;
+        const ok = await confirmAction('¿Eliminar servicio?', {
+          confirmLabel: 'Eliminar',
+          cancelLabel: 'Cancelar',
+        });
+        if (!ok) return;
         const id = (btn as HTMLElement).dataset.id;
         await fetch(`/api/services?id=${encodeURIComponent(id || '')}`, { method: 'DELETE' });
         location.reload();

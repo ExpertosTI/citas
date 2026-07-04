@@ -1,6 +1,8 @@
 /** @typedef {{ role: 'user' | 'assistant', content: string }} Msg */
 /** @typedef {{ businessName?: string, bio?: string, services?: Array<{ name: string, price: number, durationMin: number }>, openHour?: number, closeHour?: number, lunchStartHour?: number, lunchEndHour?: number, closedWeekdays?: number[], removeServices?: string[] }} Setup */
 
+import { toast } from './ui-feedback.js';
+
 export function initAssistantPanel() {
   const root = document.getElementById('assistant-panel-root');
   if (!root) return;
@@ -34,8 +36,10 @@ export function initAssistantPanel() {
   }
 
   function open() {
-    drawer?.classList.remove('hidden');
-    backdrop?.classList.remove('hidden');
+    drawer?.classList.add('is-open');
+    backdrop?.classList.add('is-open');
+    drawer?.setAttribute('aria-hidden', 'false');
+    backdrop?.setAttribute('aria-hidden', 'false');
     document.body.classList.add('assistant-open');
     if (!opened) {
       messages.push({ role: 'assistant', content: greeting });
@@ -46,9 +50,12 @@ export function initAssistantPanel() {
   }
 
   function close() {
-    drawer?.classList.add('hidden');
-    backdrop?.classList.add('hidden');
+    drawer?.classList.remove('is-open');
+    backdrop?.classList.remove('is-open');
+    drawer?.setAttribute('aria-hidden', 'true');
+    backdrop?.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('assistant-open');
+    hideTyping();
   }
 
   function showTyping() {
@@ -171,6 +178,10 @@ export function initAssistantPanel() {
   closeBtn?.addEventListener('click', close);
   backdrop?.addEventListener('click', close);
 
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawer?.classList.contains('is-open')) close();
+  });
+
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input?.value.trim();
@@ -194,7 +205,7 @@ export function initAssistantPanel() {
       setTimeout(() => location.reload(), 1200);
     } catch (err) {
       applyBtn.textContent = 'Aplicar cambios';
-      alert(err instanceof Error ? err.message : 'No se pudo guardar');
+      toast(err instanceof Error ? err.message : 'No se pudo guardar', 'error');
     } finally {
       applyBtn.disabled = false;
     }
