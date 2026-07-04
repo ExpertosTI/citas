@@ -68,7 +68,14 @@ export type Client = {
   createdAt: string;
 };
 
-export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+export type AppointmentStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'received'
+  | 'completed'
+  | 'invoiced'
+  | 'cancelled'
+  | 'no_show';
 
 export type Appointment = {
   id: string;
@@ -597,7 +604,7 @@ export async function getDashboardStats(tenantId: string) {
       .filter((a) => {
         const t = new Date(a.startAt).getTime();
         const weekAgo = Date.now() - 7 * 86400_000;
-        return t >= weekAgo && a.status === 'completed';
+        return t >= weekAgo && (a.status === 'completed' || a.status === 'invoiced');
       })
       .reduce((sum, a) => {
         const svc = services.find((s) => s.id === a.serviceId);

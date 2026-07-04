@@ -58,7 +58,7 @@ export const POST: APIRoute = async ({ request }) => {
       startAt: body.startAt,
       notes: body.notes,
       haircutStyle: body.haircutStyle,
-      status: 'confirmed',
+      status: 'pending',
       source: 'public',
     });
 
@@ -70,7 +70,7 @@ export const POST: APIRoute = async ({ request }) => {
         client,
         service,
         appointment,
-        kind: 'created',
+        kind: 'pending',
       }).catch(() => {});
     }
 

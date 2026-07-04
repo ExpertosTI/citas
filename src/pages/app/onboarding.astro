@@ -11,7 +11,7 @@ if (!tenantId) return Astro.redirect('/login');
 const tenant = await getTenantById(tenantId);
 if (!tenant) return Astro.redirect('/login');
 
-if (tenant.onboardingComplete !== false) {
+if (tenant.onboardingComplete !== false && !Astro.url.searchParams.has('open')) {
   return Astro.redirect('/app');
 }
 
@@ -21,27 +21,26 @@ const greeting = initialAssistantMessage(tenant);
 const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;
 ---
 
-<AppLayout title="Configuración rápida" active="bahia" skipOnboardingGate={true}>
+<AppLayout title="Configuración rápida" active="perfil">
   <div
     id="onboarding-root"
-    class="mx-auto max-w-2xl"
+    class="mx-auto max-w-xl"
     data-greeting={greeting}
     data-gemini={geminiOk ? '1' : '0'}
     data-currency={currencyLabel}
   >
-    <div class="mb-6 text-center">
-      <p class="text-xs font-semibold uppercase tracking-wider text-gold">Configuración asistida</p>
-      <h1 class="brand-mark mt-2 text-4xl sm:text-5xl">Prepara tu negocio</h1>
-      <p class="mt-2 text-sm text-ink-soft">
-        Cuéntame servicios, precios, horario y colores — yo configuro el panel por ti.
+    <div class="mb-4">
+      <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Opcional</p>
+      <h1 class="font-display mt-1 text-2xl font-semibold tracking-tight text-ink">Asistente de configuración</h1>
+      <p class="mt-1 text-xs text-muted">
+        Describe servicios, precios y horario — aplica cuando quieras.
       </p>
     </div>
 
     {!geminiOk && (
-      <div class="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-        El asistente AI requiere configuración en el servidor.
-        Puedes configurar manualmente en Perfil y Servicios.
-      </div>
+      <p class="mb-3 text-[11px] text-muted">
+        Asistente no disponible en servidor. Configura en Perfil y Servicios.
+      </p>
     )}
 
     <div class="onboarding-chat card glass-panel overflow-hidden">
@@ -133,7 +132,7 @@ const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD
       previewEl.innerHTML = `
         <div class="p-4">
           <p class="text-xs font-semibold uppercase tracking-wider text-gold">Resumen listo</p>
-          <p class="mt-1 font-bold text-white">${esc(draftSetup.businessName || 'Tu barbería')}</p>
+          <p class="mt-1 font-semibold text-ink">${esc(draftSetup.businessName || 'Tu negocio')}</p>
           ${draftSetup.bio ? `<p class="mt-1 text-sm text-ink-soft">${esc(draftSetup.bio)}</p>` : ''}
           ${draftSetup.openHour !== undefined ? `<p class="mt-2 text-sm">Horario: ${draftSetup.openHour}:00 – ${draftSetup.closeHour}:00</p>` : ''}
           ${draftSetup.closedWeekdays?.length ? `<p class="text-sm text-muted">Cierra: ${draftSetup.closedWeekdays.map(weekdayLabel).join(', ')}</p>` : ''}

@@ -65,6 +65,20 @@ const clients = await getClients(tenantId);
   </dialog>
 
   <script>
+    const STATUS_LABELS = {
+      pending: 'Pendiente',
+      confirmed: 'Confirmada',
+      received: 'Recibida',
+      completed: 'Completada',
+      invoiced: 'Facturada',
+      cancelled: 'Cancelada',
+      no_show: 'No-show',
+    };
+
+    function statusLabel(s: string) {
+      return STATUS_LABELS[s as keyof typeof STATUS_LABELS] || s;
+    }
+
     function esc(s: string) {
       return String(s || '')
         .replace(/&/g, '&amp;')
@@ -100,7 +114,7 @@ const clients = await getClients(tenantId);
         body.innerHTML = (json.history || [])
           .map(
             (h: { startAt: string; status: string; service?: { name: string }; code?: string }) =>
-              `<div class="rounded-lg border border-border p-3"><strong>${esc(new Date(h.startAt).toLocaleString('es-DO'))}</strong><br/>${esc(h.service?.name || '')} · ${esc(h.status)} · ${esc(h.code || '')}</div>`,
+              `<div class="rounded-lg border border-border p-3"><strong>${esc(new Date(h.startAt).toLocaleString('es-DO'))}</strong><br/>${esc(h.service?.name || '')} · ${esc(statusLabel(h.status))} · ${esc(h.code || '')}</div>`,
           )
           .join('') || '<p class="text-muted">Sin citas previas</p>';
         histModal.showModal();

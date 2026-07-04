@@ -9,7 +9,7 @@ interface Props {
   skipOnboardingGate?: boolean;
 }
 
-const { title = 'Panel', active = 'bahia', skipOnboardingGate = false } = Astro.props;
+const { title = 'Panel', active = 'bahia' } = Astro.props;
 const tenantId = tenantIdFromRequest(Astro.request);
 
 if (!tenantId) {
@@ -21,11 +21,8 @@ if (!tenant) {
   return Astro.redirect('/login');
 }
 
-if (!skipOnboardingGate && tenant.onboardingComplete === false) {
-  return Astro.redirect('/app/onboarding');
-}
-
 const t = safeTenant(tenant);
+const showAiNudge = tenant.onboardingComplete === false;
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
 const publicUrl = `${siteUrl}/s/${t.slug}`;
 
@@ -37,14 +34,13 @@ const nav = [
 ] as const;
 ---
 
-<BaseLayout title={`${title} · ${t.businessName}`} bodyClass="">
+<BaseLayout title={`${title} · ${t.businessName}`}>
   <div class="app-scene min-h-dvh">
-    <div class="accent-line"></div>
     <header class="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-md">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <div class="min-w-0">
-          <p class="brand-mark text-xl text-gold">{t.businessName}</p>
-          <a class="truncate text-xs text-muted hover:text-gold" href={publicUrl} target="_blank" rel="noreferrer">
+          <p class="font-display text-lg font-semibold tracking-tight text-ink sm:text-xl">{t.businessName}</p>
+          <a class="truncate text-[11px] text-muted hover:text-mustard-deep" href={publicUrl} target="_blank" rel="noreferrer">
             {publicUrl.replace('https://', '')}
           </a>
         </div>
@@ -53,10 +49,10 @@ const nav = [
             <a
               href={item.href}
               class:list={[
-                'rounded-md px-3.5 py-2 text-sm font-semibold uppercase tracking-wide transition',
+                'rounded-full px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition',
                 active === item.id
-                  ? 'bg-gold-dim text-gold'
-                  : 'text-ink-soft hover:text-gold',
+                  ? 'bg-gold-dim text-mustard-deep'
+                  : 'text-muted hover:text-ink',
               ]}
             >
               {item.label}
@@ -65,13 +61,23 @@ const nav = [
           <button id="logout-btn" type="button" class="btn-ghost ml-2 !py-2 !text-xs">Salir</button>
         </nav>
       </div>
+      {showAiNudge && (
+        <div id="ai-nudge" class="border-t border-border/60 bg-cream/80 px-4 py-1.5">
+          <p class="mx-auto max-w-6xl text-[10px] leading-snug text-muted">
+            Configuración asistida disponible —
+            <a href="/app/onboarding?open=1" class="text-mustard-deep hover:underline">abrir asistente</a>
+            ·
+            <button type="button" id="ai-nudge-dismiss" class="text-muted hover:text-ink">ocultar</button>
+          </p>
+        </div>
+      )}
       <nav class="flex gap-1 overflow-x-auto border-t border-border px-2 py-2 sm:hidden">
         {nav.map((item) => (
           <a
             href={item.href}
             class:list={[
               'chip whitespace-nowrap',
-              active === item.id ? 'bg-gold text-void' : 'border border-border text-ink-soft',
+              active === item.id ? 'bg-gold-dim text-mustard-deep' : 'border border-border text-muted',
             ]}
           >
             {item.icon} {item.label}
@@ -89,6 +95,15 @@ const nav = [
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
       location.href = '/login';
+    });
+
+    document.getElementById('ai-nudge-dismiss')?.addEventListener('click', async () => {
+      document.getElementById('ai-nudge')?.remove();
+      await fetch('/api/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'skip' }),
+      });
     });
   </script>
 </BaseLayout>

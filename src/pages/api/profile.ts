@@ -36,6 +36,9 @@ export const PUT: APIRoute = async ({ request }) => {
     'closedWeekdays',
     'instagram',
     'whatsapp',
+    'country',
+    'currency',
+    'timezone',
   ] as const;
 
   const patch: Record<string, unknown> = {};

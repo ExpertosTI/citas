@@ -154,17 +154,21 @@ export async function sendAppointmentNotifications(opts: {
   client: Client;
   service: Service;
   appointment: Appointment;
-  kind: 'created' | 'reminder' | 'cancelled';
+  kind: 'created' | 'pending' | 'confirmed' | 'reminder' | 'cancelled';
 }) {
   const { tenant, client, service, appointment, kind } = opts;
   const when = formatWhen(appointment.startAt);
   const titles = {
     created: 'Cita confirmada',
+    pending: 'Solicitud de cita',
+    confirmed: 'Cita confirmada',
     reminder: 'Recordatorio de cita',
     cancelled: 'Cita cancelada',
   };
   const bodies = {
     created: 'Tu cita quedó agendada. Te esperamos.',
+    pending: 'Recibimos tu solicitud. Te confirmaremos pronto.',
+    confirmed: 'Tu cita fue confirmada. Te esperamos.',
     reminder: 'Te recordamos tu cita próxima. ¡Nos vemos pronto!',
     cancelled: 'Tu cita fue cancelada. Puedes reservar otro horario cuando quieras.',
   };
@@ -189,16 +193,30 @@ export async function sendAppointmentNotifications(opts: {
   );
 
   const ownerHtml = wrap(
-    kind === 'created' ? 'Nueva cita' : titles[kind],
-    `<p style="color:#4a3548;line-height:1.55">${kind === 'created' ? 'Recibiste una nueva reserva.' : bodies[kind]}</p>
+    kind === 'created' || kind === 'pending' ? 'Nueva cita' : titles[kind],
+    `<p style="color:#4a3548;line-height:1.55">${
+      kind === 'pending'
+        ? 'Nueva solicitud de reserva — revisa y acepta en tu bahía.'
+        : kind === 'created'
+          ? 'Recibiste una nueva reserva.'
+          : bodies[kind]
+    }</p>
      ${details}`,
     tenant.businessName,
   );
 
   const results = { client: false, owner: false };
 
-  if (client.email) {
+  if (client.email && kind !== 'pending') {
     const r = await send(client.email, `${titles[kind]} · ${tenant.businessName}`, clientHtml, tenant.email);
+    results.client = r.ok;
+  } else if (client.email && kind === 'pending') {
+    const r = await send(
+      client.email,
+      `Solicitud recibida · ${tenant.businessName}`,
+      clientHtml,
+      tenant.email,
+    );
     results.client = r.ok;
   }
 
@@ -223,7 +241,7 @@ export async function processDueReminders() {
 
     for (const apt of appointments) {
       checked += 1;
-      if (apt.reminderSentAt || apt.status === 'cancelled' || apt.status === 'completed') continue;
+      if (apt.reminderSentAt || apt.status === 'cancelled' || apt.status === 'completed' || apt.status === 'invoiced') continue;
       const when = new Date(apt.startAt).getTime();
       if (!Number.isFinite(when) || when < now || when > now + windowMs) continue;
 

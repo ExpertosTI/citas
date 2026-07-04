@@ -17,7 +17,7 @@ const features = [
 <BaseLayout>
   <div class="app-scene relative z-10">
     <header class="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-      <a href="/" class="brand-mark text-2xl sm:text-3xl">Citas</a>
+      <a href="/" class="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">Citas</a>
       <div class="flex items-center gap-2">
         <span class="geo-badge hidden sm:inline-flex">{geo.city}</span>
         <a href="/login" class="btn-ghost !py-2 !px-4 !text-sm">Entrar</a>
@@ -30,11 +30,11 @@ const features = [
         <p class="hero-eyebrow text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">
           Agenda inteligente · {geo.city}
         </p>
-        <h1 class="hero-title brand-mark mt-4 text-4xl sm:text-5xl lg:text-6xl">
+        <h1 class="hero-title font-display mt-4 text-4xl font-semibold tracking-tight text-ink sm:text-5xl lg:text-[3.35rem] lg:leading-[1.06]">
           Tu negocio listo en minutos.
         </h1>
-        <p class="hero-copy mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-          Reservas para barberías, salones y spas. Un asistente con IA configura todo por ti — servicios, precios y horario.
+        <p class="hero-copy mt-5 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
+          Reservas para barberías, salones y spas. Panel con bahía del día, clientes y enlace público.
         </p>
         <div class="hero-cta mt-7 flex flex-wrap gap-3">
           <a href="/registro" class="btn-primary">Empezar gratis</a>
@@ -65,13 +65,13 @@ const features = [
 
     <section id="features" class="border-t border-black/5 py-14">
       <div class="mx-auto max-w-6xl px-4">
-        <div class="ai-spotlight card mx-auto mb-10 max-w-2xl p-8 text-center">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Lo esencial</p>
-          <h2 class="brand-mark mt-2 text-2xl sm:text-3xl">La IA arma tu negocio por ti</h2>
-          <p class="mx-auto mt-3 max-w-md text-sm text-muted">
-            Servicios, precios, horario y colores — en una conversación corta. Aplicas y listo.
+        <div class="ai-spotlight card mx-auto mb-10 max-w-2xl p-6 text-center">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Extra</p>
+          <h2 class="font-display mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">Configuración asistida</h2>
+          <p class="mx-auto mt-2 max-w-md text-xs text-muted">
+            Opcional — describe tu negocio y el panel se arma solo.
           </p>
-          <a href="/registro" class="btn-primary mt-5">Probar el asistente</a>
+          <a href="/registro" class="btn-ghost mt-4 !text-xs">Crear cuenta</a>
         </div>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (

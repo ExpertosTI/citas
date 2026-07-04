@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
+import { COUNTRY_PRESETS } from '../../lib/geo';
 import { tenantIdFromRequest } from '../../lib/auth';
 import { getTenantById, safeTenant } from '../../lib/store';
 
@@ -10,18 +11,21 @@ const publicUrl = `${siteUrl}/s/${tenant.slug}`;
 const logoPreview = tenant.logoUrl?.startsWith('http') ? tenant.logoUrl : `/api/logo/${tenant.id}?t=${Date.now()}`;
 const closedDaysStr = (tenant.closedDays || []).join(', ');
 const closedWeekdaysStr = (tenant.closedWeekdays || []).join(', ');
+const countries = Object.values(COUNTRY_PRESETS);
+const currencies = [...new Set(countries.map((c) => c.currency))];
 ---
 
 <AppLayout title="Perfil" active="perfil">
   <div class="mb-6">
-    <h1 class="brand-mark text-3xl">Perfil del local</h1>
-    <p class="mt-1 text-sm text-ink-soft">Logo, horarios, redes y enlace público</p>
+    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Tu negocio</p>
+    <h1 class="font-display mt-1 text-3xl font-semibold tracking-tight text-ink">Perfil del local</h1>
+    <p class="mt-1 text-sm text-muted">Logo, horarios, datos de contacto y enlace público</p>
   </div>
 
   <div class="card mb-4 flex flex-wrap items-center justify-between gap-4 p-4">
     <div class="min-w-0 flex-1">
-      <p class="text-xs font-bold uppercase tracking-wider text-muted">Enlace público</p>
-      <a class="mt-1 block break-all font-semibold text-gold" href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Enlace público</p>
+      <a class="mt-1 block break-all text-sm font-semibold text-navy hover:text-mustard-deep" href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
     </div>
     <div class="flex gap-2">
       <button type="button" id="copy-link" class="btn-ghost !text-xs">Copiar link</button>
@@ -40,7 +44,7 @@ const closedWeekdaysStr = (tenant.closedWeekdays || []).join(', ');
         onerror="this.src='';this.classList.add('hidden')"
       />
       <form id="logo-form" class="flex flex-col gap-2">
-        <input class="input !max-w-xs" type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+        <input class="input !max-w-xs" type="file" name="logo" accept="image/png,image/jpeg,image/webp" />
         <button type="submit" class="btn-primary !py-2 !text-xs w-fit">Subir logo</button>
       </form>
     </div>
@@ -65,6 +69,28 @@ const closedWeekdaysStr = (tenant.closedWeekdays || []).join(', ');
       <div>
         <label class="label" for="phone">Teléfono</label>
         <input class="input" id="phone" name="phone" value={tenant.phone} />
+      </div>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <label class="label" for="country">País</label>
+        <select class="input" id="country" name="country">
+          {countries.map((c) => (
+            <option value={c.code} selected={c.code === tenant.country}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label class="label" for="currency">Moneda</label>
+        <select class="input" id="currency" name="currency">
+          {currencies.map((cur) => (
+            <option value={cur} selected={cur === tenant.currency}>{cur}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label class="label" for="timezone">Zona horaria</label>
+        <input class="input" id="timezone" name="timezone" value={tenant.timezone} placeholder="America/Santo_Domingo" />
       </div>
     </div>
     <div class="grid gap-4 sm:grid-cols-2">
@@ -129,8 +155,11 @@ const closedWeekdaysStr = (tenant.closedWeekdays || []).join(', ');
         <input class="input" id="closedDays" name="closedDays" value={closedDaysStr} placeholder="2026-12-25" />
       </div>
     </div>
-    <p id="profile-msg" class="hidden text-sm font-medium text-gold"></p>
-    <button type="submit" class="btn-primary">Guardar perfil</button>
+    <p id="profile-msg" class="hidden text-sm font-medium text-mustard-deep"></p>
+    <div class="flex flex-wrap gap-3">
+      <button type="submit" class="btn-primary">Guardar perfil</button>
+      <a href="/app/onboarding?open=1" class="btn-ghost !text-xs">Asistente de configuración</a>
+    </div>
   </form>
 
   <script define:vars={{ publicUrl, whatsapp: tenant.whatsapp || tenant.phone }}>
@@ -146,14 +175,34 @@ const closedWeekdaysStr = (tenant.closedWeekdays || []).join(', ');
         : '#';
     }
 
+    document.getElementById('country')?.addEventListener('change', (e) => {
+      const code = e.target.value;
+      const presets = {
+        DO: { timezone: 'America/Santo_Domingo', currency: 'DOP' },
+        PR: { timezone: 'America/Puerto_Rico', currency: 'USD' },
+        VE: { timezone: 'America/Caracas', currency: 'USD' },
+        CO: { timezone: 'America/Bogota', currency: 'COP' },
+        MX: { timezone: 'America/Mexico_City', currency: 'MXN' },
+        US: { timezone: 'America/New_York', currency: 'USD' },
+        ES: { timezone: 'Europe/Madrid', currency: 'EUR' },
+      };
+      const p = presets[code];
+      if (p) {
+        const tz = document.getElementById('timezone');
+        const cur = document.getElementById('currency');
+        if (tz) tz.value = p.timezone;
+        if (cur) cur.value = p.currency;
+      }
+    });
+
     document.getElementById('logo-form')?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const form = e.target as HTMLFormElement;
+      const form = e.target;
       const fd = new FormData(form);
       const res = await fetch('/api/logo', { method: 'POST', body: fd });
       const json = await res.json();
       if (res.ok) {
-        const img = document.getElementById('logo-preview') as HTMLImageElement;
+        const img = document.getElementById('logo-preview');
         if (img) {
           img.classList.remove('hidden');
           img.src = `${json.logoUrl}?t=${Date.now()}`;
@@ -164,9 +213,9 @@ const closedWeekdaysStr = (tenant.closedWeekdays || []).join(', ');
       }
     });
 
-    const form = document.getElementById('profile-form') as HTMLFormElement;
-    const msg = document.getElementById('profile-msg')!;
-    form.addEventListener('submit', async (e) => {
+    const form = document.getElementById('profile-form');
+    const msg = document.getElementById('profile-msg');
+    form?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       const payload = Object.fromEntries(fd.entries());
@@ -181,8 +230,8 @@ const closedWeekdaysStr = (tenant.closedWeekdays || []).join(', ');
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      msg.classList.remove('hidden');
-      msg.textContent = res.ok ? 'Perfil guardado' : json.error || 'Error';
+      msg?.classList.remove('hidden');
+      if (msg) msg.textContent = res.ok ? 'Perfil guardado' : json.error || 'Error';
       if (res.ok) setTimeout(() => location.reload(), 600);
     });
   </script>

@@ -46,6 +46,8 @@
 
   body {
     font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.55;
     background:
       radial-gradient(1200px 600px at 10% -10%, rgba(201, 162, 39, 0.14), transparent 55%),
       radial-gradient(900px 500px at 100% 0%, rgba(27, 58, 92, 0.07), transparent 50%),
@@ -56,6 +58,10 @@
 
   ::selection {
     background: rgba(201, 162, 39, 0.35);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
   }
 }
 
@@ -161,9 +167,9 @@
   .label {
     display: block;
     margin-bottom: 0.4rem;
-    font-size: 0.72rem;
+    font-size: 0.6875rem;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-muted);
   }
@@ -182,7 +188,6 @@
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1.08;
-    color: var(--color-ink);
   }
 
   .brand-mark--gold,
@@ -603,15 +608,74 @@
   cursor: pointer;
 }
 
-.bay__slot-title { font-size: 0.85rem; font-weight: 700; }
-.bay__slot-meta { font-size: 0.68rem; opacity: 0.9; }
+.bay__slot-title { font-size: 0.8125rem; font-weight: 600; }
+.bay__slot-meta { font-size: 0.65rem; opacity: 0.92; }
 
-/* Onboarding chat */
+.bay__slot.is-pending {
+  border: 2px dashed rgba(255, 255, 255, 0.85);
+  opacity: 0.92;
+}
+
+.bay__slot.is-received {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.bay__slot.is-completed {
+  opacity: 0.72;
+  filter: saturate(0.75);
+}
+
+.bay__slot.is-invoiced {
+  opacity: 0.65;
+  box-shadow: inset 0 0 0 2px rgba(201, 162, 39, 0.65);
+}
+
+.bay__slot.is-cancelled,
+.bay__slot.is-noshow {
+  opacity: 0.35;
+  text-decoration: line-through;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.status-badge--pending { background: rgba(201, 162, 39, 0.18); color: var(--color-mustard-deep); }
+.status-badge--confirmed { background: rgba(27, 58, 92, 0.12); color: var(--color-navy); }
+.status-badge--received { background: rgba(20, 184, 166, 0.15); color: #0f766e; }
+.status-badge--completed { background: rgba(26, 26, 26, 0.08); color: var(--color-ink-soft); }
+.status-badge--invoiced { background: rgba(201, 162, 39, 0.22); color: var(--color-mustard-deep); }
+.status-badge--cancelled { background: rgba(220, 38, 38, 0.1); color: #b91c1c; }
+.status-badge--noshow { background: rgba(107, 101, 96, 0.15); color: var(--color-muted); }
+
+.apt-dialog {
+  width: min(100%, 440px);
+  border-radius: 1.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: var(--color-glass);
+  backdrop-filter: blur(16px);
+  padding: 0;
+  box-shadow: 0 20px 50px rgba(27, 58, 92, 0.15);
+}
+
+.apt-dialog::backdrop {
+  background: rgba(15, 36, 56, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+/* Onboarding chat — compact optional assistant */
 .onboarding-chat {
   display: flex;
   flex-direction: column;
-  min-height: 420px;
-  max-height: min(70dvh, 640px);
+  min-height: 280px;
+  max-height: min(55dvh, 480px);
 }
 
 .onboarding-chat__messages {
@@ -628,23 +692,23 @@
 .onboarding-chat__bubble--user { align-self: flex-end; flex-direction: row-reverse; }
 
 .onboarding-chat__avatar {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.5rem;
-  background: linear-gradient(135deg, var(--color-mustard), var(--color-mustard-deep));
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.35rem;
+  background: rgba(201, 162, 39, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.55rem;
-  font-weight: 800;
-  color: var(--color-ink);
+  font-size: 0.45rem;
+  font-weight: 700;
+  color: var(--color-mustard-deep);
 }
 
 .onboarding-chat__text {
-  border-radius: 0.875rem;
-  padding: 0.65rem 0.9rem;
-  font-size: 0.925rem;
-  line-height: 1.45;
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
 }
 
 .onboarding-chat__bubble--assistant .onboarding-chat__text {

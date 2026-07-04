@@ -55,6 +55,25 @@ export const PATCH: APIRoute = async ({ request, params }) => {
     }
   }
 
+  if (body.status === 'confirmed' && body.notify !== false) {
+    const [tenant, clients, services] = await Promise.all([
+      getTenantById(tenantId),
+      getClients(tenantId),
+      getServices(tenantId),
+    ]);
+    const client = clients.find((c) => c.id === appointment.clientId);
+    const service = services.find((s) => s.id === appointment.serviceId);
+    if (tenant && client && service) {
+      sendAppointmentNotifications({
+        tenant,
+        client,
+        service,
+        appointment,
+        kind: 'confirmed',
+      }).catch(() => {});
+    }
+  }
+
   return json({ ok: true, appointment });
 };
 

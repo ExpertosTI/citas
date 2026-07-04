@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
+import { baySlotClass, statusLabel } from '../../lib/appointment-status';
 import { tenantIdFromRequest } from '../../lib/auth';
 import { getBoardDay, getBoardWeek, getDashboardStats } from '../../lib/store';
 import { cutStyleLabel } from '../../lib/cut-styles';
@@ -17,13 +18,15 @@ const [board, stats, week] = await Promise.all([
 const openHour = board.tenant?.openHour ?? 9;
 const closeHour = board.tenant?.closeHour ?? 19;
 const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + i);
+const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.currency || 'RD$';
 ---
 
 <AppLayout title="Bahía de citas" active="bahia">
   <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-      <h1 class="brand-mark text-3xl font-bold">Bahía de citas</h1>
-      <p class="mt-1 text-sm text-ink-soft">Vista del día con colores de peluquería</p>
+      <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Panel del día</p>
+      <h1 class="font-display mt-1 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">Bahía de citas</h1>
+      <p class="mt-1 text-sm text-muted">Gestiona reservas, recepción y facturación</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <input id="bay-date" class="input !w-auto" type="date" value={dateStr} />
@@ -39,7 +42,7 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
         href={`/app?date=${d.date}`}
         class:list={[
           'chip shrink-0 border',
-          d.date === dateStr ? 'border-gold bg-gold-dim text-gold' : 'border-border text-ink-soft',
+          d.date === dateStr ? 'border-mustard bg-gold-dim text-mustard-deep' : 'border-border text-muted',
         ]}
       >
         {d.date.slice(5)} · {d.count}
@@ -49,30 +52,50 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
 
   <div class="mb-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
     <div class="card p-4">
-      <p class="text-xs font-bold uppercase tracking-wider text-muted">Hoy</p>
-      <p class="mt-1 brand-mark text-3xl text-gold">{stats.todayCount}</p>
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Hoy</p>
+      <p class="mt-1 font-display text-3xl font-semibold text-ink">{stats.todayCount}</p>
     </div>
     <div class="card p-4">
-      <p class="text-xs font-bold uppercase tracking-wider text-muted">Pendientes</p>
-      <p class="mt-1 brand-mark text-3xl font-bold">{stats.pendingCount}</p>
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Pendientes</p>
+      <p class="mt-1 font-display text-3xl font-semibold text-mustard-deep">{stats.pendingCount}</p>
     </div>
     <div class="card p-4">
-      <p class="text-xs font-bold uppercase tracking-wider text-muted">Clientes</p>
-      <p class="mt-1 brand-mark text-3xl font-bold">{stats.clientsCount}</p>
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Clientes</p>
+      <p class="mt-1 font-display text-3xl font-semibold text-ink">{stats.clientsCount}</p>
     </div>
     <div class="card p-4">
-      <p class="text-xs font-bold uppercase tracking-wider text-muted">Servicios</p>
-      <p class="mt-1 brand-mark text-3xl">{stats.servicesCount}</p>
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Servicios</p>
+      <p class="mt-1 font-display text-3xl font-semibold text-ink">{stats.servicesCount}</p>
     </div>
     <div class="card p-4">
-      <p class="text-xs font-bold uppercase tracking-wider text-muted">Semana RD$</p>
-      <p class="mt-1 brand-mark text-2xl text-gold">{stats.weekRevenue}</p>
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Semana {currency}</p>
+      <p class="mt-1 font-display text-2xl font-semibold text-mustard-deep">{currency}{stats.weekRevenue.toLocaleString('es-DO')}</p>
     </div>
     <div class="card p-4">
-      <p class="text-xs font-bold uppercase tracking-wider text-muted">No-show</p>
-      <p class="mt-1 brand-mark text-3xl">{stats.noShowCount}</p>
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">No-show</p>
+      <p class="mt-1 font-display text-3xl font-semibold text-ink">{stats.noShowCount}</p>
     </div>
   </div>
+
+  {stats.upcoming.length > 0 && (
+    <div class="card mb-6 p-4">
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Próximas citas</p>
+      <div class="mt-3 space-y-2">
+        {stats.upcoming.map((a) => (
+          <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-white/60 px-3 py-2 text-sm">
+            <div>
+              <span class="font-semibold text-ink">{a.client?.name || 'Cliente'}</span>
+              <span class="text-muted"> · {a.service?.name}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-muted">{new Date(a.startAt).toLocaleString('es-DO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+              <span class:list={['status-badge', `status-badge--${a.status}`]}>{statusLabel(a.status)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
 
   <div id="print-area" class="card overflow-hidden">
     <div class="bay" id="bay" data-open={openHour} data-close={closeHour} data-date={dateStr}>
@@ -94,16 +117,26 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
           return (
             <button
               type="button"
-              class:list={['bay__slot', a.status === 'cancelled' && 'is-cancelled']}
+              class={baySlotClass(a.status)}
               style={`top:${top}px;height:${height}px;background:${a.colorHex}`}
               data-id={a.id}
               data-status={a.status}
+              data-client={a.client?.name || 'Cliente'}
+              data-phone={a.client?.phone || ''}
+              data-email={a.client?.email || ''}
+              data-service={a.service?.name || 'Servicio'}
+              data-price={a.service?.price || 0}
+              data-time={time}
+              data-code={a.code || ''}
+              data-style={a.haircutStyle ? cutStyleLabel(a.haircutStyle) : ''}
+              data-notes={a.notes || ''}
             >
               <div class="bay__slot-title">{a.client?.name || 'Cliente'}</div>
               <div class="bay__slot-meta">
                 {time} · {a.service?.name || 'Servicio'}
                 {a.haircutStyle ? ` · ${cutStyleLabel(a.haircutStyle)}` : ''}
-                {a.code ? ` · ${a.code}` : ''}
+                {a.status === 'pending' ? ' · Pendiente' : ''}
+                {a.status === 'invoiced' ? ' · Facturada' : ''}
               </div>
             </button>
           );
@@ -112,10 +145,9 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
     </div>
   </div>
 
-  <!-- Modal nueva cita -->
-  <dialog id="apt-modal" class="w-[min(100%,440px)] rounded-xl border border-border bg-surface p-0 shadow-xl backdrop:bg-black/60">
+  <dialog id="apt-modal" class="apt-dialog">
     <form id="apt-form" class="p-5 sm:p-6">
-      <h2 class="brand-mark text-2xl font-bold">Nueva cita</h2>
+      <h2 class="font-display text-xl font-semibold text-ink">Nueva cita</h2>
       <div class="mt-4 space-y-3">
         <div>
           <label class="label" for="clientName">Cliente</label>
@@ -173,25 +205,62 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
     </form>
   </dialog>
 
-  <script>
-    const bayDate = document.getElementById('bay-date') as HTMLInputElement;
-    const modal = document.getElementById('apt-modal') as HTMLDialogElement;
-    const form = document.getElementById('apt-form') as HTMLFormElement;
-    const errorEl = document.getElementById('apt-error')!;
-    const serviceSelect = document.getElementById('serviceId') as HTMLSelectElement;
-    const colorSelect = document.getElementById('color') as HTMLSelectElement;
+  <dialog id="detail-modal" class="apt-dialog">
+    <div class="p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Detalle de cita</p>
+          <h2 id="detail-client" class="font-display mt-1 text-xl font-semibold text-ink"></h2>
+          <p id="detail-meta" class="mt-1 text-sm text-muted"></p>
+        </div>
+        <span id="detail-status" class="status-badge"></span>
+      </div>
+      <dl class="mt-4 space-y-2 text-sm">
+        <div class="flex justify-between gap-4"><dt class="text-muted">Servicio</dt><dd id="detail-service" class="font-medium text-ink"></dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted">Hora</dt><dd id="detail-time" class="font-medium text-ink"></dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted">Código</dt><dd id="detail-code" class="font-medium text-ink"></dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted">Precio</dt><dd id="detail-price" class="font-medium text-ink"></dd></div>
+        <div id="detail-style-row" class="hidden flex justify-between gap-4"><dt class="text-muted">Estilo</dt><dd id="detail-style" class="font-medium text-ink"></dd></div>
+        <div id="detail-notes-row" class="hidden"><dt class="text-muted">Notas</dt><dd id="detail-notes" class="mt-1 text-ink-soft"></dd></div>
+      </dl>
+      <div id="detail-actions" class="mt-5 flex flex-wrap gap-2"></div>
+      <div class="mt-4 flex justify-end">
+        <button type="button" class="btn-ghost" id="detail-close">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script define:vars={{ currency }}>
+    const bayDate = document.getElementById('bay-date');
+    const modal = document.getElementById('apt-modal');
+    const detailModal = document.getElementById('detail-modal');
+    const form = document.getElementById('apt-form');
+    const errorEl = document.getElementById('apt-error');
+    const serviceSelect = document.getElementById('serviceId');
+    const colorSelect = document.getElementById('color');
+
+    const STATUS_LABELS = {
+      pending: 'Pendiente',
+      confirmed: 'Confirmada',
+      received: 'Recibida',
+      completed: 'Completada',
+      invoiced: 'Facturada',
+      cancelled: 'Cancelada',
+      no_show: 'No-show',
+    };
 
     bayDate?.addEventListener('change', () => {
       location.href = `/app?date=${bayDate.value}`;
     });
 
     document.getElementById('new-apt-btn')?.addEventListener('click', () => {
-      const opt = serviceSelect.selectedOptions[0];
+      const opt = serviceSelect?.selectedOptions[0];
       if (opt?.dataset.color) colorSelect.value = opt.dataset.color;
-      modal.showModal();
+      modal?.showModal();
     });
 
-    document.getElementById('apt-cancel')?.addEventListener('click', () => modal.close());
+    document.getElementById('apt-cancel')?.addEventListener('click', () => modal?.close());
+    document.getElementById('detail-close')?.addEventListener('click', () => detailModal?.close());
 
     serviceSelect?.addEventListener('change', () => {
       const opt = serviceSelect.selectedOptions[0];
@@ -200,7 +269,7 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
 
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      errorEl.classList.add('hidden');
+      errorEl?.classList.add('hidden');
       const fd = new FormData(form);
       const date = String(fd.get('aptDate'));
       const time = String(fd.get('aptTime'));
@@ -222,56 +291,111 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
       });
       const json = await res.json();
       if (!res.ok) {
-        errorEl.textContent = json.error || 'Error';
-        errorEl.classList.remove('hidden');
+        if (errorEl) errorEl.textContent = json.error || 'Error';
+        errorEl?.classList.remove('hidden');
         return;
       }
       location.reload();
     });
 
+    async function patchAppointment(id, body) {
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        alert(json.error || 'No se pudo actualizar');
+        return false;
+      }
+      location.reload();
+      return true;
+    }
+
+    function actionBtn(label, status, extra = {}) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = status === 'cancelled' ? 'btn-ghost !text-xs' : 'btn-primary !text-xs';
+      btn.textContent = label;
+      btn.addEventListener('click', () => patchAppointment(extra.id, { status, ...extra.payload }));
+      return btn;
+    }
+
     document.querySelectorAll('.bay__slot').forEach((el) => {
-      el.addEventListener('click', async () => {
-        const id = (el as HTMLElement).dataset.id;
-        const status = (el as HTMLElement).dataset.status;
-        if (!id || status === 'cancelled') return;
+      el.addEventListener('click', () => {
+        const ds = el.dataset;
+        const status = ds.status || 'confirmed';
+        if (status === 'cancelled') return;
 
-        const action = prompt(
-          'Acción: 1=Completada 2=Cancelar 3=No-show 4=Reagendar (hora HH:MM)',
-          '1',
-        );
-        if (!action) return;
+        document.getElementById('detail-client').textContent = ds.client || 'Cliente';
+        document.getElementById('detail-meta').textContent = [ds.phone, ds.email].filter(Boolean).join(' · ') || '—';
+        document.getElementById('detail-service').textContent = ds.service || '—';
+        document.getElementById('detail-time').textContent = ds.time || '—';
+        document.getElementById('detail-code').textContent = ds.code || '—';
+        document.getElementById('detail-price').textContent = `${currency}${Number(ds.price || 0).toLocaleString('es-DO')}`;
 
-        if (action === '1') {
-          await fetch(`/api/appointments/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'completed' }),
-          });
-        } else if (action === '2') {
-          const reason = prompt('Motivo de cancelación (opcional)') || '';
-          await fetch(`/api/appointments/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'cancelled', cancelReason: reason, notify: true }),
-          });
-        } else if (action === '3') {
-          await fetch(`/api/appointments/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'no_show' }),
-          });
-        } else if (action === '4') {
-          const time = prompt('Nueva hora (HH:MM)', '10:00');
-          if (!time) return;
-          const date = (document.getElementById('bay-date') as HTMLInputElement).value;
-          const startAt = new Date(`${date}T${time}:00`).toISOString();
-          await fetch(`/api/appointments/${id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ startAt, notify: true }),
-          });
+        const statusEl = document.getElementById('detail-status');
+        if (statusEl) {
+          statusEl.textContent = STATUS_LABELS[status] || status;
+          statusEl.className = `status-badge status-badge--${status}`;
         }
-        location.reload();
+
+        const styleRow = document.getElementById('detail-style-row');
+        if (ds.style) {
+          styleRow?.classList.remove('hidden');
+          document.getElementById('detail-style').textContent = ds.style;
+        } else {
+          styleRow?.classList.add('hidden');
+        }
+
+        const notesRow = document.getElementById('detail-notes-row');
+        if (ds.notes) {
+          notesRow?.classList.remove('hidden');
+          document.getElementById('detail-notes').textContent = ds.notes;
+        } else {
+          notesRow?.classList.add('hidden');
+        }
+
+        const actions = document.getElementById('detail-actions');
+        if (actions) {
+          actions.innerHTML = '';
+          const id = ds.id;
+          const base = { id };
+
+          if (status === 'pending') {
+            actions.appendChild(actionBtn('Aceptar', 'confirmed', { ...base, payload: { notify: true } }));
+            actions.appendChild(actionBtn('Rechazar', 'cancelled', { ...base, payload: { notify: true } }));
+          }
+          if (status === 'confirmed') {
+            actions.appendChild(actionBtn('Recibir cliente', 'received', base));
+            actions.appendChild(actionBtn('Completada', 'completed', base));
+            actions.appendChild(actionBtn('No-show', 'no_show', base));
+            actions.appendChild(actionBtn('Cancelar', 'cancelled', { ...base, payload: { notify: true } }));
+          }
+          if (status === 'received') {
+            actions.appendChild(actionBtn('Completada', 'completed', base));
+            actions.appendChild(actionBtn('No-show', 'no_show', base));
+          }
+          if (status === 'completed') {
+            actions.appendChild(actionBtn('Marcar facturada', 'invoiced', base));
+          }
+
+          const reschedule = document.createElement('button');
+          reschedule.type = 'button';
+          reschedule.className = 'btn-ghost !text-xs';
+          reschedule.textContent = 'Reagendar';
+          reschedule.addEventListener('click', async () => {
+            const time = prompt('Nueva hora (HH:MM)', ds.time || '10:00');
+            if (!time) return;
+            const date = bayDate?.value || '';
+            const startAt = new Date(`${date}T${time}:00`).toISOString();
+            await patchAppointment(id, { startAt, notify: true });
+          });
+          if (status !== 'invoiced' && status !== 'completed') actions.appendChild(reschedule);
+        }
+
+        detailModal?.showModal();
       });
     });
 
