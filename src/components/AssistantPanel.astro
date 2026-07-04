@@ -1,0 +1,65 @@
+---
+import { isGeminiConfigured } from '../lib/gemini';
+import { initialAssistantMessage } from '../lib/onboarding-ai';
+import { getTenantById } from '../lib/store';
+
+interface Props {
+  tenantId: string;
+  businessName: string;
+  ownerName: string;
+  currency: string;
+}
+
+const { tenantId, businessName, ownerName, currency } = Astro.props;
+const tenant = await getTenantById(tenantId);
+const greeting = tenant ? initialAssistantMessage(tenant, 'assistant') : '';
+const geminiOk = isGeminiConfigured();
+---
+
+<div
+  id="assistant-panel-root"
+  class="assistant-root"
+  data-greeting={greeting}
+  data-currency={currency}
+  data-business={businessName}
+>
+  <button type="button" id="assistant-fab" class="assistant-fab" aria-label="Abrir asistente">
+    <span class="assistant-fab__icon">✦</span>
+    <span class="assistant-fab__label">Asistente</span>
+  </button>
+
+  <div id="assistant-backdrop" class="assistant-backdrop hidden" aria-hidden="true"></div>
+
+  <aside id="assistant-drawer" class="assistant-drawer hidden" aria-label="Asistente de configuración">
+    <header class="assistant-drawer__head">
+      <div>
+        <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-mustard-deep">Siempre disponible</p>
+        <p class="font-display text-base font-semibold text-ink">Asistente · {businessName}</p>
+      </div>
+      <button type="button" id="assistant-close" class="assistant-drawer__close" aria-label="Cerrar">×</button>
+    </header>
+
+    <div id="assistant-messages" class="assistant-drawer__messages"></div>
+    <div id="assistant-preview" class="assistant-drawer__preview hidden"></div>
+
+    <form id="assistant-form" class="assistant-drawer__form">
+      <input
+        id="assistant-input"
+        class="input"
+        type="text"
+        placeholder="Ej. Sube corte a 600, abre 9am–9pm…"
+        autocomplete="off"
+      />
+      <button type="submit" class="btn-primary btn-sm">Enviar</button>
+    </form>
+
+    <footer class="assistant-drawer__foot">
+      <button type="button" id="assistant-apply" class="btn-accent btn-sm hidden w-full">Aplicar cambios</button>
+    </footer>
+  </aside>
+</div>
+
+<script>
+  import { initAssistantPanel } from '../scripts/assistant-panel.js';
+  initAssistantPanel();
+</script>

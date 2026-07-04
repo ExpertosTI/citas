@@ -332,6 +332,45 @@ export async function replaceTenantServices(
   return next;
 }
 
+export async function mergeTenantServices(
+  tenantId: string,
+  items: Array<{ name: string; durationMin: number; price: number; color?: AppointmentColor; active?: boolean }>,
+) {
+  const all = await getAllServices();
+  const existing = all.filter((s) => s.tenantId === tenantId);
+  const others = all.filter((s) => s.tenantId !== tenantId);
+
+  const merged = existing.map((s) => ({ ...s }));
+
+  for (const item of items) {
+    const key = item.name.trim().toLowerCase();
+    const idx = merged.findIndex((s) => s.name.toLowerCase() === key);
+    if (idx >= 0) {
+      merged[idx] = {
+        ...merged[idx],
+        name: item.name.trim(),
+        price: item.price,
+        durationMin: item.durationMin,
+        color: item.color || merged[idx].color,
+        active: item.active ?? merged[idx].active,
+      };
+    } else {
+      merged.push({
+        id: newId('svc'),
+        tenantId,
+        name: item.name.trim(),
+        durationMin: item.durationMin,
+        price: item.price,
+        color: item.color || 'gold',
+        active: item.active ?? true,
+      });
+    }
+  }
+
+  await writeJson('services.json', [...others, ...merged]);
+  return merged;
+}
+
 async function getAllClients() {
   return readJson<Client[]>('clients.json', []);
 }

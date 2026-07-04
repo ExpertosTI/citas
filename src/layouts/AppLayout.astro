@@ -1,11 +1,12 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import AssistantPanel from '../components/AssistantPanel.astro';
 import { tenantIdFromRequest } from '../lib/auth';
 import { getTenantById, safeTenant } from '../lib/store';
 
 interface Props {
   title?: string;
-  active?: 'bahia' | 'servicios' | 'clientes' | 'perfil';
+  active?: 'bahia' | 'servicios' | 'clientes' | 'perfil' | 'asistente';
   skipOnboardingGate?: boolean;
 }
 
@@ -27,6 +28,8 @@ if (!isOnboardingPage && tenant.onboardingComplete === false) {
 }
 
 const t = safeTenant(tenant);
+const showAssistant = tenant.onboardingComplete !== false;
+const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
 const publicUrl = `${siteUrl}/s/${t.slug}`;
 
@@ -35,6 +38,7 @@ const nav = [
   { id: 'servicios', href: '/app/servicios', label: 'Servicios', icon: '✂' },
   { id: 'clientes', href: '/app/clientes', label: 'Clientes', icon: '◎' },
   { id: 'perfil', href: '/app/perfil', label: 'Perfil', icon: '✦' },
+  { id: 'asistente', href: '#asistente', label: 'Asistente', icon: '✦' },
 ] as const;
 ---
 
@@ -83,12 +87,28 @@ const nav = [
     <main class="mx-auto max-w-6xl px-4 py-6">
       <slot />
     </main>
+
+    {showAssistant && (
+      <AssistantPanel
+        tenantId={tenantId!}
+        businessName={t.businessName}
+        ownerName={t.ownerName}
+        currency={currencyLabel}
+      />
+    )}
   </div>
 
   <script>
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
       location.href = '/login';
+    });
+
+    document.querySelectorAll('a[href="#asistente"]').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('assistant-fab')?.click();
+      });
     });
   </script>
 </BaseLayout>

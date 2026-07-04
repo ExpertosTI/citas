@@ -215,7 +215,7 @@ const firstName = tenant.ownerName.split(' ')[0];
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, mode: 'onboarding' }),
       });
       const raw = await res.text();
       let json: Record<string, unknown>;

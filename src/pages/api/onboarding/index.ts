@@ -2,16 +2,18 @@ import type { APIRoute } from 'astro';
 import { tenantIdFromRequest } from '../../../lib/auth';
 import { isGeminiConfigured } from '../../../lib/gemini';
 import { bad, json, readBody } from '../../../lib/http';
-import { rateLimit, rateLimitRequest } from '../../../lib/security';
+import { rateLimit } from '../../../lib/security';
 import {
   applyOnboardingSetup,
   chatOnboarding,
+  chatOnboardingFallback,
   initialAssistantMessage,
   skipOnboarding,
+  type AssistantMode,
   type ChatMessage,
   type OnboardingSetupDraft,
 } from '../../../lib/onboarding-ai';
-import { getTenantById, safeTenant } from '../../../lib/store';
+import { getServices, getTenantById, safeTenant } from '../../../lib/store';
 
 export const prerender = false;
 
@@ -22,12 +24,16 @@ export const GET: APIRoute = async ({ request }) => {
   const tenant = await getTenantById(tenantId);
   if (!tenant) return bad('Sesión inválida', 401);
 
+  const url = new URL(request.url);
+  const mode: AssistantMode = url.searchParams.get('mode') === 'assistant' ? 'assistant' : 'onboarding';
+
   return json({
     ok: true,
     geminiConfigured: isGeminiConfigured(),
     onboardingComplete: tenant.onboardingComplete !== false,
     tenant: safeTenant(tenant),
-    greeting: initialAssistantMessage(tenant),
+    greeting: initialAssistantMessage(tenant, mode),
+    mode,
   });
 };
 
@@ -37,12 +43,15 @@ export const POST: APIRoute = async ({ request }) => {
 
   const body = await readBody<{
     action?: 'chat' | 'apply' | 'skip';
+    mode?: AssistantMode;
     messages?: ChatMessage[];
     setup?: OnboardingSetupDraft;
   }>(request);
 
   const tenant = await getTenantById(tenantId);
   if (!tenant) return bad('Sesión inválida', 401);
+
+  const mode: AssistantMode = body.mode === 'assistant' ? 'assistant' : 'onboarding';
 
   if (body.action === 'skip') {
     await skipOnboarding(tenantId);
@@ -54,7 +63,8 @@ export const POST: APIRoute = async ({ request }) => {
     if (!body.setup || !Object.keys(body.setup).length) {
       return bad('No hay configuración para aplicar');
     }
-    const result = await applyOnboardingSetup(tenantId, body.setup);
+    const merge = mode === 'assistant' || tenant.onboardingComplete !== false;
+    const result = await applyOnboardingSetup(tenantId, body.setup, { merge });
     return json({
       ok: true,
       tenant: safeTenant(result.tenant!),
@@ -68,23 +78,23 @@ export const POST: APIRoute = async ({ request }) => {
     return bad('Mensaje requerido');
   }
 
+  const existingServices = await getServices(tenantId);
+
   if (!isGeminiConfigured()) {
-    const { chatOnboardingFallback } = await import('../../../lib/onboarding-ai');
-    const ai = chatOnboardingFallback(tenant, messages);
+    const ai = chatOnboardingFallback(tenant, messages, {}, mode, existingServices);
     return json({ ok: true, ...ai, fallback: true });
   }
 
-  const limited = rateLimit(`onboarding:chat:${tenantId}`, 40, 60 * 60_000);
+  const limited = rateLimit(`onboarding:chat:${tenantId}`, 60, 60 * 60_000);
   if (limited) return bad(limited, 429);
 
   try {
-    const ai = await chatOnboarding(tenantId, messages);
+    const ai = await chatOnboarding(tenantId, messages, mode);
     return json({ ok: true, ...ai });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
     console.error('[onboarding/chat] request failed', msg);
-    const { chatOnboardingFallback } = await import('../../../lib/onboarding-ai');
-    const ai = chatOnboardingFallback(tenant, messages);
+    const ai = chatOnboardingFallback(tenant, messages, {}, mode, existingServices);
     return json({ ok: true, ...ai, fallback: true });
   }
 };
