@@ -59,8 +59,15 @@ export SMTP_FROM_NAME="${SMTP_FROM_NAME:-Citas · Renace}"
 export SMTP_REPLY_TO="${SMTP_REPLY_TO:-info@renace.tech}"
 export PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-https://citas.renace.tech}"
 export ADMIN_EMAIL="${ADMIN_EMAIL:-info@renace.tech}"
+export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 export SESSION_SECRET="${SESSION_SECRET:-citas-change-me}"
 export REMINDER_SECRET="${REMINDER_SECRET:-$SESSION_SECRET}"
+
+if [ -z "$SESSION_SECRET" ] || [ ${#SESSION_SECRET} -lt 24 ] || [[ "$SESSION_SECRET" =~ change-me|citas-change-me|citas-dev ]]; then
+  red "WARNING: SESSION_SECRET is weak or missing in $PROJECT_DIR/.env"
+fi
+export GEMINI_API_KEY="${GEMINI_API_KEY:-}"
+export GEMINI_MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"
 
 if [ -z "$SMTP_PASS" ] || [[ "$SMTP_PASS" =~ TU_APP_PASSWORD|YOUR_GOOGLE|changeme ]]; then
   red "WARNING: SMTP_PASS is missing or still a placeholder in $PROJECT_DIR/.env"
@@ -69,6 +76,11 @@ if [ -n "$SMTP_PASS" ]; then
   cyan "   SMTP user: $SMTP_USER  pass: set (${#SMTP_PASS} chars)"
 else
   red "   SMTP pass: NOT SET — emails will not send"
+fi
+if [ -n "$GEMINI_API_KEY" ]; then
+  cyan "   Gemini:    configured (${#GEMINI_API_KEY} chars, model $GEMINI_MODEL)"
+else
+  red "   Gemini:    NOT SET — onboarding AI disabled"
 fi
 
 cyan "── 3. Build image (low priority) ──────────────"
@@ -94,9 +106,12 @@ docker service update \
   --env-add "SMTP_FROM_NAME=${SMTP_FROM_NAME}" \
   --env-add "SMTP_REPLY_TO=${SMTP_REPLY_TO}" \
   --env-add "ADMIN_EMAIL=${ADMIN_EMAIL}" \
+  --env-add "ADMIN_PASSWORD=${ADMIN_PASSWORD}" \
   --env-add "PUBLIC_SITE_URL=${PUBLIC_SITE_URL}" \
   --env-add "SESSION_SECRET=${SESSION_SECRET}" \
   --env-add "REMINDER_SECRET=${REMINDER_SECRET}" \
+  --env-add "GEMINI_API_KEY=${GEMINI_API_KEY}" \
+  --env-add "GEMINI_MODEL=${GEMINI_MODEL}" \
   --force \
   "$SERVICE_NAME" >/dev/null
 

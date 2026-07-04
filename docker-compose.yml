@@ -26,8 +26,11 @@ services:
       SMTP_REPLY_TO: ${SMTP_REPLY_TO:-info@renace.tech}
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://citas.renace.tech}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-info@renace.tech}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       SESSION_SECRET: ${SESSION_SECRET:-}
       REMINDER_SECRET: ${REMINDER_SECRET:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
     volumes:
       - citas_data:/app/data
     networks:

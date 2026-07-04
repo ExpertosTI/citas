@@ -1,0 +1,131 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { adminEmailConfigured, isAdminRequest } from '../../lib/admin';
+import { getServices, getTenants, safeTenant } from '../../lib/store';
+
+const isAdmin = isAdminRequest(Astro.request);
+
+const tenantRows = isAdmin
+  ? await Promise.all(
+      (await getTenants()).map(async (t) => {
+        const safe = safeTenant(t);
+        const services = await getServices(t.id);
+        return {
+          businessName: safe.businessName,
+          ownerName: safe.ownerName,
+          email: t.email,
+          slug: safe.slug,
+          city: safe.city,
+          servicesCount: services.length,
+          onboardingComplete: safe.onboardingComplete !== false,
+          createdAt: t.createdAt.slice(0, 10),
+          publicUrl: `/s/${safe.slug}`,
+        };
+      }),
+    ).then((rows) => rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+  : [];
+---
+
+<BaseLayout title="Admin · Citas">
+  <div class="app-scene min-h-dvh">
+    <div class="accent-line"></div>
+    <div class="mx-auto max-w-6xl px-4 py-8">
+      <div class="mb-8 flex items-center justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-muted">Renace · Citas</p>
+          <h1 class="brand-mark brand-mark--gold text-4xl">Panel administrador</h1>
+        </div>
+        {isAdmin && (
+          <button id="logout-admin" type="button" class="btn-ghost !text-sm">Salir</button>
+        )}
+      </div>
+
+      {!isAdmin ? (
+        <div class="card mx-auto max-w-md p-6 sm:p-8">
+          <h2 class="brand-mark text-2xl">Acceso admin</h2>
+          <p class="mt-2 text-sm text-ink-soft">Gestión de negocios registrados en la plataforma.</p>
+          <form id="admin-login" class="mt-6 space-y-4">
+            <div>
+              <label class="label" for="email">Email</label>
+              <input class="input" id="email" name="email" type="email" value={adminEmailConfigured()} required />
+            </div>
+            <div>
+              <label class="label" for="password">Contraseña</label>
+              <input class="input" id="password" name="password" type="password" required />
+            </div>
+            <p id="login-error" class="hidden text-sm text-danger"></p>
+            <button class="btn-primary w-full" type="submit">Entrar</button>
+          </form>
+        </div>
+      ) : (
+        <div>
+          <p class="mb-4 text-sm text-muted">{tenantRows.length} negocios registrados</p>
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[720px] text-left text-sm">
+                <thead class="border-b border-border bg-surface-2 text-xs uppercase tracking-wider text-muted">
+                  <tr>
+                    <th class="px-4 py-3">Negocio</th>
+                    <th class="px-4 py-3">Dueño</th>
+                    <th class="px-4 py-3">Email</th>
+                    <th class="px-4 py-3">Ciudad</th>
+                    <th class="px-4 py-3">Servicios</th>
+                    <th class="px-4 py-3">Setup</th>
+                    <th class="px-4 py-3">Registro</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                  {tenantRows.map((t) => (
+                    <tr class="hover:bg-white/[0.02]">
+                      <td class="px-4 py-3">
+                        <a class="font-semibold text-gold hover:underline" href={t.publicUrl} target="_blank" rel="noreferrer">
+                          {t.businessName}
+                        </a>
+                        <p class="text-xs text-muted">/{t.slug}</p>
+                      </td>
+                      <td class="px-4 py-3">{t.ownerName}</td>
+                      <td class="px-4 py-3 text-ink-soft">{t.email}</td>
+                      <td class="px-4 py-3">{t.city || '—'}</td>
+                      <td class="px-4 py-3">{t.servicesCount}</td>
+                      <td class="px-4 py-3">{t.onboardingComplete ? '✓ Listo' : 'Pendiente'}</td>
+                      <td class="px-4 py-3 text-muted">{t.createdAt}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+
+  <script define:vars={{ isAdmin }}>
+    if (isAdmin) {
+      document.getElementById('logout-admin')?.addEventListener('click', async () => {
+        await fetch('/api/admin/login', { method: 'DELETE' });
+        location.reload();
+      });
+    } else {
+      document.getElementById('admin-login')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const err = document.getElementById('login-error');
+        err.classList.add('hidden');
+        const data = Object.fromEntries(new FormData(form).entries());
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          err.textContent = json.error || 'Error';
+          err.classList.remove('hidden');
+          return;
+        }
+        location.reload();
+      });
+    }
+  </script>
+</BaseLayout>

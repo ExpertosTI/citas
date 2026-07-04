@@ -1,14 +1,19 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
 import { tenantIdFromRequest } from '../../lib/auth';
-import { getBoardDay, getDashboardStats } from '../../lib/store';
+import { getBoardDay, getBoardWeek, getDashboardStats } from '../../lib/store';
+import { cutStyleLabel } from '../../lib/cut-styles';
 
 const tenantId = tenantIdFromRequest(Astro.request)!;
 const today = new Date();
 const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 const qDate = Astro.url.searchParams.get('date') || '';
 const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(qDate) ? qDate : todayStr;
-const [board, stats] = await Promise.all([getBoardDay(tenantId, dateStr), getDashboardStats(tenantId)]);
+const [board, stats, week] = await Promise.all([
+  getBoardDay(tenantId, dateStr),
+  getDashboardStats(tenantId),
+  getBoardWeek(tenantId, todayStr),
+]);
 const openHour = board.tenant?.openHour ?? 9;
 const closeHour = board.tenant?.closeHour ?? 19;
 const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + i);
@@ -22,11 +27,27 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <input id="bay-date" class="input !w-auto" type="date" value={dateStr} />
+      <button id="print-day" type="button" class="btn-ghost !text-xs">Imprimir</button>
+      <a href="/app/waitlist" class="btn-ghost !text-xs">Espera ({stats.waitlistCount})</a>
       <button id="new-apt-btn" type="button" class="btn-primary">+ Nueva cita</button>
     </div>
   </div>
 
-  <div class="mb-6 grid gap-3 sm:grid-cols-4">
+  <div class="mb-4 flex gap-2 overflow-x-auto pb-1">
+    {week.map((d) => (
+      <a
+        href={`/app?date=${d.date}`}
+        class:list={[
+          'chip shrink-0 border',
+          d.date === dateStr ? 'border-gold bg-gold-dim text-gold' : 'border-border text-ink-soft',
+        ]}
+      >
+        {d.date.slice(5)} · {d.count}
+      </a>
+    ))}
+  </div>
+
+  <div class="mb-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
     <div class="card p-4">
       <p class="text-xs font-bold uppercase tracking-wider text-muted">Hoy</p>
       <p class="mt-1 brand-mark text-3xl text-gold">{stats.todayCount}</p>
@@ -41,11 +62,19 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
     </div>
     <div class="card p-4">
       <p class="text-xs font-bold uppercase tracking-wider text-muted">Servicios</p>
-      <p class="mt-1 brand-mark text-3xl font-bold">{stats.servicesCount}</p>
+      <p class="mt-1 brand-mark text-3xl">{stats.servicesCount}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs font-bold uppercase tracking-wider text-muted">Semana RD$</p>
+      <p class="mt-1 brand-mark text-2xl text-gold">{stats.weekRevenue}</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-xs font-bold uppercase tracking-wider text-muted">No-show</p>
+      <p class="mt-1 brand-mark text-3xl">{stats.noShowCount}</p>
     </div>
   </div>
 
-  <div class="card overflow-hidden">
+  <div id="print-area" class="card overflow-hidden">
     <div class="bay" id="bay" data-open={openHour} data-close={closeHour} data-date={dateStr}>
       <div class="bay__hours">
         {hours.map((h) => (
@@ -71,7 +100,11 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
               data-status={a.status}
             >
               <div class="bay__slot-title">{a.client?.name || 'Cliente'}</div>
-              <div class="bay__slot-meta">{time} · {a.service?.name || 'Servicio'}</div>
+              <div class="bay__slot-meta">
+                {time} · {a.service?.name || 'Servicio'}
+                {a.haircutStyle ? ` · ${cutStyleLabel(a.haircutStyle)}` : ''}
+                {a.code ? ` · ${a.code}` : ''}
+              </div>
             </button>
           );
         })}
@@ -200,26 +233,48 @@ const hours = Array.from({ length: closeHour - openHour }, (_, i) => openHour + 
       el.addEventListener('click', async () => {
         const id = (el as HTMLElement).dataset.id;
         const status = (el as HTMLElement).dataset.status;
-        if (!id) return;
-        if (status === 'cancelled') return;
-        if (!confirm('¿Marcar esta cita como completada? (Cancelar = cancelar cita)')) {
-          if (confirm('¿Cancelar la cita y notificar?')) {
-            await fetch(`/api/appointments/${id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ status: 'cancelled', notify: true }),
-            });
-            location.reload();
-          }
-          return;
+        if (!id || status === 'cancelled') return;
+
+        const action = prompt(
+          'Acción: 1=Completada 2=Cancelar 3=No-show 4=Reagendar (hora HH:MM)',
+          '1',
+        );
+        if (!action) return;
+
+        if (action === '1') {
+          await fetch(`/api/appointments/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'completed' }),
+          });
+        } else if (action === '2') {
+          const reason = prompt('Motivo de cancelación (opcional)') || '';
+          await fetch(`/api/appointments/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'cancelled', cancelReason: reason, notify: true }),
+          });
+        } else if (action === '3') {
+          await fetch(`/api/appointments/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'no_show' }),
+          });
+        } else if (action === '4') {
+          const time = prompt('Nueva hora (HH:MM)', '10:00');
+          if (!time) return;
+          const date = (document.getElementById('bay-date') as HTMLInputElement).value;
+          const startAt = new Date(`${date}T${time}:00`).toISOString();
+          await fetch(`/api/appointments/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ startAt, notify: true }),
+          });
         }
-        await fetch(`/api/appointments/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'completed' }),
-        });
         location.reload();
       });
     });
+
+    document.getElementById('print-day')?.addEventListener('click', () => window.print());
   </script>
 </AppLayout>

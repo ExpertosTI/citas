@@ -1,10 +1,11 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { sessionSecret as getSessionSecret } from './security';
 
 const TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 const COOKIE = 'citas_session';
 
 function secret() {
-  return process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || 'citas-dev-secret';
+  return getSessionSecret();
 }
 
 function safeEqual(a: string, b: string) {
@@ -60,7 +61,7 @@ export function sessionCookieName() {
 
 export function sessionCookie(token: string, maxAgeSec = TOKEN_TTL_MS / 1000) {
   const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-  return `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(maxAgeSec)}${secure}`;
+  return `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(maxAgeSec)}${secure}`;
 }
 
 export function clearSessionCookie() {

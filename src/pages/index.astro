@@ -3,64 +3,92 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import { geoFromRequest } from '../lib/geo';
 
 const geo = geoFromRequest(Astro.request);
+
+const features = [
+  {
+    t: 'Asistente AI',
+    d: 'Al registrarte, la IA te guía paso a paso: servicios, precios, horarios y colores de tu marca.',
+    highlight: true,
+  },
+  {
+    t: 'Bahía de citas',
+    d: 'Vista del día con códigos de color. Completa, reagenda o marca no-show en un clic.',
+  },
+  {
+    t: 'Reservas en línea',
+    d: 'Link propio para que tus clientes agenden solos, elijan servicio y estilo preferido.',
+  },
+  {
+    t: 'Notificaciones',
+    d: 'Confirmaciones y recordatorios por email a ti y a tus clientes.',
+  },
+  {
+    t: 'Lista de espera',
+    d: 'Si no hay cupo, el cliente entra en espera y tú lo contactas.',
+  },
+  {
+    t: 'Perfil de marca',
+    d: 'Logo, colores, bio y horarios — todo configurable desde el panel.',
+  },
+];
 ---
 
 <BaseLayout>
-  <div class="barber-stripe"></div>
-  <div class="urban-grid">
+  <div class="app-scene">
+    <div class="accent-line"></div>
+
     <header class="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-      <a href="/" class="brand-mark text-3xl">Citas</a>
+      <a href="/" class="brand-mark brand-mark--gold text-3xl sm:text-4xl">Citas</a>
       <div class="flex items-center gap-2">
-        <span class="geo-badge hidden sm:inline-flex">{geo.name}</span>
-        <a href="/login" class="btn-ghost">Entrar</a>
-        <a href="/registro" class="btn-primary">Crear barbería</a>
+        <span class="geo-badge hidden sm:inline-flex">{geo.city}</span>
+        <a href="/login" class="btn-ghost !py-2 !text-sm">Entrar</a>
+        <a href="/registro" class="btn-primary !py-2 !text-sm">Crear mi negocio</a>
       </div>
     </header>
 
-    <section class="mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-8 lg:grid-cols-2 lg:items-center lg:pt-16">
+    <section class="mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-10 lg:grid-cols-2 lg:items-center lg:pt-20">
       <div>
-        <p class="chip border border-gold/30 bg-gold-dim text-gold">Barberías urbanas · {geo.city}</p>
-        <h1 class="brand-mark mt-4 text-5xl leading-[0.95] sm:text-6xl lg:text-7xl">
-          Tu bahía de citas.<br />Estilo calle, control total.
-        </h1>
-        <p class="mt-5 max-w-xl text-lg leading-relaxed text-ink-soft">
-          Agenda para barberías y peluquerías urbanas. Cada local se registra, tiene su perfil y recibe reservas — con bahía visual del día y notificaciones.
+        <p class="hero-eyebrow chip border border-gold/30 bg-gold-dim text-gold">
+          Agenda profesional · {geo.city}
         </p>
-        <div class="mt-8 flex flex-wrap gap-3">
-          <a href="/registro" class="btn-primary !px-6 !py-3">Empezar gratis</a>
-          <a href="#features" class="btn-ghost !px-6 !py-3">Cómo funciona</a>
+        <h1 class="hero-title brand-mark mt-5 text-5xl sm:text-6xl lg:text-7xl">
+          Tu negocio.<br />
+          <span class="brand-mark--gold">Listo en minutos.</span>
+        </h1>
+        <p class="hero-copy mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
+          Citas es la plataforma de reservas para barberías, salones y centros de belleza.
+          Un asistente con IA te ayuda a configurar servicios, precios y horarios — sin complicaciones.
+        </p>
+        <div class="hero-cta mt-8 flex flex-wrap gap-3">
+          <a href="/registro" class="btn-primary">Empezar gratis</a>
+          <a href="#como-funciona" class="btn-ghost">Cómo funciona</a>
         </div>
-        <p class="mt-6 text-sm text-muted">renace.tech · citas.renace.tech</p>
+        <p class="mt-6 text-sm text-muted">citas.renace.tech</p>
       </div>
 
-      <div class="card relative overflow-hidden p-4 sm:p-6">
-        <div class="mb-4 flex items-center justify-between">
+      <div class="hero-visual card glass-panel relative overflow-hidden p-5 sm:p-7">
+        <div class="relative z-10 mb-4 flex items-center justify-between">
           <div>
-            <p class="text-xs font-bold uppercase tracking-wider text-muted">Hoy</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-muted">Panel del día</p>
             <p class="brand-mark text-2xl">Bahía de citas</p>
           </div>
-          <div class="flex gap-1">
-            <span class="h-3 w-3 rounded-sm bg-[#e8b923]"></span>
-            <span class="h-3 w-3 rounded-sm bg-[#64748b]"></span>
-            <span class="h-3 w-3 rounded-sm bg-[#dc2626]"></span>
-            <span class="h-3 w-3 rounded-sm bg-[#374151]"></span>
-          </div>
+          <span class="chip border border-brand/30 bg-brand-dim text-brand">En vivo</span>
         </div>
-        <div class="space-y-3">
+        <div class="relative z-10 space-y-2.5">
           {[
-            { t: '09:00', n: 'Junior P.', s: 'Fade / Degradé', c: '#64748b' },
-            { t: '10:30', n: 'Manuel R.', s: 'Corte + barba', c: '#e8b923', dark: true },
-            { t: '12:00', n: 'Díaz K.', s: 'Diseño / Línea', c: '#dc2626' },
-            { t: '15:00', n: 'Luis M.', s: 'Corte clásico', c: '#374151' },
+            { t: '09:00', n: 'Carlos M.', s: 'Corte ejecutivo', c: '#1e3a5f' },
+            { t: '10:30', n: 'Ana R.', s: 'Color + corte', c: '#5b4a8a' },
+            { t: '12:00', n: 'Miguel S.', s: 'Barba premium', c: '#3d4f5f' },
+            { t: '15:00', n: 'Laura P.', s: 'Tratamiento', c: '#6b5a3a' },
           ].map((row) => (
             <div
-              class:list={['flex items-center gap-3 rounded-lg border border-white/10 p-3 shadow-sm', row.dark ? 'text-void' : 'text-white']}
-              style={`background:${row.c}`}
+              class="flex items-center gap-3 rounded-lg border border-white/10 p-3 text-white"
+              style={`background:linear-gradient(135deg,${row.c},rgba(0,0,0,0.2))`}
             >
-              <span class="w-12 text-sm font-bold opacity-90">{row.t}</span>
+              <span class="w-12 text-sm font-semibold tabular-nums opacity-90">{row.t}</span>
               <div class="min-w-0">
-                <p class="truncate font-bold">{row.n}</p>
-                <p class="text-xs opacity-90">{row.s}</p>
+                <p class="truncate font-semibold">{row.n}</p>
+                <p class="truncate text-xs opacity-80">{row.s}</p>
               </div>
             </div>
           ))}
@@ -68,26 +96,34 @@ const geo = geoFromRequest(Astro.request);
       </div>
     </section>
 
-    <section id="features" class="border-t border-border py-16">
-      <div class="mx-auto grid max-w-6xl gap-6 px-4 sm:grid-cols-2 lg:grid-cols-3">
-        {[
-          { t: 'Multitenant', d: 'Cada barbería se registra, tiene su perfil y enlace público de reservas.' },
-          { t: 'Bahía visual', d: 'Tablero del día con bloques de color por servicio o cliente.' },
-          { t: 'Notificaciones', d: 'Confirmación y recordatorios por email.' },
-          { t: 'Clientes', d: 'Agenda interna: crea citas, gestiona clientes y servicios.' },
-          { t: 'Booking público', d: 'Tus clientes reservan en /s/tu-barberia sin app.' },
-          { t: 'Geo local', d: 'Detecta el país del visitante y prellena ciudad y zona horaria.' },
-        ].map((f) => (
-          <article class="card p-5">
-            <h3 class="brand-mark text-2xl text-gold">{f.t}</h3>
-            <p class="mt-2 text-sm leading-relaxed text-ink-soft">{f.d}</p>
-          </article>
-        ))}
+    <section id="como-funciona" class="border-t border-border bg-surface/40 py-16">
+      <div class="mx-auto max-w-6xl px-4">
+        <div class="ai-spotlight card mx-auto mb-12 max-w-3xl p-8 text-center">
+          <p class="text-xs font-semibold uppercase tracking-wider text-gold">Lo más importante</p>
+          <h2 class="brand-mark mt-2 text-3xl sm:text-4xl">La IA configura tu empresa por ti</h2>
+          <p class="mx-auto mt-4 max-w-xl text-ink-soft">
+            Después de registrarte, un asistente conversacional te pregunta el nombre de tu negocio,
+            qué servicios ofreces, a qué precio y tu horario. Al final, aplicas y tu panel queda listo.
+          </p>
+          <a href="/registro" class="btn-primary mt-6">Probar el asistente AI</a>
+        </div>
+
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((f) => (
+            <article class:list={['feature-card card glass-panel p-6', f.highlight && 'border-gold/25']}>
+              {f.highlight && (
+                <span class="chip mb-3 border border-gold/30 bg-gold-dim text-gold">Destacado</span>
+              )}
+              <h3 class="brand-mark text-xl">{f.t}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-ink-soft">{f.d}</p>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
 
     <footer class="border-t border-border py-10 text-center text-sm text-muted">
-      <p>Citas · renace.tech</p>
+      <p>Citas · renace.tech · Agenda inteligente para tu negocio</p>
     </footer>
   </div>
 </BaseLayout>

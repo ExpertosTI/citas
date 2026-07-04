@@ -8,8 +8,9 @@ if (tenantIdFromRequest(Astro.request)) {
 ---
 
 <BaseLayout title="Entrar · Citas">
-  <div class="barber-stripe"></div>
-  <div class="urban-grid mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
+  <div class="app-scene min-h-dvh">
+    <div class="accent-line"></div>
+    <div class="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
     <a href="/" class="brand-mark mb-8 text-4xl">Citas</a>
     <div class="card p-6 sm:p-8">
       <h1 class="brand-mark text-4xl leading-none">Entrar</h1>
@@ -29,8 +30,9 @@ if (tenantIdFromRequest(Astro.request)) {
       </form>
 
       <p class="mt-5 text-center text-sm text-muted">
-        ¿Nuevo? <a class="font-semibold text-gold" href="/registro">Crear barbería</a>
+        ¿Nuevo? <a class="font-semibold text-gold" href="/registro">Crear negocio</a>
       </p>
+    </div>
     </div>
   </div>
 

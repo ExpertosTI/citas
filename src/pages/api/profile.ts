@@ -29,6 +29,13 @@ export const PUT: APIRoute = async ({ request }) => {
     'slug',
     'openHour',
     'closeHour',
+    'lunchStartHour',
+    'lunchEndHour',
+    'slotBufferMin',
+    'closedDays',
+    'closedWeekdays',
+    'instagram',
+    'whatsapp',
   ] as const;
 
   const patch: Record<string, unknown> = {};
@@ -38,6 +45,18 @@ export const PUT: APIRoute = async ({ request }) => {
 
   if (patch.openHour !== undefined) patch.openHour = Number(patch.openHour);
   if (patch.closeHour !== undefined) patch.closeHour = Number(patch.closeHour);
+  if (patch.lunchStartHour !== undefined) patch.lunchStartHour = Number(patch.lunchStartHour);
+  if (patch.lunchEndHour !== undefined) patch.lunchEndHour = Number(patch.lunchEndHour);
+  if (patch.slotBufferMin !== undefined) patch.slotBufferMin = Number(patch.slotBufferMin);
+  if (typeof body.closedDays === 'string') {
+    patch.closedDays = body.closedDays.split(',').map((d) => d.trim()).filter(Boolean);
+  }
+  if (typeof body.closedWeekdays === 'string') {
+    patch.closedWeekdays = body.closedWeekdays
+      .split(',')
+      .map((d) => Number(d.trim()))
+      .filter((n) => Number.isFinite(n));
+  }
 
   try {
     const tenant = await updateTenant(tenantId, patch as never);

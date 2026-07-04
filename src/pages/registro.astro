@@ -10,23 +10,24 @@ if (tenantIdFromRequest(Astro.request)) {
 const geo = geoFromRequest(Astro.request);
 ---
 
-<BaseLayout title="Crear barbería · Citas">
-  <div class="barber-stripe"></div>
-  <div class="urban-grid mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-4 py-10">
+<BaseLayout title="Crear cuenta · Citas">
+  <div class="app-scene min-h-dvh">
+    <div class="accent-line"></div>
+    <div class="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-4 py-10">
     <a href="/" class="brand-mark mb-6 text-4xl">Citas</a>
     <div class="card p-6 sm:p-8">
       <div class="geo-badge mb-4">
         <span>📍</span>
         <span id="geo-label">{geo.name} · {geo.city}</span>
       </div>
-      <h1 class="brand-mark text-4xl leading-none">Registra tu barbería</h1>
-      <p class="mt-2 text-sm text-ink-soft">Agenda citas, controla tu bahía y recibe reservas en línea.</p>
+      <h1 class="brand-mark text-4xl leading-none">Registra tu negocio</h1>
+      <p class="mt-2 text-sm text-ink-soft">La IA te guía para configurar servicios, precios y horario en minutos.</p>
 
       <form id="register-form" class="mt-6 space-y-4">
         <input type="hidden" name="country" id="country" value={geo.country} />
         <div>
           <label class="label" for="businessName">Nombre del local</label>
-          <input class="input" id="businessName" name="businessName" required placeholder="Barber Shop 809" />
+          <input class="input" id="businessName" name="businessName" required placeholder="Studio Nova · Salón Elegance" />
         </div>
         <div>
           <label class="label" for="ownerName">Tu nombre</label>
@@ -49,7 +50,7 @@ const geo = geoFromRequest(Astro.request);
           </div>
           <div>
             <label class="label" for="password">Contraseña</label>
-            <input class="input" id="password" name="password" type="password" required minlength="6" />
+            <input class="input" id="password" name="password" type="password" required minlength="8" />
           </div>
         </div>
         <p id="form-error" class="hidden text-sm font-medium text-danger"></p>
@@ -59,6 +60,7 @@ const geo = geoFromRequest(Astro.request);
       <p class="mt-5 text-center text-sm text-muted">
         ¿Ya tienes cuenta? <a class="font-semibold text-gold" href="/login">Entrar</a>
       </p>
+    </div>
     </div>
   </div>
 
@@ -104,7 +106,7 @@ const geo = geoFromRequest(Astro.request);
         errorEl.classList.remove('hidden');
         return;
       }
-      location.href = '/app';
+      location.href = '/app/onboarding';
     });
   </script>
 </BaseLayout>

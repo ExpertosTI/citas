@@ -1,0 +1,223 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { tenantIdFromRequest } from '../../lib/auth';
+import { isGeminiConfigured } from '../../lib/gemini';
+import { initialAssistantMessage } from '../../lib/onboarding-ai';
+import { getTenantById, safeTenant } from '../../lib/store';
+
+const tenantId = tenantIdFromRequest(Astro.request);
+if (!tenantId) return Astro.redirect('/login');
+
+const tenant = await getTenantById(tenantId);
+if (!tenant) return Astro.redirect('/login');
+
+if (tenant.onboardingComplete !== false) {
+  return Astro.redirect('/app');
+}
+
+const t = safeTenant(tenant);
+const geminiOk = isGeminiConfigured();
+const greeting = initialAssistantMessage(tenant);
+const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;
+---
+
+<AppLayout title="Configuración rápida" active="bahia" skipOnboardingGate={true}>
+  <div
+    id="onboarding-root"
+    class="mx-auto max-w-2xl"
+    data-greeting={greeting}
+    data-gemini={geminiOk ? '1' : '0'}
+    data-currency={currencyLabel}
+  >
+    <div class="mb-6 text-center">
+      <p class="text-xs font-semibold uppercase tracking-wider text-gold">Configuración asistida</p>
+      <h1 class="brand-mark mt-2 text-4xl sm:text-5xl">Prepara tu negocio</h1>
+      <p class="mt-2 text-sm text-ink-soft">
+        Cuéntame servicios, precios, horario y colores — yo configuro el panel por ti.
+      </p>
+    </div>
+
+    {!geminiOk && (
+      <div class="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        El asistente AI requiere configuración en el servidor.
+        Puedes configurar manualmente en Perfil y Servicios.
+      </div>
+    )}
+
+    <div class="onboarding-chat card glass-panel overflow-hidden">
+      <div id="chat-messages" class="onboarding-chat__messages"></div>
+
+      <div id="setup-preview" class="onboarding-chat__preview hidden"></div>
+
+      <form id="chat-form" class="onboarding-chat__input-row border-t border-border p-3">
+        <input
+          id="chat-input"
+          class="input flex-1"
+          type="text"
+          placeholder={geminiOk ? 'Escribe tu respuesta…' : 'Asistente no disponible'}
+          autocomplete="off"
+          disabled={!geminiOk}
+        />
+        <button type="submit" class="btn-primary shrink-0" disabled={!geminiOk}>Enviar</button>
+      </form>
+    </div>
+
+    <div class="mt-4 flex flex-wrap justify-center gap-3">
+      <button id="apply-btn" type="button" class="btn-primary hidden">Aplicar y abrir bahía</button>
+      <button id="skip-btn" type="button" class="btn-ghost">Saltar · configurar manual</button>
+    </div>
+  </div>
+
+  <script>
+    type Msg = { role: 'user' | 'assistant'; content: string };
+    type Setup = {
+      businessName?: string;
+      bio?: string;
+      services?: Array<{ name: string; price: number; durationMin: number }>;
+      openHour?: number;
+      closeHour?: number;
+      closedWeekdays?: number[];
+    };
+
+    const root = document.getElementById('onboarding-root')!;
+    const messagesEl = document.getElementById('chat-messages')!;
+    const previewEl = document.getElementById('setup-preview')!;
+    const form = document.getElementById('chat-form') as HTMLFormElement;
+    const input = document.getElementById('chat-input') as HTMLInputElement;
+    const applyBtn = document.getElementById('apply-btn')!;
+    const skipBtn = document.getElementById('skip-btn')!;
+    const greeting = root.dataset.greeting || '';
+    const currency = root.dataset.currency || 'RD$';
+
+    const messages: Msg[] = [];
+    let draftSetup: Setup = {};
+    let readyToApply = false;
+    let busy = false;
+
+    function esc(s: string) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function renderMarkdownLite(text: string) {
+      return esc(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    }
+
+    function renderMessages() {
+      messagesEl.innerHTML = messages
+        .map(
+          (m) => `
+        <div class="onboarding-chat__bubble onboarding-chat__bubble--${m.role}">
+          ${m.role === 'assistant' ? '<span class="onboarding-chat__avatar">AI</span>' : ''}
+          <div class="onboarding-chat__text">${renderMarkdownLite(m.content)}</div>
+        </div>`,
+        )
+        .join('');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function weekdayLabel(d: number) {
+      return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d] || String(d);
+    }
+
+    function renderPreview() {
+      if (!readyToApply || !Object.keys(draftSetup).length) {
+        previewEl.classList.add('hidden');
+        applyBtn.classList.add('hidden');
+        return;
+      }
+
+      const svcs = (draftSetup.services || [])
+        .map((s) => `<li>${esc(s.name)} · ${currency}${s.price} · ${s.durationMin} min</li>`)
+        .join('');
+
+      previewEl.innerHTML = `
+        <div class="p-4">
+          <p class="text-xs font-semibold uppercase tracking-wider text-gold">Resumen listo</p>
+          <p class="mt-1 font-bold text-white">${esc(draftSetup.businessName || 'Tu barbería')}</p>
+          ${draftSetup.bio ? `<p class="mt-1 text-sm text-ink-soft">${esc(draftSetup.bio)}</p>` : ''}
+          ${draftSetup.openHour !== undefined ? `<p class="mt-2 text-sm">Horario: ${draftSetup.openHour}:00 – ${draftSetup.closeHour}:00</p>` : ''}
+          ${draftSetup.closedWeekdays?.length ? `<p class="text-sm text-muted">Cierra: ${draftSetup.closedWeekdays.map(weekdayLabel).join(', ')}</p>` : ''}
+          ${svcs ? `<ul class="mt-2 space-y-1 text-sm">${svcs}</ul>` : ''}
+        </div>`;
+      previewEl.classList.remove('hidden');
+      applyBtn.classList.remove('hidden');
+    }
+
+    function mergeSetup(next?: Setup) {
+      if (!next) return;
+      draftSetup = {
+        ...draftSetup,
+        ...next,
+        services: next.services?.length ? next.services : draftSetup.services,
+        closedWeekdays: next.closedWeekdays?.length ? next.closedWeekdays : draftSetup.closedWeekdays,
+      };
+    }
+
+    async function post(body: Record<string, unknown>) {
+      const res = await fetch('/api/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Error');
+      return json;
+    }
+
+    async function sendUserMessage(text: string) {
+      if (busy) return;
+      busy = true;
+      input.disabled = true;
+
+      messages.push({ role: 'user', content: text });
+      renderMessages();
+
+      try {
+        const json = await post({ action: 'chat', messages });
+        messages.push({ role: 'assistant', content: json.reply });
+        mergeSetup(json.setup);
+        readyToApply = Boolean(json.readyToApply);
+        renderMessages();
+        renderPreview();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Error';
+        messages.push({ role: 'assistant', content: `Ups, algo falló: ${msg}. Intenta otra vez.` });
+        renderMessages();
+      } finally {
+        busy = false;
+        input.disabled = root.dataset.gemini !== '1';
+        input.focus();
+      }
+    }
+
+    messages.push({ role: 'assistant', content: greeting });
+    renderMessages();
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      sendUserMessage(text);
+    });
+
+    applyBtn.addEventListener('click', async () => {
+      applyBtn.textContent = 'Aplicando…';
+      applyBtn.setAttribute('disabled', 'true');
+      try {
+        await post({ action: 'apply', setup: draftSetup });
+        location.href = '/app';
+      } catch (err) {
+        applyBtn.textContent = 'Aplicar y abrir bahía';
+        applyBtn.removeAttribute('disabled');
+        alert(err instanceof Error ? err.message : 'No se pudo aplicar');
+      }
+    });
+
+    skipBtn.addEventListener('click', async () => {
+      skipBtn.setAttribute('disabled', 'true');
+      await post({ action: 'skip' });
+      location.href = '/app';
+    });
+  </script>
+</AppLayout>

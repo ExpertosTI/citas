@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import type { Appointment, Client, Service, Tenant } from './store';
+import { cutStyleLabel } from './cut-styles';
+import { sanitizeEmailSubject } from './security';
 
 function env(name: string, fallback = '') {
   const raw = process.env[name] ?? fallback;
@@ -79,7 +81,7 @@ function wrap(title: string, body: string, brand = 'Citas') {
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#141414;border-radius:12px;border:1px solid #2a2a2a;overflow:hidden">
         <tr><td style="padding:28px 28px 12px;text-align:center;background:#1c1c1c">
           <p style="margin:0;font-size:22px;font-weight:800;color:#e8b923;letter-spacing:0.06em;text-transform:uppercase">${escapeHtml(brand)}</p>
-          <p style="margin:6px 0 0;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#78716c;font-weight:700">Barbería urbana</p>
+          <p style="margin:6px 0 0;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#78716c;font-weight:700">Citas · Renace</p>
         </td></tr>
         <tr><td style="padding:8px 28px 28px">
           <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25;color:#f5f5f4;font-weight:700">${escapeHtml(title)}</h1>
@@ -114,12 +116,13 @@ async function send(to: string, subject: string, html: string, replyTo?: string)
   const transport = createTransport();
   const m = mailEnv();
   if (!transport) return { ok: false as const, error: 'smtp_not_configured' };
+  const safeSubject = sanitizeEmailSubject(subject);
   try {
     await transport.sendMail({
       from: `"${m.fromName}" <${m.user}>`,
       replyTo: replyTo || m.replyTo,
       to,
-      subject,
+      subject: safeSubject,
       html,
     });
     return { ok: true as const };
@@ -169,7 +172,9 @@ export async function sendAppointmentNotifications(opts: {
   const details = `
     <table style="border-collapse:collapse;width:100%;margin:12px 0">
       <tr><td style="padding:8px 0;color:#9a7b6a;font-size:13px">Salón</td><td style="padding:8px 0;font-weight:700">${escapeHtml(tenant.businessName)}</td></tr>
+      <tr><td style="padding:8px 0;color:#9a7b6a;font-size:13px">Estilo</td><td style="padding:8px 0;font-weight:700">${escapeHtml(cutStyleLabel(appointment.haircutStyle || '') || appointment.notes?.split(' · ')[0] || '—')}</td></tr>
       <tr><td style="padding:8px 0;color:#9a7b6a;font-size:13px">Servicio</td><td style="padding:8px 0;font-weight:700">${escapeHtml(service.name)}</td></tr>
+      <tr><td style="padding:8px 0;color:#9a7b6a;font-size:13px">Código</td><td style="padding:8px 0;font-weight:700">${escapeHtml(appointment.code || '—')}</td></tr>
       <tr><td style="padding:8px 0;color:#9a7b6a;font-size:13px">Cuándo</td><td style="padding:8px 0;font-weight:700">${escapeHtml(when)}</td></tr>
       <tr><td style="padding:8px 0;color:#9a7b6a;font-size:13px">Cliente</td><td style="padding:8px 0;font-weight:700">${escapeHtml(client.name)}</td></tr>
     </table>`;

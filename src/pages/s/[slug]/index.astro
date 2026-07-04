@@ -1,5 +1,6 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import BookWizard from '../../../components/BookWizard.astro';
 import { getServices, getTenantBySlug, publicTenant } from '../../../lib/store';
 
 const slug = Astro.params.slug || '';
@@ -11,117 +12,53 @@ if (!tenant) {
 
 const t = publicTenant(tenant);
 const services = (await getServices(tenant.id)).filter((s) => s.active);
-const today = new Date();
-const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+const logoSrc = t.logoUrl?.startsWith('http') ? t.logoUrl : `/api/logo/${tenant.id}`;
 ---
 
 <BaseLayout title={`Reservar · ${t.businessName}`} description={t.bio}>
-  <div class="barber-stripe"></div>
-  <div class="urban-grid min-h-dvh">
+  <div class="app-scene min-h-dvh">
+    <div class="accent-line"></div>
     <header class="mx-auto max-w-lg px-4 py-8 text-center">
-      <p class="text-xs font-bold uppercase tracking-[0.2em] text-muted">Reserva en línea</p>
-      <h1 class="brand-mark mt-2 text-5xl" style={`color:${t.accentColor}`}>{t.businessName}</h1>
+      <p class="text-xs font-semibold uppercase tracking-wider text-muted">Reserva en línea</p>
+      <div class="mt-4 flex flex-col items-center gap-3">
+        <img
+          src={logoSrc}
+          alt={t.businessName}
+          class="h-24 w-24 rounded-lg border-2 border-gold/30 object-cover bg-surface-2 shadow-lg"
+          onerror="this.style.display='none'"
+        />
+        <h1 class="brand-mark brand-mark--gold text-5xl">{t.businessName}</h1>
+      </div>
       <p class="mt-2 text-sm text-ink-soft">{t.bio}</p>
-      {(t.city || t.phone) && (
-        <p class="mt-3 text-sm text-muted">
-          {t.city}{t.city && t.phone ? ' · ' : ''}{t.phone}
-        </p>
+      <p class="mt-3 text-sm text-muted">{[t.city, t.phone].filter(Boolean).join(' · ')}</p>
+      {t.instagram && (
+        <a
+          class="mt-2 inline-block text-sm text-gold"
+          href={`https://instagram.com/${t.instagram.replace('@', '')}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          @{t.instagram.replace('@', '')}
+        </a>
       )}
     </header>
 
     <main class="mx-auto max-w-lg px-4 pb-16">
-      <form id="book-form" class="card space-y-4 p-5 sm:p-6">
-        <input type="hidden" name="slug" value={t.slug} />
-
-        <div>
-          <label class="label" for="serviceId">Servicio</label>
-          <select class="input" id="serviceId" name="serviceId" required>
-            {services.map((s) => (
-              <option value={s.id}>{s.name} · {s.durationMin} min · RD${s.price}</option>
-            ))}
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="label" for="date">Fecha</label>
-            <input class="input" id="date" name="date" type="date" value={dateStr} min={dateStr} required />
-          </div>
-          <div>
-            <label class="label" for="time">Hora</label>
-            <input class="input" id="time" name="time" type="time" value="10:00" required />
-          </div>
-        </div>
-
-        <div>
-          <label class="label" for="name">Tu nombre</label>
-          <input class="input" id="name" name="name" required />
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="label" for="phone">Teléfono</label>
-            <input class="input" id="phone" name="phone" />
-          </div>
-          <div>
-            <label class="label" for="email">Email</label>
-            <input class="input" id="email" name="email" type="email" />
-          </div>
-        </div>
-
-        <div>
-          <label class="label" for="notes">Notas</label>
-          <textarea class="input" id="notes" name="notes" rows="2" placeholder="Fade bajo, línea, etc."></textarea>
-        </div>
-
-        <p id="book-error" class="hidden text-sm font-medium text-danger"></p>
-        <p id="book-ok" class="hidden text-sm font-medium text-gold"></p>
-
-        <button type="submit" class="btn-primary w-full !py-3">
-          Confirmar cita
-        </button>
-      </form>
+      {services.length === 0 ? (
+        <div class="card p-6 text-center text-sm text-muted">Este local aún no tiene servicios activos.</div>
+      ) : (
+        <BookWizard
+          slug={t.slug}
+          services={services}
+          currency={t.currency}
+          whatsapp={t.whatsapp || t.phone}
+          accentColor={t.accentColor}
+        />
+      )}
 
       <p class="mt-6 text-center text-xs text-muted">
         Powered by <a class="font-semibold text-gold" href="https://citas.renace.tech">Citas · renace.tech</a>
       </p>
     </main>
   </div>
-
-  <script>
-    const form = document.getElementById('book-form') as HTMLFormElement;
-    const errorEl = document.getElementById('book-error')!;
-    const okEl = document.getElementById('book-ok')!;
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorEl.classList.add('hidden');
-      okEl.classList.add('hidden');
-      const fd = new FormData(form);
-      const startAt = new Date(`${fd.get('date')}T${fd.get('time')}:00`).toISOString();
-
-      const res = await fetch('/api/book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug: fd.get('slug'),
-          serviceId: fd.get('serviceId'),
-          startAt,
-          name: fd.get('name'),
-          phone: fd.get('phone'),
-          email: fd.get('email'),
-          notes: fd.get('notes'),
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        errorEl.textContent = json.error || 'No se pudo reservar';
-        errorEl.classList.remove('hidden');
-        return;
-      }
-      okEl.textContent = '¡Cita confirmada! Te enviamos un email si dejaste correo.';
-      okEl.classList.remove('hidden');
-      form.reset();
-    });
-  </script>
 </BaseLayout>

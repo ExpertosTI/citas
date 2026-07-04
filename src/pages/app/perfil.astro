@@ -7,23 +7,49 @@ const tenantId = tenantIdFromRequest(Astro.request)!;
 const tenant = safeTenant((await getTenantById(tenantId))!);
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
 const publicUrl = `${siteUrl}/s/${tenant.slug}`;
+const logoPreview = tenant.logoUrl?.startsWith('http') ? tenant.logoUrl : `/api/logo/${tenant.id}?t=${Date.now()}`;
+const closedDaysStr = (tenant.closedDays || []).join(', ');
+const closedWeekdaysStr = (tenant.closedWeekdays || []).join(', ');
 ---
 
 <AppLayout title="Perfil" active="perfil">
   <div class="mb-6">
     <h1 class="brand-mark text-3xl">Perfil del local</h1>
-    <p class="mt-1 text-sm text-ink-soft">Tu marca pública y horarios de la bahía</p>
+    <p class="mt-1 text-sm text-ink-soft">Logo, horarios, redes y enlace público</p>
   </div>
 
-  <div class="card mb-4 p-4">
-    <p class="text-xs font-bold uppercase tracking-wider text-muted">Enlace público</p>
-    <a class="mt-1 block break-all font-semibold text-gold" href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
+  <div class="card mb-4 flex flex-wrap items-center justify-between gap-4 p-4">
+    <div class="min-w-0 flex-1">
+      <p class="text-xs font-bold uppercase tracking-wider text-muted">Enlace público</p>
+      <a class="mt-1 block break-all font-semibold text-gold" href={publicUrl} target="_blank" rel="noreferrer">{publicUrl}</a>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" id="copy-link" class="btn-ghost !text-xs">Copiar link</button>
+      <a id="wa-share" class="btn-primary !text-xs" href="#" target="_blank" rel="noreferrer">WhatsApp</a>
+    </div>
+  </div>
+
+  <div class="card mb-4 p-5">
+    <p class="label">Logo del local</p>
+    <div class="flex flex-wrap items-center gap-4">
+      <img
+        id="logo-preview"
+        src={logoPreview}
+        alt="Logo"
+        class="h-20 w-20 rounded-xl border border-border object-cover bg-surface-2"
+        onerror="this.src='';this.classList.add('hidden')"
+      />
+      <form id="logo-form" class="flex flex-col gap-2">
+        <input class="input !max-w-xs" type="file" name="logo" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+        <button type="submit" class="btn-primary !py-2 !text-xs w-fit">Subir logo</button>
+      </form>
+    </div>
   </div>
 
   <form id="profile-form" class="card space-y-4 p-5 sm:p-6">
     <div class="grid gap-4 sm:grid-cols-2">
       <div>
-        <label class="label" for="businessName">Nombre del salón</label>
+        <label class="label" for="businessName">Nombre del local</label>
         <input class="input" id="businessName" name="businessName" value={tenant.businessName} required />
       </div>
       <div>
@@ -39,6 +65,16 @@ const publicUrl = `${siteUrl}/s/${tenant.slug}`;
       <div>
         <label class="label" for="phone">Teléfono</label>
         <input class="input" id="phone" name="phone" value={tenant.phone} />
+      </div>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label" for="whatsapp">WhatsApp</label>
+        <input class="input" id="whatsapp" name="whatsapp" value={tenant.whatsapp} placeholder="8095551234" />
+      </div>
+      <div>
+        <label class="label" for="instagram">Instagram</label>
+        <input class="input" id="instagram" name="instagram" value={tenant.instagram} placeholder="tubarberia" />
       </div>
     </div>
     <div class="grid gap-4 sm:grid-cols-2">
@@ -69,11 +105,65 @@ const publicUrl = `${siteUrl}/s/${tenant.slug}`;
         <input class="input" id="accentColor" name="accentColor" type="color" value={tenant.accentColor} />
       </div>
     </div>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <div>
+        <label class="label" for="lunchStartHour">Almuerzo desde</label>
+        <input class="input" id="lunchStartHour" name="lunchStartHour" type="number" min="0" max="23" value={tenant.lunchStartHour} />
+      </div>
+      <div>
+        <label class="label" for="lunchEndHour">Almuerzo hasta</label>
+        <input class="input" id="lunchEndHour" name="lunchEndHour" type="number" min="0" max="24" value={tenant.lunchEndHour} />
+      </div>
+      <div>
+        <label class="label" for="slotBufferMin">Buffer (min)</label>
+        <input class="input" id="slotBufferMin" name="slotBufferMin" type="number" min="0" max="60" value={tenant.slotBufferMin} />
+      </div>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div>
+        <label class="label" for="closedWeekdays">Días cerrados (0=Dom, 1=Lun…)</label>
+        <input class="input" id="closedWeekdays" name="closedWeekdays" value={closedWeekdaysStr} placeholder="0" />
+      </div>
+      <div>
+        <label class="label" for="closedDays">Fechas cerradas (YYYY-MM-DD, coma)</label>
+        <input class="input" id="closedDays" name="closedDays" value={closedDaysStr} placeholder="2026-12-25" />
+      </div>
+    </div>
     <p id="profile-msg" class="hidden text-sm font-medium text-gold"></p>
     <button type="submit" class="btn-primary">Guardar perfil</button>
   </form>
 
-  <script>
+  <script define:vars={{ publicUrl, whatsapp: tenant.whatsapp || tenant.phone }}>
+    document.getElementById('copy-link')?.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(publicUrl);
+      alert('Enlace copiado');
+    });
+    const wa = document.getElementById('wa-share');
+    if (wa instanceof HTMLAnchorElement) {
+      const phone = String(whatsapp || '').replace(/\D/g, '');
+      wa.href = phone
+        ? `https://wa.me/${phone}?text=${encodeURIComponent(`Reserva tu cita: ${publicUrl}`)}`
+        : '#';
+    }
+
+    document.getElementById('logo-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target as HTMLFormElement;
+      const fd = new FormData(form);
+      const res = await fetch('/api/logo', { method: 'POST', body: fd });
+      const json = await res.json();
+      if (res.ok) {
+        const img = document.getElementById('logo-preview') as HTMLImageElement;
+        if (img) {
+          img.classList.remove('hidden');
+          img.src = `${json.logoUrl}?t=${Date.now()}`;
+        }
+        alert('Logo actualizado');
+      } else {
+        alert(json.error || 'Error al subir');
+      }
+    });
+
     const form = document.getElementById('profile-form') as HTMLFormElement;
     const msg = document.getElementById('profile-msg')!;
     form.addEventListener('submit', async (e) => {
@@ -82,6 +172,9 @@ const publicUrl = `${siteUrl}/s/${tenant.slug}`;
       const payload = Object.fromEntries(fd.entries());
       payload.openHour = Number(payload.openHour);
       payload.closeHour = Number(payload.closeHour);
+      payload.lunchStartHour = Number(payload.lunchStartHour);
+      payload.lunchEndHour = Number(payload.lunchEndHour);
+      payload.slotBufferMin = Number(payload.slotBufferMin);
       const res = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

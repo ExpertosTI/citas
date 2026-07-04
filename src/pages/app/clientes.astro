@@ -23,10 +23,10 @@ const clients = await getClients(tenantId);
       )}
       {clients.map((c) => (
         <div class="flex items-center justify-between gap-3 px-4 py-3">
-          <div class="min-w-0">
+          <button type="button" class="min-w-0 flex-1 text-left hist-cli" data-id={c.id}>
             <p class="font-semibold">{c.name}</p>
             <p class="truncate text-sm text-muted">{c.phone || '—'} · {c.email || 'sin email'}</p>
-          </div>
+          </button>
         </div>
       ))}
     </div>
@@ -56,7 +56,23 @@ const clients = await getClients(tenantId);
     </form>
   </dialog>
 
+  <dialog id="hist-modal" class="w-[min(100%,480px)] rounded-xl border border-border bg-surface p-0 shadow-xl backdrop:bg-black/60">
+    <div class="p-5">
+      <h2 class="brand-mark text-2xl" id="hist-title">Historial</h2>
+      <div id="hist-body" class="mt-4 max-h-80 space-y-2 overflow-y-auto text-sm"></div>
+      <button type="button" class="btn-ghost mt-4" id="hist-close">Cerrar</button>
+    </div>
+  </dialog>
+
   <script>
+    function esc(s: string) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
     const modal = document.getElementById('cli-modal') as HTMLDialogElement;
     const form = document.getElementById('cli-form') as HTMLFormElement;
     document.getElementById('new-cli')?.addEventListener('click', () => modal.showModal());
@@ -71,5 +87,25 @@ const clients = await getClients(tenantId);
       });
       location.reload();
     });
+
+    const histModal = document.getElementById('hist-modal') as HTMLDialogElement;
+    document.querySelectorAll('.hist-cli').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.id;
+        const res = await fetch(`/api/clients/${id}/history`);
+        const json = await res.json();
+        if (!res.ok) return;
+        (document.getElementById('hist-title') as HTMLElement).textContent = json.client.name;
+        const body = document.getElementById('hist-body')!;
+        body.innerHTML = (json.history || [])
+          .map(
+            (h: { startAt: string; status: string; service?: { name: string }; code?: string }) =>
+              `<div class="rounded-lg border border-border p-3"><strong>${esc(new Date(h.startAt).toLocaleString('es-DO'))}</strong><br/>${esc(h.service?.name || '')} · ${esc(h.status)} · ${esc(h.code || '')}</div>`,
+          )
+          .join('') || '<p class="text-muted">Sin citas previas</p>';
+        histModal.showModal();
+      });
+    });
+    document.getElementById('hist-close')?.addEventListener('click', () => histModal.close());
   </script>
 </AppLayout>

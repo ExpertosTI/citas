@@ -22,6 +22,7 @@ export const PATCH: APIRoute = async ({ request, params }) => {
     notes?: string;
     color?: string;
     startAt?: string;
+    cancelReason?: string;
     notify?: boolean;
   }>(request);
 
@@ -30,6 +31,7 @@ export const PATCH: APIRoute = async ({ request, params }) => {
     notes: body.notes,
     color: body.color as never,
     startAt: body.startAt,
+    cancelReason: body.cancelReason,
   });
 
   if (!appointment) return bad('Cita no encontrada', 404);

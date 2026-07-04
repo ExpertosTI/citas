@@ -1,12 +1,16 @@
 import type { APIRoute } from 'astro';
 import { createSessionToken, sessionCookie } from '../../../lib/auth';
 import { bad, json, readBody } from '../../../lib/http';
+import { rateLimitRequest } from '../../../lib/security';
 import { sendWelcomeEmail } from '../../../lib/mail';
 import { createTenant, safeTenant } from '../../../lib/store';
 
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request }) => {
+  const limited = rateLimitRequest(request, 'auth:register', 5, 60 * 60_000);
+  if (limited) return bad(limited, 429);
+
   const body = await readBody<{
     businessName?: string;
     ownerName?: string;
@@ -26,7 +30,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (businessName.length < 2) return bad('Indica el nombre del local');
   if (ownerName.length < 2) return bad('Indica tu nombre');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad('Email inválido');
-  if (password.length < 6) return bad('La contraseña debe tener al menos 6 caracteres');
+  if (password.length < 8) return bad('La contraseña debe tener al menos 8 caracteres');
 
   try {
     const tenant = await createTenant({
@@ -50,7 +54,7 @@ export const POST: APIRoute = async ({ request }) => {
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
-    if (msg === 'email_taken') return bad('Ese email ya está registrado', 409);
+    if (msg === 'email_taken') return bad('No se pudo crear la cuenta con esos datos', 409);
     return bad('No se pudo crear la cuenta', 500);
   }
 };

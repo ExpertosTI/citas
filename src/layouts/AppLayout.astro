@@ -6,9 +6,10 @@ import { getTenantById, safeTenant } from '../lib/store';
 interface Props {
   title?: string;
   active?: 'bahia' | 'servicios' | 'clientes' | 'perfil';
+  skipOnboardingGate?: boolean;
 }
 
-const { title = 'Panel', active = 'bahia' } = Astro.props;
+const { title = 'Panel', active = 'bahia', skipOnboardingGate = false } = Astro.props;
 const tenantId = tenantIdFromRequest(Astro.request);
 
 if (!tenantId) {
@@ -18,6 +19,10 @@ if (!tenantId) {
 const tenant = await getTenantById(tenantId);
 if (!tenant) {
   return Astro.redirect('/login');
+}
+
+if (!skipOnboardingGate && tenant.onboardingComplete === false) {
+  return Astro.redirect('/app/onboarding');
 }
 
 const t = safeTenant(tenant);
@@ -33,7 +38,8 @@ const nav = [
 ---
 
 <BaseLayout title={`${title} · ${t.businessName}`} bodyClass="">
-  <div class="min-h-dvh">
+  <div class="app-scene min-h-dvh">
+    <div class="accent-line"></div>
     <header class="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-md">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <div class="min-w-0">

@@ -1,0 +1,45 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { tenantIdFromRequest } from '../../lib/auth';
+import { getServices, getWaitlist } from '../../lib/store';
+
+const tenantId = tenantIdFromRequest(Astro.request)!;
+const [waitlist, services] = await Promise.all([getWaitlist(tenantId), getServices(tenantId)]);
+---
+
+<AppLayout title="Lista de espera" active="bahia">
+  <div class="mb-6">
+    <h1 class="brand-mark text-3xl">Lista de espera</h1>
+    <p class="mt-1 text-sm text-ink-soft">Clientes que buscaron cupo cuando no había horario</p>
+  </div>
+
+  <div class="card divide-y divide-border">
+    {waitlist.length === 0 && (
+      <p class="p-6 text-sm text-muted">Nadie en lista de espera.</p>
+    )}
+    {waitlist.map((w) => {
+      const svc = services.find((s) => s.id === w.serviceId);
+      return (
+        <div class="flex items-center justify-between gap-3 px-4 py-3">
+          <div>
+            <p class="font-semibold">{w.clientName}</p>
+            <p class="text-sm text-muted">
+              {w.preferredDate} · {svc?.name || 'Servicio'} · {w.clientPhone || w.clientEmail || '—'}
+            </p>
+          </div>
+          <button type="button" class="btn-ghost !px-3 !py-1.5 !text-xs del-wl" data-id={w.id}>Quitar</button>
+        </div>
+      );
+    })}
+  </div>
+
+  <script>
+    document.querySelectorAll('.del-wl').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = (btn as HTMLElement).dataset.id;
+        await fetch(`/api/waitlist/manage?id=${encodeURIComponent(id || '')}`, { method: 'DELETE' });
+        location.reload();
+      });
+    });
+  </script>
+</AppLayout>

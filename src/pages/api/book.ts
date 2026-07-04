@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { bad, json, readBody } from '../../lib/http';
+import { rateLimitRequest } from '../../lib/security';
 import { sendAppointmentNotifications } from '../../lib/mail';
 import {
   createAppointment,
@@ -21,6 +22,9 @@ export const GET: APIRoute = async ({ request }) => {
 };
 
 export const POST: APIRoute = async ({ request }) => {
+  const limited = rateLimitRequest(request, 'public:book', 25, 60 * 60_000);
+  if (limited) return bad(limited, 429);
+
   const body = await readBody<{
     slug?: string;
     serviceId?: string;
@@ -28,7 +32,9 @@ export const POST: APIRoute = async ({ request }) => {
     name?: string;
     email?: string;
     phone?: string;
+    haircutStyle?: string;
     notes?: string;
+    joinWaitlist?: boolean;
   }>(request);
 
   const slug = String(body.slug || '').trim();
@@ -51,6 +57,7 @@ export const POST: APIRoute = async ({ request }) => {
       serviceId: body.serviceId,
       startAt: body.startAt,
       notes: body.notes,
+      haircutStyle: body.haircutStyle,
       status: 'confirmed',
       source: 'public',
     });
@@ -67,10 +74,35 @@ export const POST: APIRoute = async ({ request }) => {
       }).catch(() => {});
     }
 
-    return json({ ok: true, appointment: { id: appointment.id, startAt: appointment.startAt, endAt: appointment.endAt } }, 201);
+    return json(
+      {
+        ok: true,
+        appointment: {
+          id: appointment.id,
+          code: appointment.code,
+          startAt: appointment.startAt,
+          endAt: appointment.endAt,
+        },
+      },
+      201,
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
-    if (msg === 'slot_taken') return bad('Ese horario ya no está disponible', 409);
+    if (msg === 'slot_taken') {
+      if (body.joinWaitlist) {
+        const { addWaitlistEntry } = await import('../../lib/store');
+        await addWaitlistEntry(tenant.id, {
+          clientName: name,
+          clientPhone: body.phone,
+          clientEmail: body.email,
+          serviceId: body.serviceId!,
+          preferredDate: body.startAt!.slice(0, 10),
+          notes: body.notes,
+        });
+        return json({ ok: true, waitlist: true }, 201);
+      }
+      return bad('Ese horario ya no está disponible', 409);
+    }
     return bad('No se pudo reservar', 500);
   }
 };

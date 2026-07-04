@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { hashPassword, newId, slugify } from './auth';
 import { countryPreset } from './geo';
+import { appointmentCode, normalizeTenant } from './tenant';
 
 const DATA_DIR = process.env.CITAS_DATA_DIR || path.join(process.cwd(), 'data');
 
@@ -29,11 +30,21 @@ export type Tenant = {
   address: string;
   city: string;
   country: string;
+  currency: string;
   bio: string;
   accentColor: string;
+  logoUrl: string;
   timezone: string;
   openHour: number;
   closeHour: number;
+  lunchStartHour: number;
+  lunchEndHour: number;
+  slotBufferMin: number;
+  closedDays: string[];
+  closedWeekdays: number[];
+  instagram: string;
+  whatsapp: string;
+  onboardingComplete?: boolean;
   createdAt: string;
 };
 
@@ -69,9 +80,24 @@ export type Appointment = {
   status: AppointmentStatus;
   color: AppointmentColor;
   notes?: string;
+  haircutStyle?: string;
   source: 'dashboard' | 'public';
+  code: string;
+  cancelReason?: string;
   createdAt: string;
   reminderSentAt?: string | null;
+};
+
+export type WaitlistEntry = {
+  id: string;
+  tenantId: string;
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  serviceId: string;
+  preferredDate: string;
+  notes?: string;
+  createdAt: string;
 };
 
 export type PublicTenant = Omit<Tenant, 'passwordHash' | 'email'> & { email?: never };
@@ -111,12 +137,12 @@ function defaultServices(tenantId: string): Service[] {
 }
 
 export function publicTenant(t: Tenant): PublicTenant {
-  const { passwordHash: _, email: __, ...rest } = t;
+  const { passwordHash: _, email: __, ...rest } = normalizeTenant(t);
   return rest;
 }
 
 export function safeTenant(t: Tenant) {
-  const { passwordHash: _, ...rest } = t;
+  const { passwordHash: _, ...rest } = normalizeTenant(t);
   return rest;
 }
 
@@ -126,12 +152,14 @@ export async function getTenants(): Promise<Tenant[]> {
 
 export async function getTenantById(id: string) {
   const tenants = await getTenants();
-  return tenants.find((t) => t.id === id) || null;
+  const t = tenants.find((x) => x.id === id);
+  return t ? normalizeTenant(t) : null;
 }
 
 export async function getTenantBySlug(slug: string) {
   const tenants = await getTenants();
-  return tenants.find((t) => t.slug === slug) || null;
+  const t = tenants.find((x) => x.slug === slug);
+  return t ? normalizeTenant(t) : null;
 }
 
 export async function getTenantByEmail(email: string) {
@@ -165,7 +193,7 @@ export async function createTenant(input: {
 
   const preset = countryPreset(input.country || 'DO');
 
-  const tenant: Tenant = {
+  const tenant: Tenant = normalizeTenant({
     id: newId('ten'),
     slug,
     businessName: input.businessName.trim(),
@@ -176,13 +204,23 @@ export async function createTenant(input: {
     address: '',
     city: (input.city || preset.city).trim(),
     country: preset.code,
-    bio: 'Barbería urbana · Reserva tu cita en línea',
+    currency: preset.currency,
+    bio: 'Reserva tu cita en línea · Servicio profesional',
     accentColor: '#e8b923',
+    logoUrl: '',
     timezone: preset.timezone,
     openHour: 9,
     closeHour: 20,
+    lunchStartHour: 13,
+    lunchEndHour: 14,
+    slotBufferMin: 5,
+    closedDays: [],
+    closedWeekdays: [0],
+    instagram: '',
+    whatsapp: (input.phone || '').trim(),
+    onboardingComplete: false,
     createdAt: new Date().toISOString(),
-  };
+  });
 
   tenants.push(tenant);
   await writeJson('tenants.json', tenants);
@@ -216,9 +254,9 @@ export async function updateTenant(id: string, patch: Partial<Tenant>) {
 
   if (patch.passwordHash) next.passwordHash = patch.passwordHash;
 
-  tenants[idx] = next;
+  tenants[idx] = normalizeTenant({ ...next, ...patch } as Tenant);
   await writeJson('tenants.json', tenants);
-  return next;
+  return tenants[idx];
 }
 
 async function getAllServices() {
@@ -266,6 +304,25 @@ export async function deleteService(tenantId: string, id: string) {
   const next = all.filter((s) => !(s.id === id && s.tenantId === tenantId));
   await writeJson('services.json', next);
   return next.length < all.length;
+}
+
+export async function replaceTenantServices(
+  tenantId: string,
+  items: Array<{ name: string; durationMin: number; price: number; color: AppointmentColor; active?: boolean }>,
+) {
+  const all = await getAllServices();
+  const kept = all.filter((s) => s.tenantId !== tenantId);
+  const next = items.map((item) => ({
+    id: newId('svc'),
+    tenantId,
+    name: item.name.trim(),
+    durationMin: item.durationMin,
+    price: item.price,
+    color: item.color,
+    active: item.active ?? true,
+  }));
+  await writeJson('services.json', [...kept, ...next]);
+  return next;
 }
 
 async function getAllClients() {
@@ -383,6 +440,7 @@ export async function createAppointment(
     color?: AppointmentColor;
     status?: AppointmentStatus;
     source?: 'dashboard' | 'public';
+    haircutStyle?: string;
   },
 ) {
   const services = await getServices(tenantId);
@@ -420,7 +478,9 @@ export async function createAppointment(
     status: input.status || 'confirmed',
     color: input.color || service.color,
     notes: input.notes,
+    haircutStyle: input.haircutStyle,
     source: input.source || 'dashboard',
+    code: appointmentCode(),
     createdAt: new Date().toISOString(),
   };
 
@@ -433,7 +493,12 @@ export async function createAppointment(
 export async function updateAppointment(
   tenantId: string,
   id: string,
-  patch: Partial<Pick<Appointment, 'status' | 'notes' | 'color' | 'startAt' | 'endAt' | 'reminderSentAt'>>,
+  patch: Partial<
+    Pick<
+      Appointment,
+      'status' | 'notes' | 'color' | 'startAt' | 'endAt' | 'reminderSentAt' | 'cancelReason' | 'haircutStyle'
+    >
+  >,
 ) {
   const all = await getAllAppointments();
   const idx = all.findIndex((a) => a.id === id && a.tenantId === tenantId);
@@ -528,5 +593,98 @@ export async function getDashboardStats(tenantId: string) {
         service: services.find((s) => s.id === a.serviceId) || null,
         colorHex: APPOINTMENT_COLORS.find((c) => c.id === a.color)?.hex || '#e8b923',
       })),
+    weekRevenue: appointments
+      .filter((a) => {
+        const t = new Date(a.startAt).getTime();
+        const weekAgo = Date.now() - 7 * 86400_000;
+        return t >= weekAgo && a.status === 'completed';
+      })
+      .reduce((sum, a) => {
+        const svc = services.find((s) => s.id === a.serviceId);
+        return sum + (svc?.price || 0);
+      }, 0),
+    noShowCount: appointments.filter((a) => a.status === 'no_show').length,
+    waitlistCount: (await getWaitlist(tenantId)).length,
   };
+}
+
+async function getAllWaitlist() {
+  return readJson<WaitlistEntry[]>('waitlist.json', []);
+}
+
+export async function getWaitlist(tenantId: string) {
+  const all = await getAllWaitlist();
+  return all.filter((w) => w.tenantId === tenantId);
+}
+
+export async function addWaitlistEntry(
+  tenantId: string,
+  input: {
+    clientName: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    serviceId: string;
+    preferredDate: string;
+    notes?: string;
+  },
+) {
+  const entry: WaitlistEntry = {
+    id: newId('wl'),
+    tenantId,
+    clientName: input.clientName.trim(),
+    clientPhone: (input.clientPhone || '').trim(),
+    clientEmail: (input.clientEmail || '').trim().toLowerCase(),
+    serviceId: input.serviceId,
+    preferredDate: input.preferredDate.slice(0, 10),
+    notes: input.notes,
+    createdAt: new Date().toISOString(),
+  };
+  const all = await getAllWaitlist();
+  all.unshift(entry);
+  await writeJson('waitlist.json', all.slice(0, 2000));
+  return entry;
+}
+
+export async function removeWaitlistEntry(tenantId: string, id: string) {
+  const all = await getAllWaitlist();
+  const next = all.filter((w) => !(w.id === id && w.tenantId === tenantId));
+  await writeJson('waitlist.json', next);
+  return next.length < all.length;
+}
+
+export async function getClientHistory(tenantId: string, clientId: string) {
+  const [appointments, clients, services] = await Promise.all([
+    getAppointments(tenantId),
+    getClients(tenantId),
+    getServices(tenantId),
+  ]);
+  const client = clients.find((c) => c.id === clientId);
+  if (!client) return null;
+  const history = appointments
+    .filter((a) => a.clientId === clientId)
+    .sort((a, b) => b.startAt.localeCompare(a.startAt))
+    .map((a) => ({
+      ...a,
+      service: services.find((s) => s.id === a.serviceId) || null,
+      colorHex: APPOINTMENT_COLORS.find((c) => c.id === a.color)?.hex || '#e8b923',
+    }));
+  return { client, history };
+}
+
+export async function getBoardWeek(tenantId: string, startDate: string) {
+  const start = new Date(`${startDate.slice(0, 10)}T00:00:00`);
+  const days: { date: string; count: number; revenue: number }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    const key = localDate(d.toISOString());
+    const board = await getBoardDay(tenantId, key);
+    const active = board.appointments.filter((a) => a.status !== 'cancelled');
+    days.push({
+      date: key,
+      count: active.length,
+      revenue: active.reduce((s, a) => s + (a.service?.price || 0), 0),
+    });
+  }
+  return days;
 }

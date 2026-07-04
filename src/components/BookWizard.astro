@@ -1,0 +1,140 @@
+---
+import { APPOINTMENT_COLORS, type Service } from '../lib/store';
+import { CUT_STYLES } from '../lib/cut-styles';
+import StyleCard from './StyleCard.astro';
+
+interface Props {
+  slug: string;
+  services: Service[];
+  currency: string;
+  whatsapp: string;
+  accentColor: string;
+}
+
+const { slug, services, currency, whatsapp } = Astro.props;
+const sym = currency === 'DOP' ? 'RD$' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'RD$';
+const today = new Date();
+const minDate = today.toISOString().slice(0, 10);
+const totalSteps = 5;
+---
+
+<div
+  id="book-wizard"
+  class="card glass-panel overflow-hidden p-5 sm:p-7"
+  data-slug={slug}
+  data-whatsapp={whatsapp}
+  data-total={totalSteps}
+>
+  <div class="relative z-10 mb-2 flex items-center justify-between">
+    <p class="text-xs font-semibold uppercase tracking-wider text-muted">Paso 1 · Estilo</p>
+    <span class="chip border border-gold/30 bg-gold-dim text-gold">Reserva</span>
+  </div>
+
+  <div class="relative z-10 mb-5 flex gap-1.5" aria-hidden="true">
+    {Array.from({ length: totalSteps }, (_, i) => (
+      <div class="step-dot" data-step-dot={i + 1}></div>
+    ))}
+  </div>
+
+  <p id="book-step-label" class="relative z-10 mb-1 wizard-sub">Paso 1 de {totalSteps}</p>
+
+  <form id="book-form" class="relative z-10" novalidate>
+    <!-- 1 · Estilo de servicio -->
+    <fieldset data-step="1" class="step-panel space-y-3">
+      <legend class="wizard-title mb-1 block">Elige tu estilo</legend>
+      <p class="wizard-sub mb-4">Indica el look que deseas para tu cita</p>
+      <div class="grid grid-cols-2 gap-3 sm:grid-cols-2">
+        {CUT_STYLES.map((style) => (
+          <StyleCard style={style} />
+        ))}
+      </div>
+      <div class="ai-teaser">
+        <span>Próximamente</span>
+        <strong>Vista previa con IA</strong>
+        <p>Prueba el estilo con cámara y envíalo directo a tu profesional.</p>
+      </div>
+    </fieldset>
+
+    <!-- 2 · Servicio -->
+    <fieldset data-step="2" class="step-panel hidden space-y-3">
+      <legend class="wizard-title mb-3 block">Servicio</legend>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {services.map((s) => {
+          const color = APPOINTMENT_COLORS.find((c) => c.id === s.color)?.hex || '#ff2d95';
+          return (
+            <label class="choice-card cursor-pointer" style={`border-left: 3px solid ${color}`}>
+              <input type="radio" name="serviceId" value={s.id} class="sr-only" required />
+              <span class="font-bold text-white">{s.name}</span>
+              <span class="text-xs text-muted">{s.durationMin} min · {sym}{s.price}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+
+    <!-- 3 · Fecha -->
+    <fieldset data-step="3" class="step-panel hidden space-y-3">
+      <legend class="wizard-title mb-3 block">¿Qué día?</legend>
+      <input class="input" type="date" name="date" min={minDate} required />
+    </fieldset>
+
+    <!-- 4 · Hora -->
+    <fieldset data-step="4" class="step-panel hidden space-y-3">
+      <legend class="wizard-title mb-3 block">¿A qué hora?</legend>
+      <div id="slots-grid" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+      <button type="button" id="book-waitlist" class="btn-ghost mt-2 w-full !text-xs">
+        Sin cupo · Lista de espera
+      </button>
+    </fieldset>
+
+    <!-- 5 · Datos -->
+    <fieldset data-step="5" class="step-panel hidden space-y-3">
+      <legend class="wizard-title mb-3 block">Tus datos</legend>
+      <div id="style-summary" class="rounded border border-neon-pink/30 bg-neon-pink/5 px-3 py-2 text-sm text-ink-soft hidden"></div>
+      <div>
+        <label class="label" for="name">Nombre</label>
+        <input class="input" id="name" name="name" required autocomplete="name" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="label" for="phone">Teléfono</label>
+          <input class="input" id="phone" name="phone" type="tel" autocomplete="tel" />
+        </div>
+        <div>
+          <label class="label" for="email">Email</label>
+          <input class="input" id="email" name="email" type="email" autocomplete="email" />
+        </div>
+      </div>
+      <div>
+        <label class="label" for="notes">Notas extra</label>
+        <textarea class="input" id="notes" name="notes" rows="2" placeholder="Detalles del fade, línea, etc."></textarea>
+      </div>
+    </fieldset>
+
+    <p id="book-error" class="mt-4 hidden text-sm font-medium text-danger" role="alert"></p>
+
+    <div class="mt-6 flex gap-3">
+      <button type="button" id="book-back" class="btn-ghost hidden flex-1">Atrás</button>
+      <button type="button" id="book-next" class="btn-primary flex-1">Siguiente</button>
+      <button type="submit" id="book-submit" class="btn-primary hidden flex-1">Confirmar cita</button>
+    </div>
+  </form>
+
+  <div id="book-success" class="relative z-10 hidden py-6 text-center">
+    <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-lg border border-neon-cyan/40 bg-neon-cyan/10 text-3xl text-neon-cyan">✓</div>
+    <h3 class="wizard-title text-3xl">Locked in</h3>
+    <p id="book-success-style" class="mt-2 text-sm text-neon-pink"></p>
+    <p id="book-success-when" class="mt-1 text-sm text-ink-soft"></p>
+    <p class="mt-4 text-xs uppercase tracking-[0.2em] text-muted">Código</p>
+    <p id="book-success-code" class="brand-mark text-5xl"></p>
+    <div class="mt-6 flex flex-col gap-3">
+      <a id="book-wa" class="btn-primary w-full" href="#" target="_blank" rel="noopener noreferrer">WhatsApp al barbero</a>
+      <button type="button" id="book-again" class="btn-ghost w-full">Otra cita</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { initBookWizard } from '../scripts/book-wizard.js';
+  initBookWizard();
+</script>

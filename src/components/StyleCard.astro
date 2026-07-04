@@ -1,0 +1,27 @@
+---
+import type { CutStyle } from '../lib/cut-styles';
+
+interface Props {
+  style: CutStyle;
+  selected?: boolean;
+}
+
+const { style, selected = false } = Astro.props;
+---
+
+<label
+  class:list={['style-card group cursor-pointer', selected && 'is-selected']}
+  data-style={style.id}
+  style={`--style-glow: ${style.glow}`}
+>
+  <input type="radio" name="haircutStyle" value={style.id} class="sr-only" required />
+  <div class="style-card__visual" style={`background: ${style.gradient}`}>
+    <div class="style-card__silhouette" data-cut={style.id} aria-hidden="true"></div>
+    <div class="style-card__scan"></div>
+  </div>
+  <div class="style-card__info">
+    <span class="style-card__label">{style.label}</span>
+    <span class="style-card__tag">{style.tagline}</span>
+  </div>
+  <span class="style-card__check" aria-hidden="true">✓</span>
+</label>
