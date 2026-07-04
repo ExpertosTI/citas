@@ -31,64 +31,62 @@ const features = [
     d: 'Logo, colores, bio y horarios — todo configurable desde el panel.',
   },
 ];
+
+const demoSlots = [
+  { t: '09:00', n: 'Carlos M.', s: 'Corte ejecutivo', g: 'linear-gradient(135deg,#4c3d9e,#7c5cff)' },
+  { t: '10:30', n: 'Ana R.', s: 'Color + corte', g: 'linear-gradient(135deg,#0066aa,#00d4ff)' },
+  { t: '12:00', n: 'Miguel S.', s: 'Barba premium', g: 'linear-gradient(135deg,#8b3a6b,#ff6b9d)' },
+  { t: '15:00', n: 'Laura P.', s: 'Tratamiento', g: 'linear-gradient(135deg,#2d4a6e,#5b8def)' },
+];
 ---
 
 <BaseLayout>
   <div class="app-scene">
     <div class="accent-line"></div>
 
-    <header class="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-      <a href="/" class="brand-mark brand-mark--gold text-3xl sm:text-4xl">Citas</a>
+    <header class="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+      <a href="/" class="brand-mark brand-mark--accent text-3xl sm:text-4xl">Citas</a>
       <div class="flex items-center gap-2">
         <span class="geo-badge hidden sm:inline-flex">{geo.city}</span>
-        <a href="/login" class="btn-ghost !py-2 !text-sm">Entrar</a>
-        <a href="/registro" class="btn-primary !py-2 !text-sm">Crear mi negocio</a>
+        <a href="/login" class="btn-ghost !py-2 !px-5 !text-sm">Entrar</a>
+        <a href="/registro" class="btn-primary !py-2 !px-5 !text-sm">Crear mi negocio</a>
       </div>
     </header>
 
-    <section class="mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-10 lg:grid-cols-2 lg:items-center lg:pt-20">
+    <section class="relative z-10 mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-10 lg:grid-cols-2 lg:items-center lg:pt-16">
       <div>
-        <p class="hero-eyebrow chip border border-gold/30 bg-gold-dim text-gold">
-          Agenda profesional · {geo.city}
+        <p class="hero-eyebrow chip border border-violet/40 bg-gold-dim text-brand">
+          Agenda inteligente · {geo.city}
         </p>
-        <h1 class="hero-title brand-mark mt-5 text-5xl sm:text-6xl lg:text-7xl">
+        <h1 class="hero-title brand-mark mt-5 text-5xl sm:text-6xl lg:text-[4.25rem]">
           Tu negocio.<br />
-          <span class="brand-mark--gold">Listo en minutos.</span>
+          <span class="brand-mark--accent">Listo en minutos.</span>
         </h1>
         <p class="hero-copy mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
-          Citas es la plataforma de reservas para barberías, salones y centros de belleza.
-          Un asistente con IA te ayuda a configurar servicios, precios y horarios — sin complicaciones.
+          Reservas para barberías, salones y centros de belleza.
+          La IA configura servicios, precios y horario — tú solo confirmas.
         </p>
         <div class="hero-cta mt-8 flex flex-wrap gap-3">
           <a href="/registro" class="btn-primary">Empezar gratis</a>
           <a href="#como-funciona" class="btn-ghost">Cómo funciona</a>
         </div>
-        <p class="mt-6 text-sm text-muted">citas.renace.tech</p>
       </div>
 
       <div class="hero-visual card glass-panel relative overflow-hidden p-5 sm:p-7">
         <div class="relative z-10 mb-4 flex items-center justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted">Panel del día</p>
-            <p class="brand-mark text-2xl">Bahía de citas</p>
+            <p class="text-xs font-bold uppercase tracking-widest text-brand">Panel del día</p>
+            <p class="brand-mark text-2xl text-white">Bahía de citas</p>
           </div>
-          <span class="chip border border-brand/30 bg-brand-dim text-brand">En vivo</span>
+          <span class="chip border border-pink/40 bg-violet-dim text-pink">● En vivo</span>
         </div>
         <div class="relative z-10 space-y-2.5">
-          {[
-            { t: '09:00', n: 'Carlos M.', s: 'Corte ejecutivo', c: '#1e3a5f' },
-            { t: '10:30', n: 'Ana R.', s: 'Color + corte', c: '#5b4a8a' },
-            { t: '12:00', n: 'Miguel S.', s: 'Barba premium', c: '#3d4f5f' },
-            { t: '15:00', n: 'Laura P.', s: 'Tratamiento', c: '#6b5a3a' },
-          ].map((row) => (
-            <div
-              class="flex items-center gap-3 rounded-lg border border-white/10 p-3 text-white"
-              style={`background:linear-gradient(135deg,${row.c},rgba(0,0,0,0.2))`}
-            >
-              <span class="w-12 text-sm font-semibold tabular-nums opacity-90">{row.t}</span>
+          {demoSlots.map((row) => (
+            <div class="live-slot" style={`background:${row.g}`}>
+              <span class="w-12 shrink-0 text-sm font-bold tabular-nums">{row.t}</span>
               <div class="min-w-0">
-                <p class="truncate font-semibold">{row.n}</p>
-                <p class="truncate text-xs opacity-80">{row.s}</p>
+                <p class="truncate font-bold">{row.n}</p>
+                <p class="truncate text-xs opacity-85">{row.s}</p>
               </div>
             </div>
           ))}
@@ -96,25 +94,25 @@ const features = [
       </div>
     </section>
 
-    <section id="como-funciona" class="border-t border-border bg-surface/40 py-16">
+    <section id="como-funciona" class="relative z-10 border-t border-white/5 py-16">
       <div class="mx-auto max-w-6xl px-4">
         <div class="ai-spotlight card mx-auto mb-12 max-w-3xl p-8 text-center">
-          <p class="text-xs font-semibold uppercase tracking-wider text-gold">Lo más importante</p>
-          <h2 class="brand-mark mt-2 text-3xl sm:text-4xl">La IA configura tu empresa por ti</h2>
+          <p class="text-xs font-bold uppercase tracking-widest text-brand">Lo esencial</p>
+          <h2 class="brand-mark mt-2 text-3xl sm:text-4xl text-white">La IA arma tu negocio por ti</h2>
           <p class="mx-auto mt-4 max-w-xl text-ink-soft">
-            Después de registrarte, un asistente conversacional te pregunta el nombre de tu negocio,
-            qué servicios ofreces, a qué precio y tu horario. Al final, aplicas y tu panel queda listo.
+            Servicios, precios, horario y colores — en una conversación corta.
+            Al final aplicas y tu panel queda listo para recibir citas.
           </p>
-          <a href="/registro" class="btn-primary mt-6">Probar el asistente AI</a>
+          <a href="/registro" class="btn-primary mt-6">Probar el asistente</a>
         </div>
 
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
-            <article class:list={['feature-card card glass-panel p-6', f.highlight && 'border-gold/25']}>
+            <article class:list={['feature-card card glass-panel p-6', f.highlight && 'border-violet/30']}>
               {f.highlight && (
-                <span class="chip mb-3 border border-gold/30 bg-gold-dim text-gold">Destacado</span>
+                <span class="chip mb-3 border border-violet/40 bg-violet-dim text-brand">★ Destacado</span>
               )}
-              <h3 class="brand-mark text-xl">{f.t}</h3>
+              <h3 class="brand-mark text-xl text-white">{f.t}</h3>
               <p class="mt-2 text-sm leading-relaxed text-ink-soft">{f.d}</p>
             </article>
           ))}
@@ -122,8 +120,8 @@ const features = [
       </div>
     </section>
 
-    <footer class="border-t border-border py-10 text-center text-sm text-muted">
-      <p>Citas · renace.tech · Agenda inteligente para tu negocio</p>
+    <footer class="relative z-10 border-t border-white/5 py-10 text-center text-sm text-muted">
+      <p>Citas · renace.tech</p>
     </footer>
   </div>
 </BaseLayout>

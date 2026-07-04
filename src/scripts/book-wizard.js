@@ -35,7 +35,7 @@ export function initBookWizard() {
   let step = 1;
   let selectedStartAt = '';
 
-  // Style cards (GTA character select)
+  // Style cards — dynamic selection
   form.querySelectorAll('.style-card').forEach((card) => {
     const input = card.querySelector('input[type="radio"]');
     if (!(input instanceof HTMLInputElement)) return;

@@ -1,6 +1,5 @@
 ---
 import '../styles/global.css';
-import { geoFromRequest } from '../lib/geo';
 
 interface Props {
   title?: string;
@@ -15,7 +14,6 @@ const {
 } = Astro.props;
 
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
-const geo = geoFromRequest(Astro.request);
 ---
 
 <!doctype html>
@@ -24,18 +22,24 @@ const geo = geoFromRequest(Astro.request);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#080b12" />
+    <meta name="theme-color" content="#03040a" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="canonical" href={siteUrl} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
     <title>{title}</title>
   </head>
-  <body class={bodyClass} data-country={geo.country}>
+  <body class={bodyClass}>
+    <div class="bg-ambient" aria-hidden="true">
+      <div class="bg-ambient__orb bg-ambient__orb--1"></div>
+      <div class="bg-ambient__orb bg-ambient__orb--2"></div>
+      <div class="bg-ambient__orb bg-ambient__orb--3"></div>
+      <div class="bg-ambient__grid"></div>
+    </div>
     <slot />
   </body>
 </html>
