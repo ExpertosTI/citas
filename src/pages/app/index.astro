@@ -3,12 +3,10 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import { statusLabel } from '../../lib/appointment-status';
 import { buildDayBoard } from '../../lib/day-board';
 import { cutStyleLabel } from '../../lib/cut-styles';
-import { guardAppPage } from '../../lib/page-auth';
 import { getBoardDay, getBoardWeek, getDashboardStats } from '../../lib/store';
 
-const auth = await guardAppPage(Astro.request);
-if ('redirect' in auth) return Astro.redirect(auth.redirect);
-const { tenantId, tenant } = auth;
+const tenantId = Astro.locals.tenantId!;
+const tenant = Astro.locals.tenant!;
 
 const today = new Date();
 const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;

@@ -1,32 +1,16 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import AssistantPanel from '../components/AssistantPanel.astro';
-import { tenantIdFromRequest } from '../lib/auth';
-import { getTenantById, safeTenant } from '../lib/store';
+import { safeTenant } from '../lib/store';
 
 interface Props {
   title?: string;
   active?: 'bahia' | 'servicios' | 'clientes' | 'perfil' | 'asistente';
-  skipOnboardingGate?: boolean;
 }
 
 const { title = 'Panel', active = 'bahia' } = Astro.props;
-const tenantId = tenantIdFromRequest(Astro.request);
-
-if (!tenantId) {
-  return Astro.redirect('/login');
-}
-
-const tenant = await getTenantById(tenantId);
-if (!tenant) {
-  return Astro.redirect('/login');
-}
-
-const isOnboardingPage = Astro.url.pathname.startsWith('/app/onboarding');
-if (!isOnboardingPage && tenant.onboardingComplete === false) {
-  return Astro.redirect('/app/onboarding');
-}
-
+const tenantId = Astro.locals.tenantId!;
+const tenant = Astro.locals.tenant!;
 const t = safeTenant(tenant);
 const showAssistant = tenant.onboardingComplete !== false;
 const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;

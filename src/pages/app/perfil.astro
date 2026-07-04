@@ -1,12 +1,9 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
 import { COUNTRY_PRESETS } from '../../lib/geo';
-import { guardAppPage } from '../../lib/page-auth';
 import { safeTenant } from '../../lib/store';
 
-const auth = await guardAppPage(Astro.request);
-if ('redirect' in auth) return Astro.redirect(auth.redirect);
-const tenant = safeTenant(auth.tenant);
+const tenant = safeTenant(Astro.locals.tenant!);
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
 const publicUrl = `${siteUrl}/s/${tenant.slug}`;
 const logoPreview = tenant.logoUrl?.startsWith('http') ? tenant.logoUrl : `/api/logo/${tenant.id}?t=${Date.now()}`;

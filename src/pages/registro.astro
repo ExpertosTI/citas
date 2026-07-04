@@ -1,11 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { geoFromRequest } from '../lib/geo';
-import { tenantIdFromRequest } from '../lib/auth';
-
-if (tenantIdFromRequest(Astro.request)) {
-  return Astro.redirect('/app');
-}
 
 const geo = geoFromRequest(Astro.request);
 ---
@@ -98,6 +93,7 @@ const geo = geoFromRequest(Astro.request);
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify(data),
       });
       const json = await res.json();
@@ -106,7 +102,7 @@ const geo = geoFromRequest(Astro.request);
         errorEl.classList.remove('hidden');
         return;
       }
-      location.href = '/app/onboarding';
+      location.href = json.tenant?.onboardingComplete === false ? '/app/onboarding' : '/app';
     });
   </script>
 </BaseLayout>

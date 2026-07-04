@@ -1,22 +1,12 @@
 ---
 import OnboardingLayout from '../../layouts/OnboardingLayout.astro';
-import { tenantIdFromRequest } from '../../lib/auth';
 import { isGeminiConfigured } from '../../lib/gemini';
 import { initialAssistantMessage } from '../../lib/onboarding-ai';
-import { getTenantById, safeTenant } from '../../lib/store';
+import { safeTenant } from '../../lib/store';
 
-const tenantId = tenantIdFromRequest(Astro.request);
-if (!tenantId) return Astro.redirect('/login');
-
-const tenant = await getTenantById(tenantId);
-if (!tenant) return Astro.redirect('/login');
-
-const isReopen = Astro.url.searchParams.has('open');
-if (tenant.onboardingComplete !== false && !isReopen) {
-  return Astro.redirect('/app');
-}
-
+const tenant = Astro.locals.tenant!;
 const t = safeTenant(tenant);
+const isReopen = Astro.url.searchParams.has('open');
 const geminiOk = isGeminiConfigured();
 const greeting = initialAssistantMessage(tenant);
 const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;

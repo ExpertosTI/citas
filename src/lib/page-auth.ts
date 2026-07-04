@@ -5,6 +5,10 @@ export type AppPageAuth =
   | { redirect: string }
   | { tenantId: string; tenant: Tenant };
 
+export function postAuthPath(tenant: Pick<Tenant, 'onboardingComplete'>) {
+  return tenant.onboardingComplete === false ? '/app/onboarding' : '/app';
+}
+
 export async function guardAppPage(
   request: Request,
   opts: { allowOnboarding?: boolean } = {},
@@ -22,4 +26,14 @@ export async function guardAppPage(
   }
 
   return { tenantId, tenant };
+}
+
+/** Prefer middleware locals; fallback for tests. */
+export function appContext(locals: App.Locals, request: Request) {
+  if (locals.tenantId && locals.tenant) {
+    return { tenantId: locals.tenantId, tenant: locals.tenant };
+  }
+  const tenantId = tenantIdFromRequest(request);
+  if (!tenantId) throw new Error('unauthenticated');
+  return { tenantId, tenant: null as Tenant | null };
 }

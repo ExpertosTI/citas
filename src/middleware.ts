@@ -1,6 +1,9 @@
 import { defineMiddleware } from 'astro:middleware';
+import { tenantIdFromRequest } from './lib/auth';
 import { GEO_COOKIE, detectCountryCode } from './lib/geo';
+import { postAuthPath } from './lib/page-auth';
 import { securityHeaders } from './lib/security';
+import { getTenantById } from './lib/store';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const existing = context.cookies.get(GEO_COOKIE)?.value;
@@ -18,6 +21,38 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   context.locals.geoCountry = existing && existing.length === 2 ? existing : detected;
 
+  const { pathname } = context.url;
+
+  if (pathname.startsWith('/app')) {
+    const tenantId = tenantIdFromRequest(context.request);
+    if (!tenantId) return context.redirect('/login');
+
+    const tenant = await getTenantById(tenantId);
+    if (!tenant) return context.redirect('/login');
+
+    context.locals.tenantId = tenantId;
+    context.locals.tenant = tenant;
+
+    const onOnboarding = pathname.startsWith('/app/onboarding');
+    const isReopen = context.url.searchParams.has('open');
+
+    if (onOnboarding) {
+      if (tenant.onboardingComplete !== false && !isReopen) {
+        return context.redirect('/app');
+      }
+    } else if (tenant.onboardingComplete === false) {
+      return context.redirect('/app/onboarding');
+    }
+  }
+
+  if (pathname === '/login' || pathname === '/registro') {
+    const tenantId = tenantIdFromRequest(context.request);
+    if (tenantId) {
+      const tenant = await getTenantById(tenantId);
+      if (tenant) return context.redirect(postAuthPath(tenant));
+    }
+  }
+
   const response = await next();
   const headers = securityHeaders();
   for (const [k, v] of Object.entries(headers)) {
@@ -29,5 +64,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 declare namespace App {
   interface Locals {
     geoCountry?: string;
+    tenantId?: string;
+    tenant?: import('./lib/store').Tenant;
   }
 }
