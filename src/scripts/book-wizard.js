@@ -9,6 +9,68 @@ const STYLE_LABELS = {
   afro: 'Afro / Natural',
 };
 
+function bindChoiceCards(form, onSelect) {
+  form.querySelectorAll('.flow-choice, .choice-card').forEach((card) => {
+    const input = card.querySelector('input[type="radio"]');
+    if (!(input instanceof HTMLInputElement)) return;
+
+    const sync = () => {
+      form.querySelectorAll(`input[name="${input.name}"]`).forEach((radio) => {
+        radio.closest('.flow-choice, .choice-card')?.classList.toggle('is-selected', radio.checked);
+      });
+    };
+
+    card.addEventListener('click', (e) => {
+      e.preventDefault();
+      input.checked = true;
+      sync();
+      onSelect?.(input.name, input.value);
+    });
+  });
+}
+
+function renderDateChips(form) {
+  const grid = document.getElementById('date-grid');
+  const hidden = document.getElementById('date-hidden');
+  if (!grid || !(hidden instanceof HTMLInputElement)) return;
+
+  const days = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
+
+  grid.innerHTML = days
+    .map((d, i) => {
+      const iso = d.toISOString().slice(0, 10);
+      const dayName = d.toLocaleDateString('es-DO', { weekday: 'short' }).replace('.', '');
+      const month = d.toLocaleDateString('es-DO', { month: 'short' }).replace('.', '');
+      const num = d.getDate();
+      return `
+        <label class="date-chip ${i === 0 ? '' : ''}" data-date="${iso}">
+          <input type="radio" name="datePick" value="${iso}" class="sr-only" />
+          <span class="date-chip__day">${dayName} · ${month}</span>
+          <span class="date-chip__num">${num}</span>
+        </label>`;
+    })
+    .join('');
+
+  grid.querySelectorAll('.date-chip').forEach((chip) => {
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      const iso = chip.getAttribute('data-date') || '';
+      hidden.value = iso;
+      grid.querySelectorAll('.date-chip').forEach((c) => c.classList.remove('is-selected'));
+      chip.classList.add('is-selected');
+      const input = chip.querySelector('input');
+      if (input instanceof HTMLInputElement) input.checked = true;
+      if (step === 3) setTimeout(() => go(4), 220);
+    });
+  });
+}
+
 export function initBookWizard() {
   const root = document.getElementById('book-wizard');
   const form = document.getElementById('book-form');
@@ -35,33 +97,22 @@ export function initBookWizard() {
   let step = 1;
   let selectedStartAt = '';
 
-  // Style cards — dynamic selection
+  renderDateChips(form);
+
   form.querySelectorAll('.style-card').forEach((card) => {
     const input = card.querySelector('input[type="radio"]');
     if (!(input instanceof HTMLInputElement)) return;
-
     card.addEventListener('click', (e) => {
       e.preventDefault();
       input.checked = true;
       form.querySelectorAll('.style-card').forEach((c) => c.classList.remove('is-selected'));
       card.classList.add('is-selected');
-      if (step === 1) setTimeout(() => go(2), 220);
+      if (step === 1) setTimeout(() => go(2), 200);
     });
   });
 
-  // Service + slot choice cards
-  form.querySelectorAll('.choice-card').forEach((card) => {
-    const input = card.querySelector('input[type="radio"]');
-    if (!(input instanceof HTMLInputElement)) return;
-
-    card.addEventListener('click', (e) => {
-      e.preventDefault();
-      input.checked = true;
-      form.querySelectorAll(`input[name="${input.name}"]`).forEach((radio) => {
-        radio.closest('.choice-card')?.classList.toggle('is-selected', radio.checked);
-      });
-      if (step === 2) setTimeout(() => go(3), 180);
-    });
+  bindChoiceCards(form, (name) => {
+    if (name === 'serviceId' && step === 2) setTimeout(() => go(3), 200);
   });
 
   function setError(msg) {
@@ -86,8 +137,8 @@ export function initBookWizard() {
   }
 
   function selectedDate() {
-    const el = form.querySelector('input[name="date"]');
-    return el instanceof HTMLInputElement ? el.value : '';
+    const hidden = document.getElementById('date-hidden');
+    return hidden instanceof HTMLInputElement ? hidden.value : '';
   }
 
   function updateStyleSummary() {
@@ -97,7 +148,7 @@ export function initBookWizard() {
       styleSummary.classList.add('hidden');
       return;
     }
-    styleSummary.textContent = `Estilo seleccionado: ${STYLE_LABELS[id] || id}`;
+    styleSummary.textContent = `Estilo: ${STYLE_LABELS[id] || id}`;
     styleSummary.classList.remove('hidden');
   }
 
@@ -110,44 +161,41 @@ export function initBookWizard() {
       return;
     }
 
-    slotsWrap.innerHTML = '<p class="text-sm text-neon-cyan animate-pulse">Cargando horarios…</p>';
+    slotsWrap.innerHTML = '<p class="text-sm text-muted animate-pulse">Cargando horarios…</p>';
     const res = await fetch(
       `/api/slots?slug=${encodeURIComponent(slug)}&date=${encodeURIComponent(date)}&serviceId=${encodeURIComponent(serviceId)}`,
     );
     const data = await res.json();
     if (!res.ok || !data.slots?.length) {
-      slotsWrap.innerHTML =
-        '<p class="text-sm text-muted">No hay horarios libres. Únete a la lista de espera.</p>';
+      slotsWrap.innerHTML = '<p class="text-sm text-muted">No hay horarios libres. Puedes unirte a la lista de espera.</p>';
       return;
     }
 
     slotsWrap.innerHTML = data.slots
       .map(
         (s) => `
-      <label class="choice-card slot-card cursor-pointer">
+      <label class="flow-choice choice-card slot-card cursor-pointer">
         <input type="radio" name="startAt" value="${s.startAt}" class="sr-only" required />
-        <span class="text-sm font-bold text-white">${s.label}</span>
+        <span class="flow-choice__body">
+          <span class="flow-choice__title">${s.label}</span>
+        </span>
+        <span class="flow-radio"></span>
       </label>`,
       )
       .join('');
 
-    slotsWrap.querySelectorAll('.slot-card').forEach((card) => {
-      const input = card.querySelector('input');
-      if (!(input instanceof HTMLInputElement)) return;
-      card.addEventListener('click', (e) => {
-        e.preventDefault();
-        input.checked = true;
-        slotsWrap.querySelectorAll('.slot-card').forEach((c) => c.classList.remove('is-selected'));
-        card.classList.add('is-selected');
-        selectedStartAt = input.value;
-        setTimeout(() => go(5), 180);
-      });
+    bindChoiceCards(form, (name) => {
+      if (name === 'startAt' && step === 4) {
+        const slot = form.querySelector('input[name="startAt"]:checked');
+        if (slot instanceof HTMLInputElement) selectedStartAt = slot.value;
+        setTimeout(() => go(5), 200);
+      }
     });
   }
 
   function validateStep(n) {
     if (n === 1 && !selectedHaircutStyle()) {
-      setError('Elige un estilo de corte');
+      setError('Elige un estilo');
       return false;
     }
     if (n === 2 && !selectedServiceId()) {
@@ -191,6 +239,7 @@ export function initBookWizard() {
     btnBack?.classList.toggle('hidden', step <= 1);
     btnNext?.classList.toggle('hidden', step >= total);
     btnSubmit?.classList.toggle('hidden', step !== total);
+    if (step === 3 && !document.querySelector('.date-chip.is-selected')) renderDateChips(form);
     if (step === 4) loadSlots();
     if (step === 5) updateStyleSummary();
   }
@@ -242,7 +291,8 @@ export function initBookWizard() {
     }
 
     form.classList.add('hidden');
-    document.querySelector('#book-wizard .relative.z-10.mb-2')?.classList.add('hidden');
+    document.querySelector('.flow-wizard .mb-5')?.classList.add('hidden');
+    stepLabel?.classList.add('hidden');
     successEl?.classList.remove('hidden');
     if (successCode) successCode.textContent = json.appointment?.code || '—';
     if (successStyle) successStyle.textContent = styleLabel;

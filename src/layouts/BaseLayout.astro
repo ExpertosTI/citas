@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { geoFromRequest } from '../lib/geo';
 
 interface Props {
   title?: string;
@@ -9,11 +10,12 @@ interface Props {
 
 const {
   title = 'Citas · Agenda inteligente para tu negocio',
-  description = 'Plataforma de reservas para barberías, salones y centros de belleza. Asistente AI de configuración, bahía de citas y booking en línea.',
+  description = 'Plataforma de reservas para barberías, salones y centros de belleza.',
   bodyClass = '',
 } = Astro.props;
 
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
+const geo = geoFromRequest(Astro.request);
 ---
 
 <!doctype html>
@@ -22,23 +24,28 @@ const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech')
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#03040a" />
+    <meta name="theme-color" content="#f7f4ef" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="canonical" href={siteUrl} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Outfit:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
     <title>{title}</title>
   </head>
-  <body class={bodyClass}>
-    <div class="bg-ambient" aria-hidden="true">
-      <div class="bg-ambient__orb bg-ambient__orb--1"></div>
-      <div class="bg-ambient__orb bg-ambient__orb--2"></div>
-      <div class="bg-ambient__orb bg-ambient__orb--3"></div>
-      <div class="bg-ambient__grid"></div>
+  <body class={bodyClass} data-country={geo.country}>
+    <div class="theme-motifs" aria-hidden="true">
+      <svg class="theme-motifs__item theme-motifs__item--1" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="8" y="12" width="32" height="28" rx="4" /><path d="M16 12V8h16v4M20 24h8M20 30h12" />
+      </svg>
+      <svg class="theme-motifs__item theme-motifs__item--2" viewBox="0 0 40 40" fill="currentColor" opacity="0.5">
+        <circle cx="20" cy="20" r="8" />
+      </svg>
+      <svg class="theme-motifs__item theme-motifs__item--3" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="24" cy="24" r="14" /><path d="M24 14v10l7 4" />
+      </svg>
     </div>
     <slot />
   </body>

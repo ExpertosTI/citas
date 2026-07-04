@@ -5,88 +5,57 @@ import { geoFromRequest } from '../lib/geo';
 const geo = geoFromRequest(Astro.request);
 
 const features = [
-  {
-    t: 'Asistente AI',
-    d: 'Al registrarte, la IA te guía paso a paso: servicios, precios, horarios y colores de tu marca.',
-    highlight: true,
-  },
-  {
-    t: 'Bahía de citas',
-    d: 'Vista del día con códigos de color. Completa, reagenda o marca no-show en un clic.',
-  },
-  {
-    t: 'Reservas en línea',
-    d: 'Link propio para que tus clientes agenden solos, elijan servicio y estilo preferido.',
-  },
-  {
-    t: 'Notificaciones',
-    d: 'Confirmaciones y recordatorios por email a ti y a tus clientes.',
-  },
-  {
-    t: 'Lista de espera',
-    d: 'Si no hay cupo, el cliente entra en espera y tú lo contactas.',
-  },
-  {
-    t: 'Perfil de marca',
-    d: 'Logo, colores, bio y horarios — todo configurable desde el panel.',
-  },
-];
-
-const demoSlots = [
-  { t: '09:00', n: 'Carlos M.', s: 'Corte ejecutivo', g: 'linear-gradient(135deg,#4c3d9e,#7c5cff)' },
-  { t: '10:30', n: 'Ana R.', s: 'Color + corte', g: 'linear-gradient(135deg,#0066aa,#00d4ff)' },
-  { t: '12:00', n: 'Miguel S.', s: 'Barba premium', g: 'linear-gradient(135deg,#8b3a6b,#ff6b9d)' },
-  { t: '15:00', n: 'Laura P.', s: 'Tratamiento', g: 'linear-gradient(135deg,#2d4a6e,#5b8def)' },
+  { t: 'Asistente AI', d: 'La IA configura servicios, precios, horario y colores de tu marca en minutos.', highlight: true },
+  { t: 'Bahía de citas', d: 'Vista del día con colores. Completa, reagenda o marca no-show al instante.' },
+  { t: 'Reservas en línea', d: 'Link propio para que tus clientes agenden solos, elijan servicio y estilo.' },
+  { t: 'Notificaciones', d: 'Confirmaciones y recordatorios por email.' },
+  { t: 'Lista de espera', d: 'Si no hay cupo, el cliente entra en espera automáticamente.' },
+  { t: 'Perfil de marca', d: 'Logo, bio y horarios desde el panel.' },
 ];
 ---
 
 <BaseLayout>
-  <div class="app-scene">
-    <div class="accent-line"></div>
-
-    <header class="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-      <a href="/" class="brand-mark brand-mark--accent text-3xl sm:text-4xl">Citas</a>
+  <div class="app-scene relative z-10">
+    <header class="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+      <a href="/" class="brand-mark text-2xl sm:text-3xl">Citas</a>
       <div class="flex items-center gap-2">
         <span class="geo-badge hidden sm:inline-flex">{geo.city}</span>
-        <a href="/login" class="btn-ghost !py-2 !px-5 !text-sm">Entrar</a>
-        <a href="/registro" class="btn-primary !py-2 !px-5 !text-sm">Crear mi negocio</a>
+        <a href="/login" class="btn-ghost !py-2 !px-4 !text-sm">Entrar</a>
+        <a href="/registro" class="btn-primary !py-2 !px-4 !text-sm">Crear mi negocio</a>
       </div>
     </header>
 
-    <section class="relative z-10 mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-10 lg:grid-cols-2 lg:items-center lg:pt-16">
+    <section class="mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-6 lg:grid-cols-2 lg:items-center">
       <div>
-        <p class="hero-eyebrow chip border border-violet/40 bg-gold-dim text-brand">
+        <p class="hero-eyebrow text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">
           Agenda inteligente · {geo.city}
         </p>
-        <h1 class="hero-title brand-mark mt-5 text-5xl sm:text-6xl lg:text-[4.25rem]">
-          Tu negocio.<br />
-          <span class="brand-mark--accent">Listo en minutos.</span>
+        <h1 class="hero-title brand-mark mt-4 text-4xl sm:text-5xl lg:text-6xl">
+          Tu negocio listo en minutos.
         </h1>
-        <p class="hero-copy mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">
-          Reservas para barberías, salones y centros de belleza.
-          La IA configura servicios, precios y horario — tú solo confirmas.
+        <p class="hero-copy mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+          Reservas para barberías, salones y spas. Un asistente con IA configura todo por ti — servicios, precios y horario.
         </p>
-        <div class="hero-cta mt-8 flex flex-wrap gap-3">
+        <div class="hero-cta mt-7 flex flex-wrap gap-3">
           <a href="/registro" class="btn-primary">Empezar gratis</a>
-          <a href="#como-funciona" class="btn-ghost">Cómo funciona</a>
+          <a href="#features" class="btn-ghost">Cómo funciona</a>
         </div>
       </div>
 
-      <div class="hero-visual card glass-panel relative overflow-hidden p-5 sm:p-7">
-        <div class="relative z-10 mb-4 flex items-center justify-between">
-          <div>
-            <p class="text-xs font-bold uppercase tracking-widest text-brand">Panel del día</p>
-            <p class="brand-mark text-2xl text-white">Bahía de citas</p>
-          </div>
-          <span class="chip border border-pink/40 bg-violet-dim text-pink">● En vivo</span>
-        </div>
-        <div class="relative z-10 space-y-2.5">
-          {demoSlots.map((row) => (
-            <div class="live-slot" style={`background:${row.g}`}>
-              <span class="w-12 shrink-0 text-sm font-bold tabular-nums">{row.t}</span>
+      <div class="hero-visual card p-5 sm:p-6">
+        <p class="text-xs font-semibold uppercase tracking-wider text-muted">Panel del día</p>
+        <p class="brand-mark mt-1 text-xl">Bahía de citas</p>
+        <div class="mt-4 space-y-2">
+          {[
+            { t: '09:00', n: 'Carlos M.', s: 'Corte ejecutivo' },
+            { t: '10:30', n: 'Ana R.', s: 'Color + corte' },
+            { t: '12:00', n: 'Miguel S.', s: 'Barba premium' },
+          ].map((row) => (
+            <div class="live-slot">
+              <span class="w-12 shrink-0 text-sm font-bold tabular-nums text-navy">{row.t}</span>
               <div class="min-w-0">
-                <p class="truncate font-bold">{row.n}</p>
-                <p class="truncate text-xs opacity-85">{row.s}</p>
+                <p class="truncate font-semibold text-ink">{row.n}</p>
+                <p class="truncate text-xs text-muted">{row.s}</p>
               </div>
             </div>
           ))}
@@ -94,33 +63,31 @@ const demoSlots = [
       </div>
     </section>
 
-    <section id="como-funciona" class="relative z-10 border-t border-white/5 py-16">
+    <section id="features" class="border-t border-black/5 py-14">
       <div class="mx-auto max-w-6xl px-4">
-        <div class="ai-spotlight card mx-auto mb-12 max-w-3xl p-8 text-center">
-          <p class="text-xs font-bold uppercase tracking-widest text-brand">Lo esencial</p>
-          <h2 class="brand-mark mt-2 text-3xl sm:text-4xl text-white">La IA arma tu negocio por ti</h2>
-          <p class="mx-auto mt-4 max-w-xl text-ink-soft">
-            Servicios, precios, horario y colores — en una conversación corta.
-            Al final aplicas y tu panel queda listo para recibir citas.
+        <div class="ai-spotlight card mx-auto mb-10 max-w-2xl p-8 text-center">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Lo esencial</p>
+          <h2 class="brand-mark mt-2 text-2xl sm:text-3xl">La IA arma tu negocio por ti</h2>
+          <p class="mx-auto mt-3 max-w-md text-sm text-muted">
+            Servicios, precios, horario y colores — en una conversación corta. Aplicas y listo.
           </p>
-          <a href="/registro" class="btn-primary mt-6">Probar el asistente</a>
+          <a href="/registro" class="btn-primary mt-5">Probar el asistente</a>
         </div>
-
-        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
-            <article class:list={['feature-card card glass-panel p-6', f.highlight && 'border-violet/30']}>
+            <article class="feature-card card p-5">
               {f.highlight && (
-                <span class="chip mb-3 border border-violet/40 bg-violet-dim text-brand">★ Destacado</span>
+                <span class="chip mb-2 border border-gold/30 bg-gold-dim text-mustard-deep">Destacado</span>
               )}
-              <h3 class="brand-mark text-xl text-white">{f.t}</h3>
-              <p class="mt-2 text-sm leading-relaxed text-ink-soft">{f.d}</p>
+              <h3 class="brand-mark text-lg">{f.t}</h3>
+              <p class="mt-1.5 text-sm text-muted">{f.d}</p>
             </article>
           ))}
         </div>
       </div>
     </section>
 
-    <footer class="relative z-10 border-t border-white/5 py-10 text-center text-sm text-muted">
+    <footer class="border-t border-black/5 py-8 text-center text-sm text-muted">
       <p>Citas · renace.tech</p>
     </footer>
   </div>

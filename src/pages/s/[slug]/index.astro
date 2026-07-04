@@ -17,33 +17,22 @@ const logoSrc = t.logoUrl?.startsWith('http') ? t.logoUrl : `/api/logo/${tenant.
 
 <BaseLayout title={`Reservar · ${t.businessName}`} description={t.bio}>
   <div class="app-scene min-h-dvh">
-    <div class="accent-line"></div>
-    <header class="mx-auto max-w-lg px-4 py-8 text-center">
-      <p class="text-xs font-semibold uppercase tracking-wider text-muted">Reserva en línea</p>
-      <div class="mt-4 flex flex-col items-center gap-3">
-        <img
-          src={logoSrc}
-          alt={t.businessName}
-          class="h-24 w-24 rounded-lg border-2 border-gold/30 object-cover bg-surface-2 shadow-lg"
-          onerror="this.style.display='none'"
-        />
-        <h1 class="brand-mark brand-mark--gold text-5xl">{t.businessName}</h1>
+    <div class="relative z-10 mx-auto max-w-xl px-4 pb-16 pt-8">
+      <div class="mb-6 text-center">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Reserva en línea</p>
+        <div class="mt-4 flex flex-col items-center gap-3">
+          <img
+            src={logoSrc}
+            alt={t.businessName}
+            class="h-20 w-20 rounded-2xl border border-black/8 object-cover bg-white shadow-sm"
+            onerror="this.style.display='none'"
+          />
+          <h1 class="brand-mark text-3xl sm:text-4xl">{t.businessName}</h1>
+        </div>
+        <p class="mt-2 text-sm text-muted">{t.bio}</p>
+        <p class="mt-2 text-sm text-muted">{[t.city, t.phone].filter(Boolean).join(' · ')}</p>
       </div>
-      <p class="mt-2 text-sm text-ink-soft">{t.bio}</p>
-      <p class="mt-3 text-sm text-muted">{[t.city, t.phone].filter(Boolean).join(' · ')}</p>
-      {t.instagram && (
-        <a
-          class="mt-2 inline-block text-sm text-gold"
-          href={`https://instagram.com/${t.instagram.replace('@', '')}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          @{t.instagram.replace('@', '')}
-        </a>
-      )}
-    </header>
 
-    <main class="mx-auto max-w-lg px-4 pb-16">
       {services.length === 0 ? (
         <div class="card p-6 text-center text-sm text-muted">Este local aún no tiene servicios activos.</div>
       ) : (
@@ -57,8 +46,8 @@ const logoSrc = t.logoUrl?.startsWith('http') ? t.logoUrl : `/api/logo/${tenant.
       )}
 
       <p class="mt-6 text-center text-xs text-muted">
-        Powered by <a class="font-semibold text-gold" href="https://citas.renace.tech">Citas · renace.tech</a>
+        <a class="font-semibold text-navy" href="https://citas.renace.tech">Citas · renace.tech</a>
       </p>
-    </main>
+    </div>
   </div>
 </BaseLayout>
