@@ -24,16 +24,29 @@ const geminiOk = isGeminiConfigured();
   data-business={businessName}
 >
   <button type="button" id="assistant-fab" class="assistant-fab" aria-label="Abrir asistente">
-    <span class="assistant-fab__icon">✦</span>
+    <svg class="assistant-fab__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+      <circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/>
+      <path d="M8.5 8.5L20 3M8.5 15.5L20 21M20 3L14 12L20 21"/>
+    </svg>
   </button>
 
   <div id="assistant-backdrop" class="assistant-backdrop" aria-hidden="true"></div>
 
   <aside id="assistant-drawer" class="assistant-drawer" aria-hidden="true" aria-label="Asistente de configuración">
+    <div class="assistant-drawer__deco" aria-hidden="true">
+      <svg class="assistant-drawer__deco-comb" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
+        <rect x="10" y="8" width="28" height="32" rx="4"/>
+        <path d="M16 16h16M16 22h16M16 28h12"/>
+      </svg>
+      <svg class="assistant-drawer__deco-scissors" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="14" cy="14" r="4"/><circle cx="14" cy="34" r="4"/>
+        <path d="M17 17L38 8M17 31L38 40M38 8L28 24L38 40"/>
+      </svg>
+    </div>
     <header class="assistant-drawer__head">
       <div>
-        <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-mustard-deep">Siempre disponible</p>
-        <p class="font-display text-base font-semibold text-ink">Asistente · {businessName}</p>
+        <p class="assistant-drawer__eyebrow">Siempre disponible</p>
+        <p class="assistant-drawer__title">Asistente · {businessName}</p>
       </div>
       <button type="button" id="assistant-close" class="assistant-drawer__close" aria-label="Cerrar">×</button>
     </header>

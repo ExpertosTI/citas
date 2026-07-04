@@ -1,5 +1,5 @@
 import { statusLabel } from './appointment-status';
-import type { OnboardingAiResponse } from './onboarding-ai';
+import type { AssistantAppointmentCard, OnboardingAiResponse } from './onboarding-ai';
 import { getAppointments, getClients, getServices } from './store';
 
 function localDate(iso: string) {
@@ -26,6 +26,30 @@ export function isAppointmentQuery(text: string) {
   );
 }
 
+function toCard(
+  a: Awaited<ReturnType<typeof getAppointments>>[0],
+  clients: Awaited<ReturnType<typeof getClients>>,
+  services: Awaited<ReturnType<typeof getServices>>,
+): AssistantAppointmentCard {
+  const client = clients.find((c) => c.id === a.clientId);
+  const service = services.find((s) => s.id === a.serviceId);
+  return {
+    id: a.id,
+    clientName: client?.name || 'Cliente',
+    serviceName: service?.name || 'Servicio',
+    when: formatWhen(a.startAt),
+    status: a.status,
+    statusLabel: statusLabel(a.status),
+    code: a.code || '',
+    date: localDate(a.startAt),
+    pending: a.status === 'pending',
+  };
+}
+
+function cardsResponse(reply: string, list: AssistantAppointmentCard[]): OnboardingAiResponse {
+  return { reply, cards: list, readyToApply: false };
+}
+
 export async function answerAppointmentQuery(
   tenantId: string,
   text: string,
@@ -39,27 +63,18 @@ export async function answerAppointmentQuery(
     getServices(tenantId),
   ]);
 
-  const describe = (a: (typeof appointments)[0]) => {
-    const client = clients.find((c) => c.id === a.clientId);
-    const service = services.find((s) => s.id === a.serviceId);
-    const day = localDate(a.startAt);
-    return `• **${client?.name || 'Cliente'}** — ${service?.name || 'Servicio'} — ${formatWhen(a.startAt)} — _${statusLabel(a.status)}_ · ${a.code} · [${day}](/app?date=${day})`;
-  };
-
   if (/pendiente/.test(n)) {
     const pending = appointments
       .filter((a) => a.status === 'pending')
       .sort((a, b) => a.startAt.localeCompare(b.startAt));
     if (!pending.length) {
-      return {
-        reply: 'No tienes citas **pendientes** de confirmar. Todo al día.',
-        readyToApply: false,
-      };
+      return { reply: 'No tienes citas pendientes. Todo al día.', readyToApply: false };
     }
-    return {
-      reply: `Tienes **${pending.length}** cita(s) pendientes:\n\n${pending.map(describe).join('\n')}\n\nAbre la bahía de ese día para **Confirmar** o **Rechazar**.`,
-      readyToApply: false,
-    };
+    const cards = pending.map((a) => toCard(a, clients, services));
+    return cardsResponse(
+      `Tienes ${pending.length} cita${pending.length === 1 ? '' : 's'} pendiente${pending.length === 1 ? '' : 's'}:`,
+      cards,
+    );
   }
 
   if (/hoy/.test(n)) {
@@ -68,12 +83,12 @@ export async function answerAppointmentQuery(
       .filter((a) => localDate(a.startAt) === today && a.status !== 'cancelled')
       .sort((a, b) => a.startAt.localeCompare(b.startAt));
     if (!todayAppts.length) {
-      return { reply: 'No hay citas agendadas para **hoy**.', readyToApply: false };
+      return { reply: 'No hay citas agendadas para hoy.', readyToApply: false };
     }
-    return {
-      reply: `**Hoy** tienes ${todayAppts.length} cita(s):\n\n${todayAppts.map(describe).join('\n')}`,
-      readyToApply: false,
-    };
+    return cardsResponse(
+      `Hoy tienes ${todayAppts.length} cita${todayAppts.length === 1 ? '' : 's'}:`,
+      todayAppts.map((a) => toCard(a, clients, services)),
+    );
   }
 
   if (/pr[oó]xim|siguiente|futur/.test(n)) {
@@ -84,10 +99,7 @@ export async function answerAppointmentQuery(
     if (!upcoming.length) {
       return { reply: 'No hay citas próximas en la agenda.', readyToApply: false };
     }
-    return {
-      reply: `Próximas citas:\n\n${upcoming.map(describe).join('\n')}`,
-      readyToApply: false,
-    };
+    return cardsResponse('Próximas citas:', upcoming.map((a) => toCard(a, clients, services)));
   }
 
   if (/cu[aá]ntas|total|resumen|estado/.test(n)) {
@@ -100,7 +112,7 @@ export async function answerAppointmentQuery(
       (a) => a.status !== 'cancelled' && new Date(a.startAt).getTime() >= Date.now(),
     ).length;
     return {
-      reply: `Resumen de tu agenda:\n• **Pendientes de confirmar:** ${pending}\n• **Hoy:** ${todayN} cita(s)\n• **Próximas (total):** ${upcoming}\n\nPregúntame "citas pendientes" o "citas de hoy" para el detalle.`,
+      reply: `Resumen:\n· Pendientes: ${pending}\n· Hoy: ${todayN}\n· Próximas: ${upcoming}`,
       readyToApply: false,
     };
   }
@@ -108,10 +120,10 @@ export async function answerAppointmentQuery(
   if (/cita|agenda|reserva/.test(n)) {
     const pending = appointments.filter((a) => a.status === 'pending');
     if (pending.length) {
-      return {
-        reply: `Tienes **${pending.length}** pendiente(s):\n\n${pending.map(describe).join('\n')}`,
-        readyToApply: false,
-      };
+      return cardsResponse(
+        `${pending.length} pendiente${pending.length === 1 ? '' : 's'}:`,
+        pending.map((a) => toCard(a, clients, services)),
+      );
     }
     const upcoming = appointments
       .filter((a) => a.status !== 'cancelled' && new Date(a.startAt).getTime() >= Date.now())
@@ -120,10 +132,7 @@ export async function answerAppointmentQuery(
     if (!upcoming.length) {
       return { reply: 'La agenda está vacía por ahora.', readyToApply: false };
     }
-    return {
-      reply: `Próximas citas:\n\n${upcoming.map(describe).join('\n')}`,
-      readyToApply: false,
-    };
+    return cardsResponse('Próximas citas:', upcoming.map((a) => toCard(a, clients, services)));
   }
 
   return null;

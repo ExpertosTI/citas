@@ -46,6 +46,19 @@ export type OnboardingAiResponse = {
   reply: string;
   setup?: OnboardingSetupDraft;
   readyToApply: boolean;
+  cards?: AssistantAppointmentCard[];
+};
+
+export type AssistantAppointmentCard = {
+  id: string;
+  clientName: string;
+  serviceName: string;
+  when: string;
+  status: string;
+  statusLabel: string;
+  code: string;
+  date: string;
+  pending: boolean;
 };
 
 export type AssistantMode = 'onboarding' | 'assistant';

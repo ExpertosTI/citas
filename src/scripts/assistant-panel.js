@@ -1,7 +1,10 @@
-/** @typedef {{ role: 'user' | 'assistant', content: string }} Msg */
+/** @typedef {{ role: 'user' | 'assistant', content: string, cards?: AptCard[] }} Msg */
+/** @typedef {{ id: string, clientName: string, serviceName: string, when: string, status: string, statusLabel: string, code: string, date: string, pending: boolean }} AptCard */
 /** @typedef {{ businessName?: string, bio?: string, services?: Array<{ name: string, price: number, durationMin: number }>, openHour?: number, closeHour?: number, lunchStartHour?: number, lunchEndHour?: number, closedWeekdays?: number[], removeServices?: string[] }} Setup */
 
-import { toast } from './ui-feedback.js';
+import { confirmAction, toast } from './ui-feedback.js';
+
+const SCISSORS_SVG = `<svg class="asst-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8.5 8.5L20 3M8.5 15.5L20 21M20 3L14 12L20 21"/></svg>`;
 
 export function initAssistantPanel() {
   const root = document.getElementById('assistant-panel-root');
@@ -28,11 +31,98 @@ export function initAssistantPanel() {
   let opened = false;
 
   function esc(s) {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   function renderMarkdownLite(text) {
-    return esc(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+    return esc(text)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/_(.+?)_/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
+  }
+
+  /** @param {AptCard} c */
+  function renderAppointmentCard(c) {
+    const badgeClass =
+      c.status === 'pending'
+        ? 'asst-apt-card__badge--pending'
+        : c.status === 'confirmed'
+          ? 'asst-apt-card__badge--confirmed'
+          : '';
+    return `
+      <article class="asst-apt-card" data-id="${esc(c.id)}">
+        <div class="asst-apt-card__head">
+          <span class="asst-apt-card__glyph">${SCISSORS_SVG}</span>
+          <div class="asst-apt-card__info">
+            <p class="asst-apt-card__client">${esc(c.clientName)}</p>
+            <p class="asst-apt-card__meta">${esc(c.serviceName)} · ${esc(c.when)}</p>
+          </div>
+          <span class="asst-apt-card__badge ${badgeClass}">${esc(c.statusLabel)}</span>
+        </div>
+        ${c.code ? `<p class="asst-apt-card__code">#${esc(c.code)}</p>` : ''}
+        <div class="asst-apt-card__actions">
+          ${
+            c.pending
+              ? `<button type="button" class="asst-btn asst-btn--confirm" data-apt-action="confirmed" data-apt-id="${esc(c.id)}">Confirmar</button>
+                 <button type="button" class="asst-btn asst-btn--reject" data-apt-action="cancelled" data-apt-id="${esc(c.id)}">Rechazar</button>`
+              : ''
+          }
+          <a href="/app?date=${esc(c.date)}" class="asst-btn asst-btn--ghost">Ver bahía</a>
+        </div>
+      </article>`;
+  }
+
+  /** @param {AptCard[]} cards */
+  function renderCards(cards) {
+    if (!cards?.length) return '';
+    return `<div class="asst-cards">${cards.map(renderAppointmentCard).join('')}</div>`;
+  }
+
+  async function patchAppointment(id, body) {
+    const res = await fetch(`/api/appointments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(String(json.error || 'No se pudo actualizar'));
+    }
+  }
+
+  function bindCardActions() {
+    messagesEl?.querySelectorAll('[data-apt-action]').forEach((btn) => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-apt-id');
+        const action = btn.getAttribute('data-apt-action');
+        if (!id || !action || busy) return;
+        if (action === 'cancelled') {
+          const ok = await confirmAction('¿Cancelar esta cita?', {
+            confirmLabel: 'Sí, cancelar',
+            cancelLabel: 'No',
+          });
+          if (!ok) return;
+        }
+        busy = true;
+        btn.setAttribute('disabled', 'true');
+        try {
+          await patchAppointment(id, { status: action, notify: true });
+          toast(action === 'confirmed' ? 'Cita confirmada' : 'Cita cancelada', 'success');
+          setTimeout(() => location.reload(), 700);
+        } catch (err) {
+          toast(err instanceof Error ? err.message : 'Error', 'error');
+          btn.removeAttribute('disabled');
+          busy = false;
+        }
+      });
+    });
   }
 
   function open() {
@@ -64,7 +154,7 @@ export function initAssistantPanel() {
     el.id = 'assistant-typing';
     el.className = 'assistant-msg assistant-msg--ai';
     el.innerHTML = `
-      <span class="assistant-msg__avatar">AI</span>
+      <span class="assistant-msg__avatar">${SCISSORS_SVG}</span>
       <div class="assistant-msg__bubble assistant-msg__typing">
         <span></span><span></span><span></span>
       </div>`;
@@ -82,11 +172,15 @@ export function initAssistantPanel() {
       .map(
         (m) => `
       <div class="assistant-msg assistant-msg--${m.role === 'assistant' ? 'ai' : 'user'}">
-        ${m.role === 'assistant' ? '<span class="assistant-msg__avatar">AI</span>' : ''}
-        <div class="assistant-msg__bubble">${renderMarkdownLite(m.content)}</div>
+        ${m.role === 'assistant' ? `<span class="assistant-msg__avatar">${SCISSORS_SVG}</span>` : ''}
+        <div class="assistant-msg__bubble">
+          <div class="assistant-msg__text">${renderMarkdownLite(m.content)}</div>
+          ${m.cards?.length ? renderCards(m.cards) : ''}
+        </div>
       </div>`,
       )
       .join('');
+    bindCardActions();
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
@@ -104,10 +198,10 @@ export function initAssistantPanel() {
     const removes = (draftSetup.removeServices || []).map((n) => `<li class="text-red-600">− ${esc(n)}</li>`).join('');
 
     previewEl.innerHTML = `
-      <p class="text-[10px] font-bold uppercase tracking-[0.12em] text-muted">Cambios pendientes</p>
-      ${draftSetup.openHour !== undefined ? `<p class="mt-1 text-xs text-ink-soft">Horario: ${draftSetup.openHour}:00 – ${draftSetup.closeHour}:00</p>` : ''}
-      ${svcs ? `<ul class="mt-1 space-y-0.5 text-xs">${svcs}</ul>` : ''}
-      ${removes ? `<ul class="mt-1">${removes}</ul>` : ''}`;
+      <p class="asst-preview__label">Cambios pendientes</p>
+      ${draftSetup.openHour !== undefined ? `<p class="asst-preview__line">Horario: ${draftSetup.openHour}:00 – ${draftSetup.closeHour}:00</p>` : ''}
+      ${svcs ? `<ul class="asst-preview__list">${svcs}</ul>` : ''}
+      ${removes ? `<ul class="asst-preview__list">${removes}</ul>` : ''}`;
     previewEl.classList.remove('hidden');
     applyBtn.classList.remove('hidden');
   }
@@ -153,9 +247,13 @@ export function initAssistantPanel() {
     showTyping();
 
     try {
-      const json = await post({ action: 'chat', messages });
+      const json = await post({ action: 'chat', messages: messages.map(({ role, content }) => ({ role, content })) });
       hideTyping();
-      messages.push({ role: 'assistant', content: String(json.reply) });
+      messages.push({
+        role: 'assistant',
+        content: String(json.reply),
+        cards: Array.isArray(json.cards) ? json.cards : [],
+      });
       mergeSetup(json.setup);
       readyToApply = Boolean(json.readyToApply);
       renderMessages();
@@ -196,7 +294,7 @@ export function initAssistantPanel() {
     applyBtn.disabled = true;
     try {
       await post({ action: 'apply', setup: draftSetup });
-      messages.push({ role: 'assistant', content: '**Cambios guardados.** Recarga la página si no los ves al instante.' });
+      messages.push({ role: 'assistant', content: 'Cambios guardados. Recarga la página si no los ves al instante.' });
       draftSetup = {};
       readyToApply = false;
       renderMessages();
