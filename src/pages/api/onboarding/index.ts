@@ -14,6 +14,7 @@ import {
   type OnboardingSetupDraft,
 } from '../../../lib/onboarding-ai';
 import { answerAppointmentQuery } from '../../../lib/assistant-queries';
+import { bookAppointmentFromText } from '../../../lib/assistant-booking';
 import { getServices, getTenantById, safeTenant } from '../../../lib/store';
 
 export const prerender = false;
@@ -82,6 +83,11 @@ export const POST: APIRoute = async ({ request }) => {
   const existingServices = await getServices(tenantId);
 
   if (mode === 'assistant') {
+    const bookingAnswer = await bookAppointmentFromText(tenantId, last.content);
+    if (bookingAnswer) {
+      return json({ ok: true, ...bookingAnswer, fallback: true });
+    }
+
     const queryAnswer = await answerAppointmentQuery(tenantId, last.content);
     if (queryAnswer) {
       return json({ ok: true, ...queryAnswer, fallback: true });

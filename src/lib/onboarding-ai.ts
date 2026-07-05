@@ -552,6 +552,7 @@ export function initialAssistantMessage(tenant: Tenant, mode: AssistantMode = 'o
 Puedo **consultar tu agenda** o **cambiar configuración**.
 
 Agenda:
+• "Agendar cita para mañana a las 10"
 • "¿Cuáles citas tengo pendientes?"
 • "Citas de hoy"
 • "Próximas citas"

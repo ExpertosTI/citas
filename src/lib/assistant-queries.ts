@@ -2,6 +2,25 @@ import { statusLabel } from './appointment-status';
 import type { AssistantAppointmentCard, OnboardingAiResponse } from './onboarding-ai';
 import { getAppointments, getClients, getServices } from './store';
 
+function normalizeIntent(text: string) {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+export function isAppointmentBookingRequest(text: string) {
+  const n = normalizeIntent(text);
+  return (
+    /agendar|agendame|agendeme|agende|agenede|agend[ae]|reservar|reservame|res[eé]rva(r|me)/.test(n) ||
+    /(crear|poner|pon|hacer|hazme|nueva|programar|marcar)\s+(una\s+)?cita/.test(n) ||
+    /quiero\s+(que\s+.*\s+)?(agendar|agende|reservar|programar)/.test(n) ||
+    (/cita/.test(n) &&
+      /(manana|mañana|hoy|pasado|a las \d|las \d|\d:\d{2}|\d{1,2}\s*(am|pm))/i.test(n))
+  );
+}
+
 function localDate(iso: string) {
   const d = new Date(iso);
   const y = d.getFullYear();
@@ -21,12 +40,13 @@ function formatWhen(iso: string) {
 }
 
 export function isAppointmentQuery(text: string) {
+  if (isAppointmentBookingRequest(text)) return false;
   return /cita|citas|pendiente|pendientes|agenda|hoy|pr[oó]xim|reserva|reservas|horario|bah[ií]a|confirmar|cu[aá]ntas|tengo|hay|dime|lista|mostrar|ver/i.test(
     text,
   );
 }
 
-function toCard(
+export function toCard(
   a: Awaited<ReturnType<typeof getAppointments>>[0],
   clients: Awaited<ReturnType<typeof getClients>>,
   services: Awaited<ReturnType<typeof getServices>>,
