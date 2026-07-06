@@ -1,7 +1,9 @@
 ---
 import { isGeminiConfigured } from '../lib/gemini';
 import { initialAssistantMessage } from '../lib/onboarding-ai';
-import { getTenantById } from '../lib/store';
+import { SETUP_PHASES } from '../lib/setup-phases';
+import { publicLogoPreview } from '../lib/setup-phases';
+import { getServices, getTenantById } from '../lib/store';
 
 interface Props {
   tenantId: string;
@@ -14,6 +16,9 @@ const { tenantId, businessName, ownerName, currency } = Astro.props;
 const tenant = await getTenantById(tenantId);
 const greeting = tenant ? initialAssistantMessage(tenant, 'assistant') : '';
 const geminiOk = isGeminiConfigured();
+const services = tenant ? await getServices(tenantId) : [];
+const serviceCount = services.filter((s) => s.active).length;
+const logoUrl = tenant ? publicLogoPreview(tenant) : '';
 ---
 
 <div
@@ -22,6 +27,8 @@ const geminiOk = isGeminiConfigured();
   data-greeting={JSON.stringify(greeting)}
   data-currency={currency}
   data-business={businessName}
+  data-logo-url={logoUrl}
+  data-service-count={serviceCount}
 >
   <button type="button" id="assistant-fab" class="assistant-fab" aria-label="Abrir asistente">
     <svg class="assistant-fab__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
@@ -45,21 +52,36 @@ const geminiOk = isGeminiConfigured();
     </div>
     <header class="assistant-drawer__head">
       <div>
-        <p class="assistant-drawer__eyebrow">Siempre disponible</p>
+        <p class="assistant-drawer__eyebrow">Configuración · Agenda</p>
         <p class="assistant-drawer__title">Asistente · {businessName}</p>
+        <p id="assistant-gemini-badge" class:list={['config-gemini-badge config-gemini-badge--sm', geminiOk && 'hidden']}>
+          Modo básico
+        </p>
       </div>
       <button type="button" id="assistant-close" class="assistant-drawer__close" aria-label="Cerrar">×</button>
     </header>
 
+    <div class="setup-phases setup-phases--compact" id="assistant-phases">
+      <p class="setup-phases__label" data-phase-label>{SETUP_PHASES[0].short}</p>
+      <div class="setup-phases__track">
+        {SETUP_PHASES.map((p) => (
+          <span class="setup-phases__step" data-phase={p.id} data-phase-label={p.short} title={p.label} />
+        ))}
+      </div>
+    </div>
+
     <div id="assistant-messages" class="assistant-drawer__messages"></div>
     <div id="assistant-preview" class="assistant-drawer__preview hidden"></div>
+    <div id="assistant-chips" class="chat-chips chat-chips--drawer hidden"></div>
 
-    <form id="assistant-form" class="assistant-drawer__form">
+    <form id="assistant-form" class="assistant-drawer__form config-composer">
+      <input type="file" id="assistant-logo-file" class="sr-only" accept="image/png,image/jpeg,image/webp" />
+      <button type="button" id="assistant-logo-attach" class="config-composer__attach" aria-label="Subir logo">📎</button>
       <input
         id="assistant-input"
         class="input"
         type="text"
-        placeholder="Ej. Citas pendientes, sube corte a 600…"
+        placeholder="Configura, agenda o sube logo…"
         autocomplete="off"
       />
       <button type="submit" class="btn-primary btn-sm">Enviar</button>

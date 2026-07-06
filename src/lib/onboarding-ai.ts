@@ -32,6 +32,9 @@ export type OnboardingSetupDraft = {
   whatsapp?: string;
   instagram?: string;
   address?: string;
+  city?: string;
+  accentColor?: string;
+  slug?: string;
   openHour?: number;
   closeHour?: number;
   lunchStartHour?: number;
@@ -47,6 +50,8 @@ export type OnboardingAiResponse = {
   setup?: OnboardingSetupDraft;
   readyToApply: boolean;
   cards?: AssistantAppointmentCard[];
+  phase?: string;
+  suggestions?: string[];
 };
 
 export type AssistantAppointmentCard = {
@@ -80,46 +85,50 @@ Servicios — cambios parciales:
 - Siempre incluye en setup SOLO lo que cambió en este turno (el servidor hace merge)
 `;
 
-const ONBOARDING_PROMPT = `Eres el asistente de configuración de Citas para barberías, salones y spas en Latinoamérica.
+const ONBOARDING_PROMPT = `Eres el asistente de configuración de Citas — como Gemini, guías paso a paso al dueño de un barbería/salón/spa en Latinoamérica.
 
-Guía al dueño en español, breve y cálido. Máximo 1-2 preguntas por mensaje.
+Estilo: español cálido, claro, 1-2 preguntas por turno. Celebra avances ("Perfecto", "Listo ese paso").
 
-Flujo inicial:
-1. Servicios y precios (moneda local)
-2. Horario apertura/cierre, almuerzo, días cerrados
-3. Bio, WhatsApp, Instagram si aplica
-
-${SCHEDULE_RULES}
-
-Cuando tengas ≥2 servicios con precio + horario completo → readyToApply=true.
-Si dice "listo", "aplica", "dale" y hay datos mínimos → readyToApply=true.
-
-Responde SOLO JSON:
-{"reply":"...","setup":{...},"readyToApply":boolean}`;
-
-const ASSISTANT_PROMPT = `Eres el asistente permanente de Citas. El negocio YA está configurado.
-
-Dos modos:
-1. **Consultas de agenda** — usa appointments del contexto: pendientes, hoy, próximas, resumen. readyToApply=false, setup vacío.
-2. **Cambios de configuración** — servicios, precios, horarios, etc.
-
-Puedes modificar: servicios/precios/duración, horarios, almuerzo, días cerrados, bio, teléfono, WhatsApp, Instagram, dirección, nombre del local.
+Fases (avanzar en orden, no saltar sin datos):
+1. **Marca** — nombre del local, bio corta para la página pública
+2. **Logo** — el usuario puede SUBIR PNG con el botón adjunto; confirma cuando lo suba y sugiere color de acento si aplica
+3. **Servicios** — mínimo 2 servicios con precio y duración en moneda local
+4. **Horario** — apertura/cierre, almuerzo opcional, días cerrados
+5. **Contacto** — WhatsApp, Instagram, dirección, teléfono
+6. **Revisión** — resume todo y marca readyToApply=true
 
 ${SCHEDULE_RULES}
 
-Reglas:
-- Usa los servicios actuales del contexto como referencia
-- Para cambiar un precio: incluye el servicio con nombre exacto o similar y nuevo precio
-- Para agregar: incluye servicio nuevo en setup.services
-- Para quitar: usa removeServices con el nombre
-- Si el cambio es claro → readyToApply=true de inmediato
-- Si dice "aplica", "guarda", "listo" → readyToApply=true
-- reply: confirma qué vas a cambiar, sin JSON visible
+Campos setup: businessName, bio, phone, whatsapp, instagram, address, city, accentColor (#hex), services[], openHour, closeHour, lunchStartHour, lunchEndHour, closedWeekdays, slotBufferMin.
+
+Cuando tengas logo (contexto hasLogo=true) + ≥2 servicios + horario + algún contacto → readyToApply=true.
+Si dice "listo", "aplica", "dale" con datos mínimos → readyToApply=true.
+
+Incluye en reply sugerencias concretas para el siguiente paso.
+Responde SOLO JSON:
+{"reply":"...","setup":{...},"readyToApply":boolean,"suggestions":["chip1","chip2"]}`;
+
+const ASSISTANT_PROMPT = `Eres el asistente permanente de configuración y operación de Citas. Estilo Gemini: conversacional, proactivo, confirma cambios antes de aplicar.
+
+Capacidades:
+1. **Agenda** — consultas (el servidor maneja agendar/consultar aparte)
+2. **Configuración completa** — servicios, precios, horarios, bio, contacto, ciudad, color de acento (#hex), nombre del local
+3. **Logo** — el usuario puede subir PNG con el botón adjunto; confirma y felicita cuando lo haga
+
+${SCHEDULE_RULES}
+
+Para cambios: incluye en setup SOLO lo que cambió este turno. removeServices para quitar.
+Si el cambio es claro o dice "aplica"/"guarda" → readyToApply=true.
 
 Responde SOLO JSON:
-{"reply":"...","setup":{...},"readyToApply":boolean}`;
+{"reply":"...","setup":{...},"readyToApply":boolean,"suggestions":["..."]}`;
 
-function tenantContext(tenant: Tenant, services: Service[], appointments?: Array<{ code: string; status: string; startAt: string; clientName?: string; serviceName?: string }>) {
+function tenantContext(
+  tenant: Tenant,
+  services: Service[],
+  appointments?: Array<{ code: string; status: string; startAt: string; clientName?: string; serviceName?: string }>,
+  extras?: { hasLogo?: boolean; logoUrl?: string },
+) {
   return {
     businessName: tenant.businessName,
     ownerName: tenant.ownerName,
@@ -131,6 +140,10 @@ function tenantContext(tenant: Tenant, services: Service[], appointments?: Array
     instagram: tenant.instagram,
     address: tenant.address,
     bio: tenant.bio,
+    accentColor: tenant.accentColor,
+    slug: tenant.slug,
+    hasLogo: extras?.hasLogo ?? Boolean(tenant.logoUrl),
+    logoUrl: extras?.logoUrl || tenant.logoUrl,
     openHour: tenant.openHour,
     closeHour: tenant.closeHour,
     lunchStartHour: tenant.lunchStartHour,
@@ -431,7 +444,10 @@ export async function chatOnboarding(
         serviceName: existingServices.find((s) => s.id === a.serviceId)?.name,
       }));
   }
-  const ctx = tenantContext(tenant, existingServices, apptCtx);
+  const ctx = tenantContext(tenant, existingServices, apptCtx, {
+    hasLogo: Boolean(tenant.logoUrl),
+    logoUrl: tenant.logoUrl,
+  });
   const systemPrompt = mode === 'assistant' ? ASSISTANT_PROMPT : ONBOARDING_PROMPT;
 
   const historyText = messages
@@ -478,6 +494,11 @@ export async function applyOnboardingSetup(
   if (setup.whatsapp?.trim()) patch.whatsapp = setup.whatsapp.trim();
   if (setup.instagram?.trim()) patch.instagram = setup.instagram.replace(/^@/, '');
   if (setup.address?.trim()) patch.address = setup.address.trim();
+  if (setup.city?.trim()) patch.city = setup.city.trim();
+  if (setup.accentColor?.trim() && /^#[0-9a-fA-F]{6}$/.test(setup.accentColor.trim())) {
+    patch.accentColor = setup.accentColor.trim();
+  }
+  if (setup.slug?.trim()) patch.slug = setup.slug.trim().toLowerCase();
   if (setup.openHour !== undefined) patch.openHour = clampHour(setup.openHour, tenant.openHour);
   if (setup.closeHour !== undefined) patch.closeHour = clampHour(setup.closeHour, tenant.closeHour);
   if (setup.lunchStartHour !== undefined) patch.lunchStartHour = clampHour(setup.lunchStartHour, tenant.lunchStartHour);
@@ -547,25 +568,21 @@ export function needsOnboarding(tenant: Tenant) {
 export function initialAssistantMessage(tenant: Tenant, mode: AssistantMode = 'onboarding') {
   const first = tenant.ownerName.split(' ')[0];
   if (mode === 'assistant') {
-    return `Hola ${first}. Soy tu asistente — siempre disponible.
+    return `Hola ${first}. Soy tu **asistente de configuración** — estilo conversación guiada.
 
-Puedo **consultar tu agenda** o **cambiar configuración**.
+Puedo ayudarte con todo el negocio:
+• **Logo** — adjunta PNG con 📎 y lo pongo en tu página
+• **Servicios y precios** — "Corte 600, barba 400"
+• **Horarios** — "9am a 9pm, cerrado domingos"
+• **Contacto** — WhatsApp, Instagram, dirección
+• **Agenda** — citas pendientes, agendar, hoy
 
-Agenda:
-• "Agendar cita para mañana a las 10"
-• "¿Cuáles citas tengo pendientes?"
-• "Citas de hoy"
-• "Próximas citas"
-
-Configuración:
-• "Sube el corte a 600"
-• "Abre de 10am a 9pm, cerrado domingos"
-• "Agrega tinte 3500, 90 min"
-
-¿Qué necesitas?`;
+Empieza cuando quieras — o usa las sugerencias abajo.`;
   }
-  return `Hola ${first}. Vamos a dejar **${tenant.businessName}** listo.
+  return `Hola ${first}. Armemos **${tenant.businessName}** juntos — paso a paso.
 
-Cuéntame servicios y precios — ej: "Corte 800, barba 400, color 2500".
-Luego el horario: "9am a 8pm, cerrado domingos".`;
+**Paso 1 · Marca** — cuéntame en una frase qué hace tu negocio.
+Luego sube tu **logo PNG** (botón 📎), servicios con precios, horario y contacto.
+
+Cuando todo esté listo, aplicamos y abres tu bahía.`;
 }

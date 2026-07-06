@@ -1,7 +1,8 @@
 import type { APIRoute } from 'astro';
 import { tenantIdFromRequest } from '../../../lib/auth';
-import { isGeminiConfigured } from '../../../lib/gemini';
+import { analyzeLogoImage, isGeminiConfigured } from '../../../lib/gemini';
 import { bad, json, readBody } from '../../../lib/http';
+import { readLogo } from '../../../lib/logo';
 import { rateLimit } from '../../../lib/security';
 import {
   applyOnboardingSetup,
@@ -11,13 +12,83 @@ import {
   skipOnboarding,
   type AssistantMode,
   type ChatMessage,
+  type OnboardingAiResponse,
   type OnboardingSetupDraft,
 } from '../../../lib/onboarding-ai';
 import { answerAppointmentQuery } from '../../../lib/assistant-queries';
 import { bookAppointmentFromText } from '../../../lib/assistant-booking';
-import { getServices, getTenantById, safeTenant } from '../../../lib/store';
+import {
+  computeSetupPhase,
+  phaseSuggestions,
+  publicLogoPreview,
+  SETUP_PHASES,
+} from '../../../lib/setup-phases';
+import { getServices, getTenantById, safeTenant, updateTenant } from '../../../lib/store';
 
 export const prerender = false;
+
+function enrichResponse(
+  tenant: NonNullable<Awaited<ReturnType<typeof getTenantById>>>,
+  draft: OnboardingSetupDraft,
+  ai: OnboardingAiResponse,
+  opts: { logoUploaded?: boolean; serviceCount?: number } = {},
+) {
+  const phase = computeSetupPhase(tenant, draft, {
+    readyToApply: ai.readyToApply,
+    logoUploaded: opts.logoUploaded,
+    serviceCount: opts.serviceCount,
+  });
+  const currency = tenant.currency === 'DOP' ? 'RD$' : tenant.currency;
+  return {
+    ...ai,
+    phase,
+    suggestions: ai.suggestions?.length
+      ? ai.suggestions
+      : phaseSuggestions(phase, tenant, currency),
+    logoUrl: publicLogoPreview(tenant),
+    phases: SETUP_PHASES,
+  };
+}
+
+async function handleLogoUploaded(tenantId: string) {
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) throw new Error('tenant_not_found');
+
+  const setup: OnboardingSetupDraft = {};
+  let styleNote = '';
+
+  const logo = await readLogo(tenantId);
+  if (logo && isGeminiConfigured()) {
+    try {
+      const analysis = await analyzeLogoImage(logo.bytes.toString('base64'), logo.mime);
+      if (analysis?.accentColor) {
+        setup.accentColor = analysis.accentColor;
+        await updateTenant(tenantId, { accentColor: analysis.accentColor } as never);
+        styleNote = analysis.note ? ` ${analysis.note}` : '';
+      }
+    } catch (err) {
+      console.error('[onboarding/logo]', err);
+    }
+  }
+
+  const updated = await getTenantById(tenantId);
+  const services = await getServices(tenantId);
+  const reply = setup.accentColor
+    ? `¡Logo guardado! Ya aparece en tu página de reservas. Detecté un estilo con acento **${setup.accentColor}** — lo apliqué.${styleNote}\n\nSiguiente: cuéntame tus **servicios y precios**.`
+    : `¡Logo guardado! Ya está en tu página pública.\n\nSiguiente: cuéntame tus **servicios y precios** — ej. "Corte 500, Barba 300".`;
+
+  const ai: OnboardingAiResponse = {
+    reply,
+    setup,
+    readyToApply: false,
+    suggestions: phaseSuggestions('services', updated!, updated!.currency === 'DOP' ? 'RD$' : updated!.currency),
+  };
+
+  return enrichResponse(updated!, setup, ai, {
+    logoUploaded: true,
+    serviceCount: services.filter((s) => s.active).length,
+  });
+}
 
 export const GET: APIRoute = async ({ request }) => {
   const tenantId = tenantIdFromRequest(request);
@@ -28,6 +99,10 @@ export const GET: APIRoute = async ({ request }) => {
 
   const url = new URL(request.url);
   const mode: AssistantMode = url.searchParams.get('mode') === 'assistant' ? 'assistant' : 'onboarding';
+  const services = await getServices(tenantId);
+  const serviceCount = services.filter((s) => s.active).length;
+  const phase = computeSetupPhase(tenant, {}, { serviceCount });
+  const currency = tenant.currency === 'DOP' ? 'RD$' : tenant.currency;
 
   return json({
     ok: true,
@@ -36,6 +111,11 @@ export const GET: APIRoute = async ({ request }) => {
     tenant: safeTenant(tenant),
     greeting: initialAssistantMessage(tenant, mode),
     mode,
+    phase,
+    phases: SETUP_PHASES,
+    suggestions: phaseSuggestions(phase, tenant, currency),
+    logoUrl: publicLogoPreview(tenant),
+    serviceCount,
   });
 };
 
@@ -48,12 +128,15 @@ export const POST: APIRoute = async ({ request }) => {
     mode?: AssistantMode;
     messages?: ChatMessage[];
     setup?: OnboardingSetupDraft;
+    logoJustUploaded?: boolean;
   }>(request);
 
   const tenant = await getTenantById(tenantId);
   if (!tenant) return bad('Sesión inválida', 401);
 
   const mode: AssistantMode = body.mode === 'assistant' ? 'assistant' : 'onboarding';
+  const existingServices = await getServices(tenantId);
+  const serviceCount = existingServices.filter((s) => s.active).length;
 
   if (body.action === 'skip') {
     await skipOnboarding(tenantId);
@@ -74,29 +157,44 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
+  if (body.logoJustUploaded) {
+    const payload = await handleLogoUploaded(tenantId);
+    return json({ ok: true, ...payload, fallback: true });
+  }
+
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const last = messages[messages.length - 1];
   if (!last || last.role !== 'user' || !last.content.trim()) {
     return bad('Mensaje requerido');
   }
 
-  const existingServices = await getServices(tenantId);
-
   if (mode === 'assistant') {
     const bookingAnswer = await bookAppointmentFromText(tenantId, last.content);
     if (bookingAnswer) {
-      return json({ ok: true, ...bookingAnswer, fallback: true });
+      return json({
+        ok: true,
+        ...enrichResponse(tenant, {}, bookingAnswer, { serviceCount }),
+        fallback: true,
+      });
     }
 
     const queryAnswer = await answerAppointmentQuery(tenantId, last.content);
     if (queryAnswer) {
-      return json({ ok: true, ...queryAnswer, fallback: true });
+      return json({
+        ok: true,
+        ...enrichResponse(tenant, {}, queryAnswer, { serviceCount }),
+        fallback: true,
+      });
     }
   }
 
   if (!isGeminiConfigured()) {
     const ai = chatOnboardingFallback(tenant, messages, {}, mode, existingServices);
-    return json({ ok: true, ...ai, fallback: true });
+    return json({
+      ok: true,
+      ...enrichResponse(tenant, ai.setup || {}, ai, { serviceCount }),
+      fallback: true,
+    });
   }
 
   const limited = rateLimit(`onboarding:chat:${tenantId}`, 60, 60 * 60_000);
@@ -104,11 +202,18 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     const ai = await chatOnboarding(tenantId, messages, mode);
-    return json({ ok: true, ...ai });
+    return json({
+      ok: true,
+      ...enrichResponse(tenant, ai.setup || {}, ai, { serviceCount }),
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
     console.error('[onboarding/chat] request failed', msg);
     const ai = chatOnboardingFallback(tenant, messages, {}, mode, existingServices);
-    return json({ ok: true, ...ai, fallback: true });
+    return json({
+      ok: true,
+      ...enrichResponse(tenant, ai.setup || {}, ai, { serviceCount }),
+      fallback: true,
+    });
   }
 };

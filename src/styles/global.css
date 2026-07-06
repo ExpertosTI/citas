@@ -1589,3 +1589,208 @@ body.assistant-open .assistant-fab {
   .hero-visual,
   .theme-motifs__item { animation: none !important; }
 }
+
+/* ── Config chat (Gemini-style assistant) ── */
+.config-gemini-badge {
+  display: inline-block;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  background: rgba(30, 58, 95, 0.06);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.config-gemini-badge--sm {
+  font-size: 0.5625rem;
+  margin-top: 0.25rem;
+}
+
+.setup-phases {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.setup-phases--compact {
+  margin: 0;
+  padding: 0.5rem 0.75rem 0;
+  border-bottom: 1px solid rgba(30, 58, 95, 0.08);
+}
+
+.setup-phases__label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-mustard-deep);
+  margin-bottom: 0.5rem;
+}
+
+.setup-phases__track {
+  display: flex;
+  gap: 0.3rem;
+  max-width: 18rem;
+  margin: 0 auto;
+}
+
+.setup-phases__step {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(26, 26, 26, 0.1);
+  transition: background 0.35s ease, transform 0.35s ease;
+}
+
+.setup-phases__step.is-active,
+.setup-phases__step.is-done {
+  background: linear-gradient(90deg, var(--color-mustard), var(--color-mustard-deep));
+}
+
+.setup-phases__step.is-active {
+  transform: scaleY(1.35);
+}
+
+.chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem 0;
+  max-height: 4.5rem;
+  overflow-y: auto;
+}
+
+.chat-chips--drawer {
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid rgba(30, 58, 95, 0.06);
+}
+
+.chat-chip {
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--color-ink-soft);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.chat-chip:hover {
+  border-color: var(--color-mustard);
+  background: var(--color-gold-dim);
+  color: var(--color-ink);
+}
+
+.config-composer {
+  align-items: center;
+}
+
+.config-composer__attach {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.config-composer__attach:hover {
+  border-color: var(--color-navy);
+  background: var(--color-gold-dim);
+}
+
+.chat-msg__image {
+  display: block;
+  max-width: 8rem;
+  max-height: 8rem;
+  border-radius: 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--color-border);
+  object-fit: contain;
+  background: #fff;
+}
+
+.setup-preview-card {
+  padding: 0.75rem 1rem;
+}
+
+.setup-preview-card__head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.setup-preview-card__logo {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.65rem;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+  background: #fff;
+}
+
+.setup-preview-card__logo--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  background: rgba(30, 58, 95, 0.06);
+}
+
+.setup-preview-card__title {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--color-ink);
+}
+
+.setup-preview-card__bio {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  margin-top: 0.15rem;
+}
+
+.setup-preview-card__line {
+  font-size: 0.75rem;
+  color: var(--color-ink-soft);
+  margin-top: 0.25rem;
+}
+
+.setup-preview-card__swatch {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 0.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.setup-preview-card__list {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-ink-soft);
+  list-style: none;
+  padding: 0;
+}
+
+.setup-preview-card__list li {
+  padding: 0.15rem 0;
+}
+
+.assistant-drawer__preview {
+  border-top: 1px solid rgba(30, 58, 95, 0.08);
+  background: rgba(201, 162, 39, 0.06);
+  max-height: 9rem;
+  overflow-y: auto;
+}

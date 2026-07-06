@@ -2,7 +2,8 @@
 import OnboardingLayout from '../../layouts/OnboardingLayout.astro';
 import { isGeminiConfigured } from '../../lib/gemini';
 import { initialAssistantMessage } from '../../lib/onboarding-ai';
-import { safeTenant } from '../../lib/store';
+import { SETUP_PHASES, publicLogoPreview } from '../../lib/setup-phases';
+import { getServices, safeTenant } from '../../lib/store';
 
 const tenant = Astro.locals.tenant!;
 const t = safeTenant(tenant);
@@ -11,6 +12,9 @@ const geminiOk = isGeminiConfigured();
 const greeting = initialAssistantMessage(tenant);
 const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;
 const firstName = tenant.ownerName.split(' ')[0];
+const services = await getServices(tenant.id);
+const serviceCount = services.filter((s) => s.active).length;
+const logoUrl = publicLogoPreview(tenant);
 ---
 
 <OnboardingLayout title={`Bienvenido · ${t.businessName}`} businessName={t.businessName}>
@@ -22,35 +26,53 @@ const firstName = tenant.ownerName.split(' ')[0];
     data-currency={currencyLabel}
     data-business={t.businessName}
     data-reopen={isReopen ? '1' : '0'}
+    data-logo-url={logoUrl}
+    data-service-count={serviceCount}
   >
     <div id="onboarding-main">
       <div class="onboarding-hero">
         <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">
-          Bienvenido, {firstName}
+          Configuración guiada
         </p>
         <h1 class="font-display mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-          Armemos {t.businessName}
+          {isReopen ? 'Ajusta tu negocio' : `Armemos ${t.businessName}`}
         </h1>
         <p class="mt-2 text-sm text-muted">
-          Servicios, precios y horario — en una conversación corta.
+          Chat inteligente · logo, servicios, horario y contacto en minutos.
         </p>
-        <div class="onboarding-steps" id="onboarding-steps">
-          <span class="onboarding-steps__dot is-active" data-step="0"></span>
-          <span class="onboarding-steps__dot" data-step="1"></span>
-          <span class="onboarding-steps__dot" data-step="2"></span>
-          <span class="onboarding-steps__dot" data-step="3"></span>
+        <p id="gemini-badge" class:list={['config-gemini-badge mt-2', geminiOk && 'hidden']}>
+          Modo básico (sin Gemini)
+        </p>
+
+        <div class="setup-phases" id="onboarding-phases">
+          <p class="setup-phases__label" data-phase-label>{SETUP_PHASES[0].short}</p>
+          <div class="setup-phases__track">
+            {SETUP_PHASES.map((p) => (
+              <span
+                class="setup-phases__step"
+                data-phase={p.id}
+                data-phase-label={p.short}
+                title={p.label}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
       <div class="onboarding-chat glass mt-5 overflow-hidden rounded-[1.75rem]">
         <div id="chat-messages" class="onboarding-chat__messages"></div>
         <div id="setup-preview" class="onboarding-chat__preview hidden"></div>
-        <form id="chat-form" class="onboarding-chat__input-row">
+        <div id="chat-chips" class="chat-chips hidden"></div>
+        <form id="chat-form" class="onboarding-chat__input-row config-composer">
+          <input type="file" id="logo-file" class="sr-only" accept="image/png,image/jpeg,image/webp" />
+          <button type="button" id="logo-attach" class="config-composer__attach" aria-label="Subir logo PNG">
+            📎
+          </button>
           <input
             id="chat-input"
             class="input"
             type="text"
-            placeholder="Ej. Corte 500, Barba 300, Pies 700…"
+            placeholder="Escribe o elige una sugerencia…"
             autocomplete="off"
           />
           <button type="submit" class="btn-primary btn-sm">Enviar</button>
@@ -68,222 +90,43 @@ const firstName = tenant.ownerName.split(' ')[0];
     <div id="onboarding-done" class="onboarding-success hidden">
       <div class="onboarding-success__icon">✓</div>
       <h2 class="font-display text-2xl font-semibold text-ink">¡Listo!</h2>
-      <p class="mt-2 text-sm text-muted">Tu bahía está configurada. Abriendo panel…</p>
+      <p class="mt-2 text-sm text-muted">Tu negocio está configurado. Abriendo bahía…</p>
     </div>
   </div>
 
   <script>
-    type Msg = { role: 'user' | 'assistant'; content: string };
-    type Setup = {
-      businessName?: string;
-      bio?: string;
-      services?: Array<{ name: string; price: number; durationMin: number }>;
-      openHour?: number;
-      closeHour?: number;
-      closedWeekdays?: number[];
-    };
+    import { createConfigChat } from '../../scripts/config-chat.js';
 
     const root = document.getElementById('onboarding-root')!;
     const mainEl = document.getElementById('onboarding-main')!;
     const doneEl = document.getElementById('onboarding-done')!;
-    const messagesEl = document.getElementById('chat-messages')!;
-    const previewEl = document.getElementById('setup-preview')!;
-    const form = document.getElementById('chat-form') as HTMLFormElement;
-    const input = document.getElementById('chat-input') as HTMLInputElement;
-    const applyBtn = document.getElementById('apply-btn')!;
-    const skipBtn = document.getElementById('skip-btn');
-    const stepsEl = document.getElementById('onboarding-steps');
-    const greeting = root.dataset.greeting || '';
-    const currency = root.dataset.currency || 'RD$';
 
-    const messages: Msg[] = [];
-    let draftSetup: Setup = {};
-    let readyToApply = false;
-    let busy = false;
-
-    function esc(s: string) {
-      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    function renderMarkdownLite(text: string) {
-      return esc(text).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
-    }
-
-    function updateSteps() {
-      const svc = draftSetup.services?.length || 0;
-      const hasHours = draftSetup.openHour !== undefined;
-      let step = 0;
-      if (svc > 0) step = 1;
-      if (svc >= 2) step = 2;
-      if (hasHours && readyToApply) step = 3;
-      stepsEl?.querySelectorAll('.onboarding-steps__dot').forEach((dot, i) => {
-        dot.classList.toggle('is-active', i === step);
-        dot.classList.toggle('is-done', i < step);
-      });
-    }
-
-    function showTyping() {
-      const el = document.createElement('div');
-      el.id = 'typing-indicator';
-      el.className = 'onboarding-chat__bubble onboarding-chat__bubble--assistant';
-      el.innerHTML = `
-        <span class="onboarding-chat__avatar">AI</span>
-        <div class="onboarding-chat__text onboarding-chat__typing">
-          <span></span><span></span><span></span>
-        </div>`;
-      messagesEl.appendChild(el);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    function hideTyping() {
-      document.getElementById('typing-indicator')?.remove();
-    }
-
-    function renderMessages() {
-      messagesEl.innerHTML = messages
-        .map(
-          (m) => `
-        <div class="onboarding-chat__bubble onboarding-chat__bubble--${m.role}">
-          ${m.role === 'assistant' ? '<span class="onboarding-chat__avatar">AI</span>' : ''}
-          <div class="onboarding-chat__text">${renderMarkdownLite(m.content)}</div>
-        </div>`,
-        )
-        .join('');
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      updateSteps();
-    }
-
-    function weekdayLabel(d: number) {
-      return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d] || String(d);
-    }
-
-    function renderPreview() {
-      if (!readyToApply || !Object.keys(draftSetup).length) {
-        previewEl.classList.add('hidden');
-        applyBtn.classList.add('hidden');
-        return;
-      }
-
-      const svcs = (draftSetup.services || [])
-        .map((s) => `<li>${esc(s.name)} · ${currency}${s.price} · ${s.durationMin} min</li>`)
-        .join('');
-
-      previewEl.innerHTML = `
-        <div class="p-4">
-          <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-mustard-deep">Resumen</p>
-          <p class="mt-1 font-semibold text-ink">${esc(draftSetup.businessName || root.dataset.business || 'Tu negocio')}</p>
-          ${draftSetup.openHour !== undefined ? `<p class="mt-2 text-sm text-ink-soft">Horario: ${draftSetup.openHour}:00 – ${draftSetup.closeHour}:00</p>` : ''}
-          ${draftSetup.closedWeekdays?.length ? `<p class="text-xs text-muted">Cierra: ${draftSetup.closedWeekdays.map(weekdayLabel).join(', ')}</p>` : ''}
-          ${svcs ? `<ul class="mt-2 space-y-1 text-sm text-ink-soft">${svcs}</ul>` : ''}
-        </div>`;
-      previewEl.classList.remove('hidden');
-      applyBtn.classList.remove('hidden');
-    }
-
-    function mergeSetup(next?: Setup) {
-      if (!next) return;
-      const mergedServices = next.services?.length
-        ? [...(draftSetup.services || []), ...next.services].reduce(
-            (acc, s) => {
-              const key = s.name.toLowerCase();
-              if (!acc.some((x) => x.name.toLowerCase() === key)) acc.push(s);
-              return acc;
-            },
-            [] as NonNullable<Setup['services']>,
-          )
-        : draftSetup.services;
-      draftSetup = {
-        ...draftSetup,
-        ...next,
-        services: mergedServices,
-        closedWeekdays: next.closedWeekdays?.length ? next.closedWeekdays : draftSetup.closedWeekdays,
-      };
-    }
-
-    async function post(body: Record<string, unknown>) {
-      const res = await fetch('/api/onboarding', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ ...body, mode: 'onboarding' }),
-      });
-      const raw = await res.text();
-      let json: Record<string, unknown>;
-      try {
-        json = JSON.parse(raw);
-      } catch {
-        throw new Error('Respuesta inválida del servidor. Recarga e intenta de nuevo.');
-      }
-      if (!res.ok) throw new Error(String(json.error || 'Error'));
-      return json;
-    }
-
-    async function sendUserMessage(text: string) {
-      if (busy) return;
-      busy = true;
-      input.disabled = true;
-
-      messages.push({ role: 'user', content: text });
-      renderMessages();
-      showTyping();
-
-      try {
-        const json = await post({ action: 'chat', messages });
-        hideTyping();
-        messages.push({ role: 'assistant', content: String(json.reply) });
-        mergeSetup(json.setup as Setup);
-        readyToApply = Boolean(json.readyToApply);
-        renderMessages();
-        renderPreview();
-      } catch (err) {
-        hideTyping();
-        const msg = err instanceof Error ? err.message : 'Error';
-        messages.push({ role: 'assistant', content: `Ups: ${msg}` });
-        renderMessages();
-      } finally {
-        busy = false;
-        input.disabled = false;
-        input.focus();
-      }
-    }
-
-    function showSuccess() {
-      mainEl.classList.add('hidden');
-      doneEl.classList.remove('hidden');
-      setTimeout(() => {
+    createConfigChat({
+      mode: 'onboarding',
+      root,
+      messagesEl: document.getElementById('chat-messages')!,
+      previewEl: document.getElementById('setup-preview')!,
+      formEl: document.getElementById('chat-form') as HTMLFormElement,
+      inputEl: document.getElementById('chat-input') as HTMLInputElement,
+      applyBtn: document.getElementById('apply-btn')!,
+      chipsEl: document.getElementById('chat-chips')!,
+      phasesEl: document.getElementById('onboarding-phases')!,
+      fileInput: document.getElementById('logo-file') as HTMLInputElement,
+      attachBtn: document.getElementById('logo-attach')!,
+      geminiBadge: document.getElementById('gemini-badge')!,
+      currency: root.dataset.currency || 'RD$',
+      businessName: root.dataset.business || '',
+      greeting: root.dataset.greeting || '',
+      onSuccess: () => {
+        mainEl.classList.add('hidden');
+        doneEl.classList.remove('hidden');
+        setTimeout(() => {
+          location.href = '/app';
+        }, 1800);
+      },
+      onSkip: () => {
         location.href = '/app';
-      }, 1800);
-    }
-
-    messages.push({ role: 'assistant', content: greeting });
-    renderMessages();
-    input.focus();
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
-      input.value = '';
-      sendUserMessage(text);
-    });
-
-    applyBtn.addEventListener('click', async () => {
-      applyBtn.textContent = 'Aplicando…';
-      applyBtn.setAttribute('disabled', 'true');
-      try {
-        await post({ action: 'apply', setup: draftSetup });
-        showSuccess();
-      } catch (err) {
-        applyBtn.textContent = 'Aplicar y abrir bahía';
-        applyBtn.removeAttribute('disabled');
-        alert(err instanceof Error ? err.message : 'No se pudo aplicar');
-      }
-    });
-
-    skipBtn?.addEventListener('click', async () => {
-      skipBtn.setAttribute('disabled', 'true');
-      await post({ action: 'skip' });
-      location.href = '/app';
+      },
     });
   </script>
 </OnboardingLayout>
