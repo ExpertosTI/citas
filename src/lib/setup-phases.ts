@@ -74,7 +74,7 @@ export function assistantSuggestions(tenant: Tenant, currency: string): string[]
   return [
     `Sube el corte a ${cur}700`,
     `Agrega tinte ${cur}3500, 90 min`,
-    'Abre de 9am a 8pm, cerrado domingos',
+    'Limpia servicios inválidos',
     'Citas de hoy',
   ];
 }

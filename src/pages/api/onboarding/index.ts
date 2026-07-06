@@ -8,6 +8,7 @@ import {
   applyOnboardingSetup,
   chatOnboarding,
   chatOnboardingFallback,
+  effectiveChatMode,
   initialAssistantMessage,
   skipOnboarding,
   type AssistantMode,
@@ -17,6 +18,7 @@ import {
 } from '../../../lib/onboarding-ai';
 import { answerAppointmentQuery } from '../../../lib/assistant-queries';
 import { bookAppointmentFromText } from '../../../lib/assistant-booking';
+import { cleanupInvalidServices, isCleanupServicesRequest } from '../../../lib/assistant-maintenance';
 import {
   computeSetupPhase,
   assistantSuggestions,
@@ -41,7 +43,7 @@ function enrichResponse(
     serviceCount: opts.serviceCount,
   });
   const currency = tenant.currency === 'DOP' ? 'RD$' : tenant.currency;
-  const useAssistantSuggestions = mode === 'assistant' && tenant.onboardingComplete === true;
+  const useAssistantSuggestions = tenant.onboardingComplete === true;
   return {
     ...ai,
     phase,
@@ -108,7 +110,7 @@ export const GET: APIRoute = async ({ request }) => {
   const serviceCount = services.filter((s) => s.active).length;
   const phase = computeSetupPhase(tenant, {}, { serviceCount });
   const currency = tenant.currency === 'DOP' ? 'RD$' : tenant.currency;
-  const useAssistantSuggestions = mode === 'assistant' && tenant.onboardingComplete === true;
+  const useAssistantSuggestions = tenant.onboardingComplete === true;
 
   return json({
     ok: true,
@@ -145,6 +147,8 @@ export const POST: APIRoute = async ({ request }) => {
   const mode: AssistantMode = body.mode === 'assistant' ? 'assistant' : 'onboarding';
   const existingServices = await getServices(tenantId);
   const serviceCount = existingServices.filter((s) => s.active).length;
+  const priorSetup = body.setup && typeof body.setup === 'object' ? body.setup : {};
+  const chatMode = effectiveChatMode(tenant, mode);
 
   if (body.action === 'skip') {
     await skipOnboarding(tenantId);
@@ -176,7 +180,15 @@ export const POST: APIRoute = async ({ request }) => {
     return bad('Mensaje requerido');
   }
 
-  if (mode === 'assistant') {
+  if (isCleanupServicesRequest(last.content)) {
+    const answer = await cleanupInvalidServices(tenantId);
+    return json({
+      ok: true,
+      ...enrichResponse(tenant, {}, answer, mode, { serviceCount }),
+    });
+  }
+
+  if (chatMode === 'assistant') {
     const bookingAnswer = await bookAppointmentFromText(tenantId, last.content);
     if (bookingAnswer) {
       return json({
@@ -197,7 +209,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   if (!isGeminiConfigured()) {
-    const ai = chatOnboardingFallback(tenant, messages, {}, mode, existingServices);
+    const ai = chatOnboardingFallback(tenant, messages, priorSetup, mode, existingServices);
     return json({
       ok: true,
       ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
@@ -209,7 +221,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (limited) return bad(limited, 429);
 
   try {
-    const ai = await chatOnboarding(tenantId, messages, mode);
+    const ai = await chatOnboarding(tenantId, messages, mode, priorSetup);
     return json({
       ok: true,
       ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
@@ -217,11 +229,12 @@ export const POST: APIRoute = async ({ request }) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
     console.error('[onboarding/chat] request failed', msg);
-    const ai = chatOnboardingFallback(tenant, messages, {}, mode, existingServices);
+    const ai = chatOnboardingFallback(tenant, messages, priorSetup, mode, existingServices);
     return json({
       ok: true,
       ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
       fallback: true,
+      geminiError: msg,
     });
   }
 };

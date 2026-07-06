@@ -343,9 +343,14 @@ export function createConfigChat(opts) {
       const json = await post({
         action: 'chat',
         messages: messages.map(({ role, content }) => ({ role, content })),
+        setup: draftSetup,
         ...extra,
       });
       hideTyping();
+      if (json.fallback && geminiBadge) {
+        geminiBadge.classList.remove('hidden');
+        geminiBadge.textContent = 'Gemini no respondió · modo básico';
+      }
       messages.push({
         role: 'assistant',
         content: String(json.reply),
@@ -400,6 +405,7 @@ export function createConfigChat(opts) {
       const json = await post({
         action: 'chat',
         messages: messages.map(({ role, content }) => ({ role, content })),
+        setup: draftSetup,
         logoJustUploaded: true,
       });
       hideTyping();

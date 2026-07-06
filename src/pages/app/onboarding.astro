@@ -9,7 +9,10 @@ const tenant = Astro.locals.tenant!;
 const t = safeTenant(tenant);
 const isReopen = Astro.url.searchParams.has('open');
 const geminiOk = isGeminiConfigured();
-const greeting = initialAssistantMessage(tenant);
+const greeting = initialAssistantMessage(
+  tenant,
+  isReopen || tenant.onboardingComplete ? 'assistant' : 'onboarding',
+);
 const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;
 const firstName = tenant.ownerName.split(' ')[0];
 const services = await getServices(tenant.id);
@@ -80,7 +83,9 @@ const logoUrl = publicLogoPreview(tenant);
       </div>
 
       <div class="mt-4 flex flex-wrap justify-center gap-3">
-        <button id="apply-btn" type="button" class="btn-accent hidden">Aplicar y abrir bahía</button>
+        <button id="apply-btn" type="button" class="btn-accent hidden">
+          {isReopen ? 'Aplicar cambios' : 'Aplicar y abrir bahía'}
+        </button>
         {!isReopen && (
           <button id="skip-btn" type="button" class="btn-ghost btn-sm">Saltar · configurar manual</button>
         )}

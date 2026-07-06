@@ -68,6 +68,11 @@ export type AssistantAppointmentCard = {
 
 export type AssistantMode = 'onboarding' | 'assistant';
 
+export function effectiveChatMode(tenant: Tenant, mode: AssistantMode): AssistantMode {
+  if (mode === 'onboarding' && tenant.onboardingComplete === true) return 'assistant';
+  return mode;
+}
+
 const SCHEDULE_RULES = `
 Horarios — interpreta lenguaje natural en español:
 - "9 a 8" / "9am a 8pm" / "de 9 de la mañana a 8 de la noche" → openHour/closeHour (24h)
@@ -114,6 +119,7 @@ Capacidades:
 1. **Agenda** — consultas (el servidor maneja agendar/consultar aparte)
 2. **Configuración completa** — servicios, precios, horarios, bio, contacto, ciudad, color de acento (#hex), nombre del local
 3. **Logo** — el usuario puede subir PNG con el botón adjunto; confirma y felicita cuando lo haga
+4. **Limpieza** — comando "limpia servicios inválidos" elimina entradas basura del catálogo
 
 ${SCHEDULE_RULES}
 
@@ -164,9 +170,10 @@ function tenantContext(
 function parseAiJson(raw: string): OnboardingAiResponse {
   const cleaned = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
   const parsed = JSON.parse(cleaned) as OnboardingAiResponse;
-  if (!parsed.reply || typeof parsed.readyToApply !== 'boolean') {
+  if (!parsed.reply || typeof parsed.reply !== 'string') {
     throw new Error('invalid_ai_response');
   }
+  if (typeof parsed.readyToApply !== 'boolean') parsed.readyToApply = false;
   if (parsed.setup) parsed.setup = sanitizeSetupDraft(parsed.setup);
   return parsed;
 }
@@ -341,6 +348,91 @@ function wantsApply(text: string) {
   return /^(aplica|guarda|listo|dale|ok|confirmar|hazlo|sí|si)$/i.test(text.trim());
 }
 
+function parseChipIntent(text: string) {
+  const n = text.toLowerCase().trim();
+  if (/agregar otro servicio|nuevo servicio|otro servicio/.test(n)) {
+    return 'add_service' as const;
+  }
+  if (/cambiar un precio|cambiar precio|actualizar precio/.test(n)) {
+    return 'change_price' as const;
+  }
+  if (/ayud|otras cosas|qué puedes|que puedes|qué más|que mas/.test(n)) {
+    return 'help' as const;
+  }
+  return null;
+}
+
+function buildAssistantStyleReply(
+  tenant: Tenant,
+  setup: OnboardingSetupDraft,
+  existingServices: Service[],
+  lastText: string,
+  hasChanges: boolean,
+) {
+  if (wantsApply(lastText) && hasChanges) {
+    return { reply: 'Perfecto. Pulsa **Aplicar cambios** para guardar.', readyToApply: true };
+  }
+  if (setup.removeServices?.length) {
+    return {
+      reply: `Quitaré **${setup.removeServices.join(', ')}**. Pulsa **Aplicar cambios**.`,
+      readyToApply: true,
+    };
+  }
+  const updates = parseServiceUpdates(lastText, existingServices);
+  if (updates.length) {
+    const u = updates[0];
+    return {
+      reply: `Actualizo **${u.name}** a ${tenant.currency === 'DOP' ? 'RD$' : '$'}${u.price}. Pulsa **Aplicar cambios**.`,
+      readyToApply: true,
+    };
+  }
+  if (scheduleHasChange(lastText)) {
+    return { reply: formatScheduleReply(setup), readyToApply: true };
+  }
+  if (parseServicesHeuristic(lastText).length) {
+    const added = parseServicesHeuristic(lastText);
+    return {
+      reply: `Anoté **${added.map((s) => s.name).join(', ')}**. Pulsa **Aplicar cambios** para guardar.`,
+      readyToApply: true,
+    };
+  }
+  if (hasChanges) {
+    return { reply: summarizeSetup(setup, tenant, existingServices) + ' Pulsa **Aplicar cambios**.', readyToApply: true };
+  }
+
+  const intent = parseChipIntent(lastText);
+  if (intent === 'add_service') {
+    return {
+      reply: 'Claro. Dime **nombre, precio y duración** — ej: "Tinte 3500, 90 min" o "Agrega mechas 2800, 60 min".',
+      readyToApply: false,
+    };
+  }
+  if (intent === 'change_price') {
+    const names = existingServices.map((s) => s.name).join(', ') || 'tus servicios';
+    return {
+      reply: `¿Qué servicio y a qué precio? Tienes: **${names}**. Ej: "Sube el corte a 700".`,
+      readyToApply: false,
+    };
+  }
+  if (intent === 'help') {
+    return {
+      reply: `Puedo ayudarte con:
+• **Servicios** — agregar, cambiar precios, quitar
+• **Horario** — apertura, almuerzo, días cerrados
+• **Contacto** — WhatsApp, Instagram, dirección
+• **Limpieza** — "limpia servicios inválidos"
+
+¿Qué quieres hacer?`,
+      readyToApply: false,
+    };
+  }
+
+  return {
+    reply: `Cuéntame qué cambiar — servicios, horario, contacto. También puedes decir **limpia servicios inválidos**.`,
+    readyToApply: false,
+  };
+}
+
 export function chatOnboardingFallback(
   tenant: Tenant,
   messages: ChatMessage[],
@@ -410,45 +502,34 @@ export function chatOnboardingFallback(
     parseServiceRemovals(t, existingServices).length,
   );
 
+  const chatMode = effectiveChatMode(tenant, mode);
   let reply: string;
   let readyToApply = false;
 
-  if (mode === 'assistant') {
-    if (wantsApply(lastText) && hasChanges) {
-      readyToApply = true;
-      reply = 'Perfecto. Pulsa **Aplicar cambios** para guardar.';
-    } else if (setup.removeServices?.length) {
-      readyToApply = true;
-      reply = `Quitaré **${setup.removeServices.join(', ')}**. Pulsa **Aplicar cambios**.`;
-    } else if (setup.services?.length && parseServiceUpdates(lastText, existingServices).length) {
-      const u = parseServiceUpdates(lastText, existingServices)[0];
-      readyToApply = true;
-      reply = `Actualizo **${u.name}** a ${tenant.currency === 'DOP' ? 'RD$' : '$'}${u.price}. ¿Aplico?`;
-    } else if (scheduleHasChange(lastText)) {
-      readyToApply = true;
-      reply = formatScheduleReply(setup);
-    } else if (hasChanges) {
-      readyToApply = true;
-      reply = summarizeSetup(setup, tenant);
-    } else {
-      reply = `Puedo cambiar servicios, precios, horarios y más. Ejemplos:
-• "Sube el corte a 600"
-• "Abre de 9am a 9pm, cerrado domingos"
-• "Almuerzo de 12 a 2"
-• "Agrega tinte 3500, 90 min"`;
-    }
+  if (chatMode === 'assistant') {
+    const styled = buildAssistantStyleReply(tenant, setup, existingServices, lastText, hasChanges);
+    reply = styled.reply;
+    readyToApply = styled.readyToApply;
   } else {
     if (svcCount === 0) {
       reply = `Cuéntame servicios y precios — ej: "Corte 500, Pies 700, Cejas 1200".`;
     } else if (!hasHours) {
-      reply = `Anoté ${setup.services!.map((s) => `**${s.name}** ${s.price}`).join(', ')}. ¿Horario? Ej: "9am a 8pm, cerrado domingos" o "de 9 a 20".`;
-    } else if (svcCount >= 2 && hasHours) {
+      reply = `Anoté ${(setup.services || existingServices.map((s) => ({ name: s.name, price: s.price }))).map((s) => `**${s.name}** ${s.price}`).join(', ')}. ¿Horario? Ej: "9am a 8pm, cerrado domingos" o "de 9 a 20".`;
+    } else if (hasChanges || wantsApply(lastText)) {
       readyToApply = true;
-      reply = summarizeSetup(setup, tenant) + ' Pulsa **Aplicar y abrir bahía**.';
+      reply = summarizeSetup(setup, tenant, existingServices) + ' Pulsa **Aplicar y abrir bahía**.';
+    } else if (svcCount >= 2 && hasHours) {
+      const intent = parseChipIntent(lastText);
+      if (intent) {
+        const styled = buildAssistantStyleReply(tenant, setup, existingServices, lastText, false);
+        reply = styled.reply;
+        readyToApply = styled.readyToApply;
+      } else {
+        reply = `Tienes servicios y horario listos. ¿Quieres cambiar algo más o pulsar **Aplicar y abrir bahía**?`;
+      }
     } else {
-      reply = `Anoté ${setup.services!.map((s) => s.name).join(', ')}. ¿Algún servicio más u horario?`;
+      reply = `Anoté ${(setup.services || []).map((s) => s.name).join(', ') || existingServices.map((s) => s.name).join(', ')}. ¿Algún servicio más u horario?`;
     }
-    if (wantsApply(lastText) && svcCount >= 1 && hasHours) readyToApply = true;
   }
 
   return { reply, setup: sanitizeSetupDraft(setup), readyToApply };
@@ -473,9 +554,12 @@ function formatScheduleReply(setup: OnboardingSetupDraft) {
   return `${parts.join(', ')}. Pulsa **Aplicar cambios**.`;
 }
 
-function summarizeSetup(setup: OnboardingSetupDraft, tenant: Tenant) {
+function summarizeSetup(setup: OnboardingSetupDraft, tenant: Tenant, existingServices: Service[] = []) {
   const cur = tenant.currency === 'DOP' ? 'RD$' : tenant.currency === 'USD' ? 'USD ' : '';
-  const svcs = setup.services?.map((s) => `${s.name} ${cur}${s.price}`).join(', ') || '';
+  const list = setup.services?.length
+    ? setup.services
+    : existingServices.map((s) => ({ name: s.name, price: s.price }));
+  const svcs = list.map((s) => `${s.name} ${cur}${s.price}`).join(', ') || 'sin cambios de servicios';
   const hrs =
     setup.openHour !== undefined && setup.closeHour !== undefined
       ? `${formatHour(setup.openHour!)}–${formatHour(setup.closeHour!)}`
@@ -487,6 +571,7 @@ export async function chatOnboarding(
   tenantId: string,
   messages: ChatMessage[],
   mode: AssistantMode = 'onboarding',
+  priorSetup: OnboardingSetupDraft = {},
 ): Promise<OnboardingAiResponse> {
   if (!isGeminiConfigured()) throw new Error('gemini_not_configured');
 
@@ -494,8 +579,9 @@ export async function chatOnboarding(
   if (!tenant) throw new Error('tenant_not_found');
 
   const existingServices = await getServices(tenantId);
+  const chatMode = effectiveChatMode(tenant, mode);
   let apptCtx: Array<{ code: string; status: string; startAt: string; clientName?: string; serviceName?: string }> = [];
-  if (mode === 'assistant') {
+  if (chatMode === 'assistant') {
     const [appointments, clients] = await Promise.all([
       getAppointments(tenantId),
       getClients(tenantId),
@@ -516,7 +602,7 @@ export async function chatOnboarding(
     hasLogo: Boolean(tenant.logoUrl),
     logoUrl: tenant.logoUrl,
   });
-  const systemPrompt = mode === 'assistant' ? ASSISTANT_PROMPT : ONBOARDING_PROMPT;
+  const systemPrompt = chatMode === 'assistant' ? ASSISTANT_PROMPT : ONBOARDING_PROMPT;
 
   const historyText = messages
     .map((m) => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.content}`)
@@ -527,6 +613,9 @@ export async function chatOnboarding(
 Contexto actual (JSON):
 ${JSON.stringify(ctx, null, 2)}
 
+Borrador acumulado del cliente (JSON):
+${JSON.stringify(priorSetup, null, 2)}
+
 Conversación:
 ${historyText || '(inicio)'}
 
@@ -535,9 +624,21 @@ Responde el siguiente turno en JSON.`;
   try {
     const text = await generateGeminiText(prompt, { json: true });
     return parseAiJson(text);
-  } catch {
-    const prior = messages.length > 1 ? chatOnboardingFallback(tenant, messages.slice(0, -1), {}, mode, existingServices).setup : {};
-    return chatOnboardingFallback(tenant, messages, prior, mode, existingServices);
+  } catch (err) {
+    console.error('[onboarding/gemini]', err instanceof Error ? err.message : err);
+    try {
+      const text = await generateGeminiText(prompt, { json: true, temperature: 0.35 });
+      return parseAiJson(text);
+    } catch (retryErr) {
+      console.error('[onboarding/gemini-retry]', retryErr instanceof Error ? retryErr.message : retryErr);
+      const prior =
+        Object.keys(priorSetup).length > 0
+          ? priorSetup
+          : messages.length > 1
+            ? chatOnboardingFallback(tenant, messages.slice(0, -1), priorSetup, mode, existingServices).setup || {}
+            : {};
+      return chatOnboardingFallback(tenant, messages, prior, mode, existingServices);
+    }
   }
 }
 
