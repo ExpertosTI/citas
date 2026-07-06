@@ -31,6 +31,7 @@ function enrichResponse(
   tenant: NonNullable<Awaited<ReturnType<typeof getTenantById>>>,
   draft: OnboardingSetupDraft,
   ai: OnboardingAiResponse,
+  mode: AssistantMode,
   opts: { logoUploaded?: boolean; serviceCount?: number } = {},
 ) {
   const phase = computeSetupPhase(tenant, draft, {
@@ -84,7 +85,7 @@ async function handleLogoUploaded(tenantId: string) {
     suggestions: phaseSuggestions('services', updated!, updated!.currency === 'DOP' ? 'RD$' : updated!.currency),
   };
 
-  return enrichResponse(updated!, setup, ai, {
+  return enrichResponse(updated!, setup, ai, 'onboarding', {
     logoUploaded: true,
     serviceCount: services.filter((s) => s.active).length,
   });
@@ -173,7 +174,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (bookingAnswer) {
       return json({
         ok: true,
-        ...enrichResponse(tenant, {}, bookingAnswer, { serviceCount }),
+        ...enrichResponse(tenant, {}, bookingAnswer, mode, { serviceCount }),
         fallback: true,
       });
     }
@@ -182,7 +183,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (queryAnswer) {
       return json({
         ok: true,
-        ...enrichResponse(tenant, {}, queryAnswer, { serviceCount }),
+        ...enrichResponse(tenant, {}, queryAnswer, mode, { serviceCount }),
         fallback: true,
       });
     }
@@ -192,7 +193,7 @@ export const POST: APIRoute = async ({ request }) => {
     const ai = chatOnboardingFallback(tenant, messages, {}, mode, existingServices);
     return json({
       ok: true,
-      ...enrichResponse(tenant, ai.setup || {}, ai, { serviceCount }),
+      ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
       fallback: true,
     });
   }
@@ -204,7 +205,7 @@ export const POST: APIRoute = async ({ request }) => {
     const ai = await chatOnboarding(tenantId, messages, mode);
     return json({
       ok: true,
-      ...enrichResponse(tenant, ai.setup || {}, ai, { serviceCount }),
+      ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
@@ -212,7 +213,7 @@ export const POST: APIRoute = async ({ request }) => {
     const ai = chatOnboardingFallback(tenant, messages, {}, mode, existingServices);
     return json({
       ok: true,
-      ...enrichResponse(tenant, ai.setup || {}, ai, { serviceCount }),
+      ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
       fallback: true,
     });
   }
