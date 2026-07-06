@@ -19,6 +19,7 @@ import { answerAppointmentQuery } from '../../../lib/assistant-queries';
 import { bookAppointmentFromText } from '../../../lib/assistant-booking';
 import {
   computeSetupPhase,
+  assistantSuggestions,
   phaseSuggestions,
   publicLogoPreview,
   SETUP_PHASES,
@@ -40,12 +41,15 @@ function enrichResponse(
     serviceCount: opts.serviceCount,
   });
   const currency = tenant.currency === 'DOP' ? 'RD$' : tenant.currency;
+  const useAssistantSuggestions = mode === 'assistant' && tenant.onboardingComplete === true;
   return {
     ...ai,
     phase,
     suggestions: ai.suggestions?.length
       ? ai.suggestions
-      : phaseSuggestions(phase, tenant, currency, mode),
+      : useAssistantSuggestions
+        ? assistantSuggestions(tenant, currency)
+        : phaseSuggestions(phase, tenant, currency, mode),
     logoUrl: publicLogoPreview(tenant),
     phases: SETUP_PHASES,
   };
@@ -104,6 +108,7 @@ export const GET: APIRoute = async ({ request }) => {
   const serviceCount = services.filter((s) => s.active).length;
   const phase = computeSetupPhase(tenant, {}, { serviceCount });
   const currency = tenant.currency === 'DOP' ? 'RD$' : tenant.currency;
+  const useAssistantSuggestions = mode === 'assistant' && tenant.onboardingComplete === true;
 
   return json({
     ok: true,
@@ -114,7 +119,9 @@ export const GET: APIRoute = async ({ request }) => {
     mode,
     phase,
     phases: SETUP_PHASES,
-    suggestions: phaseSuggestions(phase, tenant, currency, mode),
+    suggestions: useAssistantSuggestions
+      ? assistantSuggestions(tenant, currency)
+      : phaseSuggestions(phase, tenant, currency, mode),
     logoUrl: publicLogoPreview(tenant),
     serviceCount,
   });

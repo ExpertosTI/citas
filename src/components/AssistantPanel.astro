@@ -15,6 +15,7 @@ interface Props {
 const { tenantId, businessName, ownerName, currency } = Astro.props;
 const tenant = await getTenantById(tenantId);
 const greeting = tenant ? initialAssistantMessage(tenant, 'assistant') : '';
+const onboardingComplete = tenant?.onboardingComplete === true;
 const geminiOk = isGeminiConfigured();
 const services = tenant ? await getServices(tenantId) : [];
 const serviceCount = services.filter((s) => s.active).length;
@@ -29,6 +30,7 @@ const logoUrl = tenant ? publicLogoPreview(tenant) : '';
   data-business={businessName}
   data-logo-url={logoUrl}
   data-service-count={serviceCount}
+  data-onboarding-complete={onboardingComplete ? '1' : '0'}
 >
   <button type="button" id="assistant-fab" class="assistant-fab" aria-label="Abrir asistente">
     <svg class="assistant-fab__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
@@ -61,7 +63,7 @@ const logoUrl = tenant ? publicLogoPreview(tenant) : '';
       <button type="button" id="assistant-close" class="assistant-drawer__close" aria-label="Cerrar">×</button>
     </header>
 
-    <div class="setup-phases setup-phases--compact" id="assistant-phases">
+    <div class:list={['setup-phases setup-phases--compact', onboardingComplete && 'hidden']} id="assistant-phases">
       <p class="setup-phases__label" data-phase-label>{SETUP_PHASES[0].short}</p>
       <div class="setup-phases__track">
         {SETUP_PHASES.map((p) => (

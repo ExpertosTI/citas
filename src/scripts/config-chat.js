@@ -9,6 +9,48 @@ import { toast } from './ui-feedback.js';
 
 const SCISSORS_SVG = `<svg class="asst-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8.5 8.5L20 3M8.5 15.5L20 21M20 3L14 12L20 21"/></svg>`;
 
+const CHAT_STORAGE_TTL_MS = 8 * 60 * 60 * 1000;
+
+function chatStorageKey(mode) {
+  return `citas-chat-${mode}`;
+}
+
+export function clearConfigChatState(mode) {
+  try {
+    sessionStorage.removeItem(chatStorageKey(mode));
+  } catch {
+    /* ok */
+  }
+}
+
+function loadConfigChatState(mode) {
+  if (mode !== 'assistant') return null;
+  try {
+    const raw = sessionStorage.getItem(chatStorageKey(mode));
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data?.messages?.length || Date.now() - (data.ts || 0) > CHAT_STORAGE_TTL_MS) {
+      clearConfigChatState(mode);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function saveConfigChatState(mode, payload) {
+  if (mode !== 'assistant') return;
+  try {
+    sessionStorage.setItem(
+      chatStorageKey(mode),
+      JSON.stringify({ ...payload, ts: Date.now() }),
+    );
+  } catch {
+    /* quota */
+  }
+}
+
 export function mergeSetupDraft(prev, next) {
   if (!next) return prev || {};
   const mergedServices = next.services?.length
@@ -87,6 +129,28 @@ export function createConfigChat(opts) {
   let currentPhase = 'brand';
   let logoUrl = root?.dataset.logoUrl || '';
   let serviceCount = Number(root?.dataset.serviceCount || 0);
+
+  const saved = loadConfigChatState(mode);
+  if (saved?.messages?.length) {
+    messages.push(...saved.messages);
+    draftSetup = saved.draftSetup || {};
+    readyToApply = Boolean(saved.readyToApply);
+    if (saved.currentPhase) currentPhase = saved.currentPhase;
+  }
+
+  function persistState() {
+    saveConfigChatState(mode, {
+      messages: messages.map(({ role, content, imageUrl, cards }) => ({
+        role,
+        content,
+        imageUrl,
+        cards: cards?.length ? cards : undefined,
+      })),
+      draftSetup,
+      readyToApply,
+      currentPhase,
+    });
+  }
 
   function updatePhases(phase) {
     currentPhase = phase || currentPhase;
@@ -262,6 +326,7 @@ export function createConfigChat(opts) {
     if (json.suggestions) renderChips(json.suggestions);
     if (json.tenant?.logoUrl) logoUrl = json.tenant.logoUrl;
     renderPreview();
+    persistState();
   }
 
   async function sendUserMessage(text, extra = {}) {
@@ -288,6 +353,7 @@ export function createConfigChat(opts) {
       });
       applyResponse(json);
       renderMessages();
+      persistState();
     } catch (err) {
       hideTyping();
       messages.push({
@@ -295,6 +361,7 @@ export function createConfigChat(opts) {
         content: `Ups: ${err instanceof Error ? err.message : 'Error'}. Intenta de nuevo.`,
       });
       renderMessages();
+      persistState();
     } finally {
       busy = false;
       inputEl.disabled = false;
@@ -345,6 +412,7 @@ export function createConfigChat(opts) {
       });
       applyResponse(json);
       renderMessages();
+      persistState();
       toast('Logo guardado', 'success');
     } catch (err) {
       hideTyping();
@@ -400,9 +468,14 @@ export function createConfigChat(opts) {
     });
   }
 
-  if (greeting) {
+  if (greeting && !saved?.messages?.length) {
     messages.push({ role: 'assistant', content: greeting });
     renderMessages();
+  } else if (saved?.messages?.length) {
+    updatePhases(currentPhase);
+    renderMessages();
+    renderPreview();
+    renderChips(saved.suggestions);
   }
 
   hydrate();

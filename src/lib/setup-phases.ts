@@ -59,13 +59,24 @@ export function computeSetupPhase(
   if (!customBio && !draft.businessName) return 'brand';
   if (!hasLogo(tenant, draft, opts.logoUploaded)) return 'logo';
   if (svcCount < 2 && (draft.services?.length || 0) < 2) return 'services';
-  if (draft.openHour === undefined && draft.closeHour === undefined) return 'schedule';
 
   const m = mergedDraft(tenant, draft);
+  if (m.openHour === undefined || m.closeHour === undefined) return 'schedule';
+
   const hasContact = Boolean(m.phone || m.whatsapp || m.instagram || m.address);
   if (!hasContact) return 'contact';
 
   return 'review';
+}
+
+export function assistantSuggestions(tenant: Tenant, currency: string): string[] {
+  const cur = currency === 'RD$' ? 'RD$' : currency;
+  return [
+    `Sube el corte a ${cur}700`,
+    `Agrega tinte ${cur}3500, 90 min`,
+    'Abre de 9am a 8pm, cerrado domingos',
+    'Citas de hoy',
+  ];
 }
 
 export function phaseSuggestions(

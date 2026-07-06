@@ -1,7 +1,7 @@
 /** @typedef {{ id: string, clientName: string, serviceName: string, when: string, status: string, statusLabel: string, code: string, date: string, pending: boolean }} AptCard */
 
 import { confirmAction, toast } from './ui-feedback.js';
-import { createConfigChat, SCISSORS_SVG, esc } from './config-chat.js';
+import { createConfigChat, SCISSORS_SVG, esc, clearConfigChatState } from './config-chat.js';
 
 export function initAssistantPanel() {
   const root = document.getElementById('assistant-panel-root');
@@ -127,6 +127,7 @@ export function initAssistantPanel() {
           return html;
         },
         onSuccess: () => {
+          clearConfigChatState('assistant');
           toast('Cambios guardados', 'success');
           setTimeout(() => location.reload(), 900);
         },

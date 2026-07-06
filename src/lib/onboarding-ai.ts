@@ -118,6 +118,8 @@ Capacidades:
 ${SCHEDULE_RULES}
 
 Para cambios: incluye en setup SOLO lo que cambió este turno. removeServices para quitar.
+NUNCA pongas frases de horario ni comandos en setup.services — solo nombres cortos de servicio existentes o nuevos (ej. "Corte", "Tinte").
+Si cambian precio, usa el nombre exacto del servicio en setup.services con el nuevo precio.
 Si el cambio es claro o dice "aplica"/"guarda" → readyToApply=true.
 
 Responde SOLO JSON:
@@ -165,6 +167,7 @@ function parseAiJson(raw: string): OnboardingAiResponse {
   if (!parsed.reply || typeof parsed.readyToApply !== 'boolean') {
     throw new Error('invalid_ai_response');
   }
+  if (parsed.setup) parsed.setup = sanitizeSetupDraft(parsed.setup);
   return parsed;
 }
 
@@ -178,17 +181,69 @@ function validColor(index: number): AppointmentColor {
   return APPOINTMENT_COLORS[index % APPOINTMENT_COLORS.length].id;
 }
 
+const SCHEDULE_WORDS =
+  /(?:abro|abre|abrimos|cierro|cierra|cerramos|horario|almuerzo|domingo|lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|cerrado|descanso|fin de semana|mañana|noche|mediodia|mediodía)/i;
+
+function isLikelyScheduleText(text: string) {
+  const n = text.toLowerCase().trim();
+  if (/(?:abro|abre|cierro|cierra|horario)\b/.test(n)) return true;
+  if (parseScheduleFromText(text).openHour !== undefined) return true;
+  if (/\d{1,2}\s*(?:am|pm|a\.?m\.?|p\.?m\.?)/i.test(text) && /(?:a|hasta|-|–)\s*\d{1,2}/i.test(text)) {
+    return true;
+  }
+  return false;
+}
+
+export function isValidServiceName(name: string) {
+  const n = name.trim();
+  if (n.length < 2 || n.length > 32) return false;
+  if (SCHEDULE_WORDS.test(n)) return false;
+  if (/^\d+(\s+a)?$/i.test(n)) return false;
+  if (/^(de|a|las|el|la|en|por|ponlo|ponle|cambiale|cambia)$/i.test(n)) return false;
+  if (/(?:abro|abre|cierro|cierra|horario|precio|ponlo|cambiale)/i.test(n)) return false;
+  if (n.split(/\s+/).length > 4) return false;
+  return true;
+}
+
+function sanitizeServices(services?: OnboardingServiceDraft[]) {
+  if (!services?.length) return services;
+  return services.filter((s) => isValidServiceName(s.name) && Number(s.price) >= 0);
+}
+
+export function sanitizeSetupDraft(setup: OnboardingSetupDraft): OnboardingSetupDraft {
+  return { ...setup, services: sanitizeServices(setup.services) };
+}
+
+function matchExistingService(rawName: string, existing: Service[]) {
+  const key = rawName.toLowerCase().trim();
+  return existing.find((s) => {
+    const sn = s.name.toLowerCase();
+    return sn === key || sn.includes(key) || key.includes(sn);
+  });
+}
+
+function extractServiceFromText(text: string, existing: Service[]) {
+  const n = text.toLowerCase();
+  for (const s of [...existing].sort((a, b) => b.name.length - a.name.length)) {
+    if (n.includes(s.name.toLowerCase())) return s;
+  }
+  return undefined;
+}
+
 export function parseServicesHeuristic(text: string) {
+  if (isLikelyScheduleText(text)) return [];
+
   const services: OnboardingServiceDraft[] = [];
   const segments = text.split(/[,;\n]+/);
   for (const seg of segments) {
     const trimmed = seg.trim();
+    if (isLikelyScheduleText(trimmed)) continue;
     const m = trimmed.match(/^(.+?)\s+(?:\$|rd\$)?\s*(\d+)(?:\s*,?\s*(\d+)\s*min)?\s*$/i);
     if (m) {
       const name = m[1].trim();
       const price = Number(m[2]);
       const duration = m[3] ? Number(m[3]) : /barba|ceja|uñ|pie|manic|pedic/i.test(name) ? 20 : 30;
-      if (name.length >= 2 && price > 0) {
+      if (isValidServiceName(name) && price > 0) {
         services.push({
           name: name.charAt(0).toUpperCase() + name.slice(1),
           price,
@@ -201,15 +256,28 @@ export function parseServicesHeuristic(text: string) {
 }
 
 function parseServiceUpdates(text: string, existing: Service[]): OnboardingServiceDraft[] {
-  const updates: OnboardingServiceDraft[] = [];
+  if (isLikelyScheduleText(text)) return [];
 
-  const patterns = [
-    /(?:sube|baja|cambia|actualiza|pon|precio\s+de)\s+(?:el|la|los|las)?\s*(.+?)\s+(?:a|en|por)\s+(?:rd\$|\$)?\s*(\d+)(?:\s*,?\s*(\d+)\s*min)?/i,
-    /(?:agrega|añade|nuevo|nueva)\s+(.+?)\s+(?:rd\$|\$)?\s*(\d+)(?:\s*,?\s*(\d+)\s*min)?/i,
-    /^(.+?)\s+(?:a|por)\s+(?:rd\$|\$)?\s*(\d+)(?:\s*,?\s*(\d+)\s*min)?\s*$/i,
+  const patterns: Array<{ re: RegExp; generic?: boolean }> = [
+    {
+      re: /(?:cambia|cambiar|cambiale|actualiza)\s+(?:el\s+)?precio\s+(?:de|del|a)?\s*(.+?)\s+(?:a|en|por|ponlo en)\s+(?:rd\$|\$)?\s*(\d+)/i,
+    },
+    {
+      re: /(?:cambia|cambiale)\s+(?:el|la)?\s*(.+?)\s+(?:a|en|por|ponlo en)\s+(?:rd\$|\$)?\s*(\d+)/i,
+    },
+    {
+      re: /(?:sube|baja|pon|ponle|ponlo)\s+(?:el|la|los|las)?\s*(.+?)\s+(?:a|en|por)\s+(?:rd\$|\$)?\s*(\d+)/i,
+    },
+    {
+      re: /(?:agrega|añade|anade|nuevo|nueva|crea|crear)\s+(?:servicio|producto)?\s*(.+?)\s+(?:rd\$|\$)?\s*(\d+)(?:\s*,?\s*(\d+)\s*min)?/i,
+    },
+    {
+      re: /^(.+?)\s+(?:a|por)\s+(?:rd\$|\$)?\s*(\d+)(?:\s*,?\s*(\d+)\s*min)?\s*$/i,
+      generic: true,
+    },
   ];
 
-  for (const re of patterns) {
+  for (const { re, generic } of patterns) {
     const m = text.match(re);
     if (!m) continue;
     const rawName = m[1].trim();
@@ -217,21 +285,21 @@ function parseServiceUpdates(text: string, existing: Service[]): OnboardingServi
     const duration = m[3] ? Number(m[3]) : undefined;
     if (price <= 0) continue;
 
-    const match = existing.find(
-      (s) =>
-        s.name.toLowerCase().includes(rawName.toLowerCase()) ||
-        rawName.toLowerCase().includes(s.name.toLowerCase()),
-    );
+    const match = matchExistingService(rawName, existing) || extractServiceFromText(text, existing);
     const name = match?.name || rawName.charAt(0).toUpperCase() + rawName.slice(1);
-    updates.push({
-      name,
-      price,
-      durationMin: duration || match?.durationMin || 30,
-    });
-    break;
+    if (!isValidServiceName(name)) continue;
+    if (generic && !match && rawName.split(/\s+/).length > 2) continue;
+
+    return [
+      {
+        name,
+        price,
+        durationMin: duration || match?.durationMin || 30,
+      },
+    ];
   }
 
-  return updates;
+  return [];
 }
 
 function parseServiceRemovals(text: string, existing: Service[]): string[] {
@@ -383,7 +451,7 @@ export function chatOnboardingFallback(
     if (wantsApply(lastText) && svcCount >= 1 && hasHours) readyToApply = true;
   }
 
-  return { reply, setup, readyToApply };
+  return { reply, setup: sanitizeSetupDraft(setup), readyToApply };
 }
 
 function scheduleHasChange(text: string) {
@@ -533,12 +601,27 @@ export async function applyOnboardingSetup(
   }
 
   if (setup.services?.length) {
-    const items = setup.services
-      .filter((s) => s.name?.trim() && Number(s.price) >= 0)
+    const existing = await getServices(tenantId);
+    const items = sanitizeServices(setup.services)!
+      .map((s) => {
+        const key = s.name.trim().toLowerCase();
+        const match =
+          existing.find((ex) => ex.name.toLowerCase() === key) ||
+          existing.find((ex) => {
+            const sn = ex.name.toLowerCase();
+            return sn.includes(key) || key.includes(sn);
+          });
+        return {
+          name: match?.name || s.name.trim(),
+          price: Math.round(Number(s.price)),
+          durationMin: Math.max(5, Math.round(Number(s.durationMin) || match?.durationMin || 30)),
+        };
+      })
+      .filter((s) => isValidServiceName(s.name) && Number(s.price) >= 0)
       .map((s, i) => ({
-        name: s.name.trim(),
-        price: Math.round(Number(s.price)),
-        durationMin: Math.max(5, Math.round(Number(s.durationMin) || 30)),
+        name: s.name,
+        price: s.price,
+        durationMin: s.durationMin,
         color: validColor(i),
         active: true,
       }));
