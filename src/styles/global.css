@@ -1698,6 +1698,8 @@ body.assistant-open .assistant-fab {
     padding-right: 0.75rem;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
   .step-panel,
   .hero-visual,
   .theme-motifs__item { animation: none !important; }
