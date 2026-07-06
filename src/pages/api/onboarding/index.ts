@@ -44,7 +44,7 @@ function enrichResponse(
     phase,
     suggestions: ai.suggestions?.length
       ? ai.suggestions
-      : phaseSuggestions(phase, tenant, currency),
+      : phaseSuggestions(phase, tenant, currency, mode),
     logoUrl: publicLogoPreview(tenant),
     phases: SETUP_PHASES,
   };
@@ -113,7 +113,7 @@ export const GET: APIRoute = async ({ request }) => {
     mode,
     phase,
     phases: SETUP_PHASES,
-    suggestions: phaseSuggestions(phase, tenant, currency),
+    suggestions: phaseSuggestions(phase, tenant, currency, mode),
     logoUrl: publicLogoPreview(tenant),
     serviceCount,
   });

@@ -70,26 +70,31 @@ const logoUrl = tenant ? publicLogoPreview(tenant) : '';
       </div>
     </div>
 
-    <div id="assistant-messages" class="assistant-drawer__messages"></div>
-    <div id="assistant-preview" class="assistant-drawer__preview hidden"></div>
-    <div id="assistant-chips" class="chat-chips chat-chips--drawer hidden"></div>
+    <div class="assistant-drawer__scroll">
+      <div id="assistant-messages" class="assistant-drawer__messages"></div>
+    </div>
 
-    <form id="assistant-form" class="assistant-drawer__form config-composer">
-      <input type="file" id="assistant-logo-file" class="sr-only" accept="image/png,image/jpeg,image/webp" />
-      <button type="button" id="assistant-logo-attach" class="config-composer__attach" aria-label="Subir logo">📎</button>
-      <input
-        id="assistant-input"
-        class="input"
-        type="text"
-        placeholder="Configura, agenda o sube logo…"
-        autocomplete="off"
-      />
-      <button type="submit" class="btn-primary btn-sm">Enviar</button>
-    </form>
+    <div class="assistant-drawer__dock">
+      <div id="assistant-preview" class="assistant-drawer__preview hidden"></div>
+      <div id="assistant-chips" class="chat-chips chat-chips--drawer hidden"></div>
 
-    <footer class="assistant-drawer__foot">
-      <button type="button" id="assistant-apply" class="btn-accent btn-sm hidden w-full">Aplicar cambios</button>
-    </footer>
+      <form id="assistant-form" class="assistant-drawer__form config-composer">
+        <input type="file" id="assistant-logo-file" class="sr-only" accept="image/png,image/jpeg,image/webp" />
+        <button type="button" id="assistant-logo-attach" class="config-composer__attach" aria-label="Subir logo">📎</button>
+        <input
+          id="assistant-input"
+          class="input"
+          type="text"
+          placeholder="Escribe aquí…"
+          autocomplete="off"
+        />
+        <button type="submit" class="btn-primary btn-sm">Enviar</button>
+      </form>
+
+      <footer class="assistant-drawer__foot">
+        <button type="button" id="assistant-apply" class="btn-accent btn-sm hidden w-full">Aplicar cambios</button>
+      </footer>
+    </div>
   </aside>
 </div>
 

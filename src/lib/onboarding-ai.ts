@@ -568,16 +568,12 @@ export function needsOnboarding(tenant: Tenant) {
 export function initialAssistantMessage(tenant: Tenant, mode: AssistantMode = 'onboarding') {
   const first = tenant.ownerName.split(' ')[0];
   if (mode === 'assistant') {
-    return `Hola ${first}. Soy tu **asistente de configuración** — estilo conversación guiada.
+    return `Hola ${first}. ¿Qué hacemos?
 
-Puedo ayudarte con todo el negocio:
-• **Logo** — adjunta PNG con 📎 y lo pongo en tu página
-• **Servicios y precios** — "Corte 600, barba 400"
-• **Horarios** — "9am a 9pm, cerrado domingos"
-• **Contacto** — WhatsApp, Instagram, dirección
-• **Agenda** — citas pendientes, agendar, hoy
+**Configurar:** servicios, horario, logo 📎, contacto
+**Agenda:** citas pendientes, agendar, hoy
 
-Empieza cuando quieras — o usa las sugerencias abajo.`;
+Escribe o toca una sugerencia abajo.`;
   }
   return `Hola ${first}. Armemos **${tenant.businessName}** juntos — paso a paso.
 

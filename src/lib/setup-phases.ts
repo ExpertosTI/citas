@@ -72,6 +72,7 @@ export function phaseSuggestions(
   phase: SetupPhaseId,
   tenant: Tenant,
   currency: string,
+  mode: 'onboarding' | 'assistant' = 'onboarding',
 ): string[] {
   const cur = currency === 'RD$' ? 'RD$' : currency;
   switch (phase) {
@@ -89,7 +90,9 @@ export function phaseSuggestions(
     case 'contact':
       return ['WhatsApp 809-555-1234', 'Instagram @mibarberia', 'Dirección: Av. Principal #10'];
     case 'review':
-      return ['Aplicar y abrir bahía', 'Cambiar un precio', 'Agregar otro servicio'];
+      return mode === 'assistant'
+        ? ['Cambiar un precio', 'Agregar otro servicio', 'Citas de hoy']
+        : ['Aplicar y abrir bahía', 'Cambiar un precio', 'Agregar otro servicio'];
     default:
       return [];
   }

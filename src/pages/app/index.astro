@@ -295,6 +295,22 @@ function aptDay(iso: string) {
     document.getElementById('new-apt-btn')?.addEventListener('click', () => openModal('10:00'));
     document.getElementById('apt-cancel')?.addEventListener('click', () => modal?.close());
 
+    (function prefillFromUrl() {
+      const p = new URLSearchParams(location.search);
+      if (p.get('newApt') !== '1') return;
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val) (el as HTMLInputElement).value = val;
+      };
+      set('clientName', p.get('clientName') || '');
+      set('clientPhone', p.get('clientPhone') || '');
+      set('clientEmail', p.get('clientEmail') || '');
+      set('aptDate', p.get('date') || dateStr);
+      const svc = document.getElementById('serviceId') as HTMLSelectElement | null;
+      if (svc && p.get('serviceId')) svc.value = p.get('serviceId')!;
+      openModal('10:00');
+    })();
+
     document.querySelectorAll('.cmd-free-slot').forEach((btn) => {
       btn.addEventListener('click', () => {
         openModal(btn.dataset.time || '10:00');

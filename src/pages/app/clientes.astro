@@ -1,16 +1,18 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
 import { getClients } from '../../lib/store';
+import { bookAppUrl, telUrl, whatsAppUrl } from '../../scripts/client-actions.js';
 
 const tenantId = Astro.locals.tenantId!;
 const clients = await getClients(tenantId);
+const businessName = Astro.locals.tenant?.businessName || 'tu negocio';
 ---
 
 <AppLayout title="Clientes" active="clientes">
-  <div class="mb-6 flex items-end justify-between gap-3">
+  <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
     <div>
       <h1 class="brand-mark text-3xl font-bold">Clientes</h1>
-      <p class="mt-1 text-sm text-ink-soft">Tu agenda de clientes del salón</p>
+      <p class="mt-1 text-sm text-ink-soft">Contacto rápido, historial y nuevas citas</p>
     </div>
     <button id="new-cli" type="button" class="btn-primary">+ Cliente</button>
   </div>
@@ -20,14 +22,31 @@ const clients = await getClients(tenantId);
       {clients.length === 0 && (
         <p class="p-6 text-sm text-muted">Aún no hay clientes. Se crean al agendar citas o aquí.</p>
       )}
-      {clients.map((c) => (
-        <div class="flex items-center justify-between gap-3 px-4 py-3">
-          <button type="button" class="min-w-0 flex-1 text-left hist-cli" data-id={c.id}>
-            <p class="font-semibold">{c.name}</p>
-            <p class="truncate text-sm text-muted">{c.phone || '—'} · {c.email || 'sin email'}</p>
-          </button>
-        </div>
-      ))}
+      {clients.map((c) => {
+        const wa = whatsAppUrl(c.phone, `Hola ${c.name}, te escribe ${businessName}.`);
+        const tel = telUrl(c.phone);
+        const book = bookAppUrl({ clientName: c.name, clientPhone: c.phone, clientEmail: c.email });
+        return (
+          <article class="client-card">
+            <div class="client-card__main">
+              <p class="client-card__name">{c.name}</p>
+              <p class="client-card__meta">
+                {c.phone || '—'} · {c.email || 'sin email'}
+              </p>
+            </div>
+            <div class="client-card__actions">
+              <button type="button" class="client-card__btn hist-cli" data-id={c.id}>Historial</button>
+              {wa && (
+                <a class="client-card__btn client-card__btn--wa" href={wa} target="_blank" rel="noopener noreferrer">
+                  WhatsApp
+                </a>
+              )}
+              {tel && <a class="client-card__btn" href={tel}>Llamar</a>}
+              <a class="client-card__btn client-card__btn--primary" href={book}>Agendar</a>
+            </div>
+          </article>
+        );
+      })}
     </div>
   </div>
 
@@ -64,7 +83,9 @@ const clients = await getClients(tenantId);
   </dialog>
 
   <script>
-    const STATUS_LABELS = {
+    import { toast } from '../../scripts/ui-feedback.js';
+
+    const STATUS_LABELS: Record<string, string> = {
       pending: 'Pendiente',
       confirmed: 'Confirmada',
       received: 'Recibida',
@@ -75,7 +96,7 @@ const clients = await getClients(tenantId);
     };
 
     function statusLabel(s: string) {
-      return STATUS_LABELS[s as keyof typeof STATUS_LABELS] || s;
+      return STATUS_LABELS[s] || s;
     }
 
     function esc(s: string) {
@@ -93,11 +114,15 @@ const clients = await getClients(tenantId);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
-      await fetch('/api/clients', {
+      const res = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(Object.fromEntries(fd.entries())),
       });
+      if (!res.ok) {
+        toast('No se pudo guardar', 'error');
+        return;
+      }
       location.reload();
     });
 

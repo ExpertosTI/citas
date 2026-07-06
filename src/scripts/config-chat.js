@@ -103,7 +103,13 @@ export function createConfigChat(opts) {
 
   function renderChips(suggestions) {
     if (!chipsEl) return;
-    const list = suggestions?.length ? suggestions : [];
+    let list = suggestions?.length ? [...suggestions] : [];
+    if (readyToApply) {
+      list = list.filter((s) => !/aplicar|abrir bah[ií]a/i.test(s));
+    }
+    if (variant === 'drawer' && list.length > 4) {
+      list = list.slice(0, 4);
+    }
     if (!list.length) {
       chipsEl.innerHTML = '';
       chipsEl.classList.add('hidden');
