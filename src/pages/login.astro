@@ -1,5 +1,18 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import GoogleSignIn from '../components/GoogleSignIn.astro';
+import { isGoogleAuthConfigured } from '../lib/google-auth';
+
+const googleAuth = isGoogleAuthConfigured();
+const authErrors: Record<string, string> = {
+  google_no_account: 'No hay cuenta con ese Google. Crea tu negocio primero.',
+  google_denied: 'Cancelaste el acceso con Google.',
+  google_unverified: 'Tu email de Google no está verificado.',
+  google_invalid: 'La sesión de Google expiró. Intenta de nuevo.',
+  google_failed: 'No pudimos conectar con Google. Intenta de nuevo.',
+  google_unavailable: 'Inicio con Google no disponible ahora.',
+};
+const initialError = authErrors[new URL(Astro.request.url).searchParams.get('error') || ''] || '';
 ---
 
 <BaseLayout title="Entrar · Citas">
@@ -13,16 +26,18 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </h1>
       <p class="mt-2 text-sm text-ink-soft">Accede a tu bahía de citas.</p>
 
+      <GoogleSignIn mode="login" enabled={googleAuth} />
+
       <form id="login-form" class="mt-6 space-y-4">
         <div>
           <label class="label" for="email">Email</label>
-          <input class="input" id="email" name="email" type="email" required />
+          <input class="input" id="email" name="email" type="email" required autocomplete="email" />
         </div>
         <div>
           <label class="label" for="password">Contraseña</label>
-          <input class="input" id="password" name="password" type="password" required />
+          <input class="input" id="password" name="password" type="password" required autocomplete="current-password" />
         </div>
-        <p id="form-error" class="hidden text-sm font-medium text-danger"></p>
+        <p id="form-error" class:list={['text-sm font-medium text-danger', !initialError && 'hidden']} role="alert">{initialError}</p>
         <button class="btn-primary w-full !py-3" type="submit">Entrar</button>
       </form>
 

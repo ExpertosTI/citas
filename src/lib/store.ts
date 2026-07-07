@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { hashPassword, newId, slugify } from './auth';
 import { countryPreset } from './geo';
+import { googlePasswordHash } from './google-auth';
 import { appointmentCode, normalizeTenant } from './tenant';
 import { dayBoundsUtc, localDateKey, tenantTimezone, zonedDateTime } from './tz';
 
@@ -228,6 +229,70 @@ export async function createTenant(input: {
     closedWeekdays: [0],
     instagram: '',
     whatsapp: (input.phone || '').trim(),
+    onboardingComplete: false,
+    createdAt: new Date().toISOString(),
+  });
+
+  tenants.push(tenant);
+  await writeJson('tenants.json', tenants);
+
+  const services = await getAllServices();
+  services.push(...defaultServices(tenant.id));
+  await writeJson('services.json', services);
+
+  return tenant;
+}
+
+export async function createTenantFromGoogle(input: {
+  email: string;
+  ownerName: string;
+  googleSub: string;
+  country?: string;
+  city?: string;
+}) {
+  const tenants = await getTenants();
+  const email = input.email.trim().toLowerCase();
+  if (tenants.some((t) => t.email === email)) {
+    throw new Error('email_taken');
+  }
+
+  const first = input.ownerName.trim().split(/\s+/)[0] || 'Mi';
+  const businessName = `Local de ${first}`;
+
+  let base = slugify(businessName) || 'negocio';
+  let slug = base;
+  let n = 1;
+  while (tenants.some((t) => t.slug === slug)) {
+    slug = `${base}-${n++}`;
+  }
+
+  const preset = countryPreset(input.country || 'DO');
+
+  const tenant: Tenant = normalizeTenant({
+    id: newId('ten'),
+    slug,
+    businessName,
+    ownerName: input.ownerName.trim(),
+    email,
+    passwordHash: googlePasswordHash(input.googleSub),
+    phone: '',
+    address: '',
+    city: (input.city || preset.city).trim(),
+    country: preset.code,
+    currency: preset.currency,
+    bio: 'Reserva tu cita en línea · Servicio profesional',
+    accentColor: '#e8b923',
+    logoUrl: '',
+    timezone: preset.timezone,
+    openHour: 9,
+    closeHour: 20,
+    lunchStartHour: 13,
+    lunchEndHour: 14,
+    slotBufferMin: 5,
+    closedDays: [],
+    closedWeekdays: [0],
+    instagram: '',
+    whatsapp: '',
     onboardingComplete: false,
     createdAt: new Date().toISOString(),
   });

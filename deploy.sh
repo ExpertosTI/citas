@@ -70,6 +70,8 @@ if [ -z "$SESSION_SECRET" ] || [ ${#SESSION_SECRET} -lt 24 ] || [[ "$SESSION_SEC
 fi
 export GEMINI_API_KEY="${GEMINI_API_KEY:-}"
 export GEMINI_MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"
+export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}"
+export GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"
 
 if [ -z "$SMTP_PASS" ] || [[ "$SMTP_PASS" =~ TU_APP_PASSWORD|YOUR_GOOGLE|changeme ]]; then
   red "WARNING: SMTP_PASS is missing or still a placeholder in $PROJECT_DIR/.env"
@@ -83,6 +85,11 @@ if [ -n "$GEMINI_API_KEY" ]; then
   cyan "   Gemini:    configured (${#GEMINI_API_KEY} chars, model $GEMINI_MODEL)"
 else
   red "   Gemini:    NOT SET — onboarding AI disabled"
+fi
+if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+  cyan "   Google:    Sign-In configured"
+else
+  red "   Google:    NOT SET — Google Sign-In disabled"
 fi
 
 cyan "── 3. Build image (low priority) ──────────────"
@@ -114,6 +121,8 @@ docker service update \
   --env-add "REMINDER_SECRET=${REMINDER_SECRET}" \
   --env-add "GEMINI_API_KEY=${GEMINI_API_KEY}" \
   --env-add "GEMINI_MODEL=${GEMINI_MODEL}" \
+  --env-add "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" \
+  --env-add "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" \
   --force \
   "$SERVICE_NAME" >/dev/null
 

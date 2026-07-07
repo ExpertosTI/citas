@@ -1,8 +1,11 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import GoogleSignIn from '../components/GoogleSignIn.astro';
 import { geoFromRequest } from '../lib/geo';
+import { isGoogleAuthConfigured } from '../lib/google-auth';
 
 const geo = geoFromRequest(Astro.request);
+const googleAuth = isGoogleAuthConfigured();
 ---
 
 <BaseLayout title="Crear cuenta · Citas">
@@ -19,6 +22,8 @@ const geo = geoFromRequest(Astro.request);
         <span data-typewriter="Registra tu negocio" data-type-speed="45"></span>
       </h1>
       <p class="mt-2 text-sm text-ink-soft">La IA te guía para configurar servicios, precios y horario en minutos.</p>
+
+      <GoogleSignIn mode="register" enabled={googleAuth} />
 
       <form id="register-form" class="mt-6 space-y-4">
         <input type="hidden" name="country" id="country" value={geo.country} />

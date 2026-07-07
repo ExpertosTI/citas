@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createSessionToken, sessionCookie, verifyPassword } from '../../../lib/auth';
+import { isGooglePasswordHash } from '../../../lib/google-auth';
 import { bad, json, readBody } from '../../../lib/http';
 import { rateLimitRequest, sessionSecretIssue } from '../../../lib/security';
 import { getTenantByEmail, safeTenant } from '../../../lib/store';
@@ -17,7 +18,13 @@ export const POST: APIRoute = async ({ request }) => {
   if (!email || !password) return bad('Email y contraseña requeridos');
 
   const tenant = await getTenantByEmail(email);
-  if (!tenant || !verifyPassword(password, tenant.passwordHash)) {
+  if (!tenant) {
+    return bad('Credenciales incorrectas', 401);
+  }
+  if (isGooglePasswordHash(tenant.passwordHash)) {
+    return bad('Esta cuenta usa Google. Pulsa "Continuar con Google".', 401);
+  }
+  if (!verifyPassword(password, tenant.passwordHash)) {
     return bad('Credenciales incorrectas', 401);
   }
 
