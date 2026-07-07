@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { hashPassword, newId, slugify } from './auth';
 import { countryPreset } from './geo';
+import { normalizePhoneDigits } from './phone';
 import { googlePasswordHash } from './google-auth';
 import type { TenantModuleState } from './modules/types';
 import { normalizeSubscription, type TenantSubscription } from './subscription';
@@ -469,8 +470,10 @@ export async function findOrCreateClient(
   input: { name: string; email?: string; phone?: string },
 ) {
   const all = await getAllClients();
+  const tenant = await getTenantById(tenantId);
+  const country = tenant?.country || 'DO';
   const email = (input.email || '').trim().toLowerCase();
-  const phone = (input.phone || '').trim();
+  const phone = input.phone ? normalizePhoneDigits(input.phone, country) : '';
   let client = all.find(
     (c) =>
       c.tenantId === tenantId &&
@@ -505,6 +508,9 @@ export async function findOrCreateClient(
 
 export async function saveClient(tenantId: string, input: Partial<Client> & { name: string }) {
   const all = await getAllClients();
+  const tenant = await getTenantById(tenantId);
+  const country = tenant?.country || 'DO';
+  const phoneNorm = input.phone ? normalizePhoneDigits(input.phone, country) : '';
   if (input.id) {
     const idx = all.findIndex((c) => c.id === input.id && c.tenantId === tenantId);
     if (idx < 0) return null;
@@ -512,7 +518,7 @@ export async function saveClient(tenantId: string, input: Partial<Client> & { na
       ...all[idx],
       name: input.name.trim(),
       email: (input.email || all[idx].email || '').trim().toLowerCase(),
-      phone: (input.phone || all[idx].phone || '').trim(),
+      phone: phoneNorm || all[idx].phone || '',
       notes: input.notes ?? all[idx].notes,
     };
     await writeJson('clients.json', all);
@@ -524,7 +530,7 @@ export async function saveClient(tenantId: string, input: Partial<Client> & { na
     tenantId,
     name: input.name.trim(),
     email: (input.email || '').trim().toLowerCase(),
-    phone: (input.phone || '').trim(),
+    phone: phoneNorm,
     notes: input.notes,
     createdAt: new Date().toISOString(),
   };
@@ -775,11 +781,13 @@ export async function addWaitlistEntry(
     notes?: string;
   },
 ) {
+  const tenant = await getTenantById(tenantId);
+  const country = tenant?.country || 'DO';
   const entry: WaitlistEntry = {
     id: newId('wl'),
     tenantId,
     clientName: input.clientName.trim(),
-    clientPhone: (input.clientPhone || '').trim(),
+    clientPhone: input.clientPhone ? normalizePhoneDigits(input.clientPhone, country) : '',
     clientEmail: (input.clientEmail || '').trim().toLowerCase(),
     serviceId: input.serviceId,
     preferredDate: input.preferredDate.slice(0, 10),

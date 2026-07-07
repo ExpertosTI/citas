@@ -47,7 +47,7 @@ const googleAuth = isGoogleAuthConfigured();
           </div>
           <div>
             <label class="label" for="phone">Teléfono</label>
-            <input class="input" id="phone" name="phone" type="tel" placeholder={geo.phonePrefix} />
+            <input class="input" id="phone" name="phone" type="tel" placeholder={geo.phoneExample} />
           </div>
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
@@ -92,7 +92,7 @@ const googleAuth = isGoogleAuthConfigured();
       countryEl.value = data.country;
       if (geoLabel) geoLabel.textContent = `${data.name} · ${data.city}`;
       if (cityEl && !cityEl.dataset.userEdited) cityEl.value = data.city;
-      if (phoneEl && !phoneEl.value) phoneEl.placeholder = data.phonePrefix;
+      if (phoneEl && !phoneEl.value) phoneEl.placeholder = data.phoneExample || data.phonePrefix;
     }
 
     cityEl?.addEventListener('input', () => {

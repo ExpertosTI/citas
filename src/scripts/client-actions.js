@@ -1,21 +1,4 @@
-/** @param {string} phone */
-export function phoneDigits(phone) {
-  return String(phone || '').replace(/\D/g, '');
-}
-
-/** @param {string} phone @param {string} [text] */
-export function whatsAppUrl(phone, text = '') {
-  const digits = phoneDigits(phone);
-  if (!digits) return '';
-  const q = text ? `?text=${encodeURIComponent(text)}` : '';
-  return `https://wa.me/${digits}${q}`;
-}
-
-/** @param {string} phone */
-export function telUrl(phone) {
-  const digits = phoneDigits(phone);
-  return digits ? `tel:+${digits}` : '';
-}
+export { phoneForInput, normalizePhoneDigits, formatPhoneDisplay, whatsAppUrl, telUrl, digitsOnly as phoneDigits } from '../lib/phone.ts';
 
 /** @param {Record<string, string | undefined>} params */
 export function bookAppUrl(params) {

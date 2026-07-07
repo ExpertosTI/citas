@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { tenantIdFromRequest } from '../../lib/auth';
 import { bad, json, readBody } from '../../lib/http';
+import { normalizePhoneDigits } from '../../lib/phone';
 import { getTenantById, safeTenant, updateTenant } from '../../lib/store';
 
 export const prerender = false;
@@ -62,6 +63,17 @@ export const PUT: APIRoute = async ({ request }) => {
   }
 
   try {
+    const existing = await getTenantById(tenantId);
+    if (!existing) return bad('No encontrado', 404);
+    const country = String(patch.country || existing.country || 'DO');
+
+    if (typeof patch.phone === 'string' && patch.phone.trim()) {
+      patch.phone = normalizePhoneDigits(patch.phone, country);
+    }
+    if (typeof patch.whatsapp === 'string' && patch.whatsapp.trim()) {
+      patch.whatsapp = normalizePhoneDigits(patch.whatsapp, country);
+    }
+
     const tenant = await updateTenant(tenantId, patch as never);
     if (!tenant) return bad('No encontrado', 404);
     return json({ ok: true, tenant: safeTenant(tenant) });

@@ -6,6 +6,7 @@ import { bookAppUrl, telUrl, whatsAppUrl } from '../../scripts/client-actions.js
 const tenantId = Astro.locals.tenantId!;
 const [waitlist, services] = await Promise.all([getWaitlist(tenantId), getServices(tenantId)]);
 const businessName = Astro.locals.tenant?.businessName || 'tu negocio';
+const tenantCountry = Astro.locals.tenant?.country || 'DO';
 ---
 
 <AppLayout title="Lista de espera" active="waitlist">
@@ -23,8 +24,8 @@ const businessName = Astro.locals.tenant?.businessName || 'tu negocio';
       const name = w.clientName?.trim() || 'Cliente sin nombre';
       const phone = w.clientPhone?.trim() || '';
       const email = w.clientEmail?.trim() || '';
-      const wa = whatsAppUrl(phone, `Hola ${name}, hay cupo en ${businessName}. ¿Te agendo?`);
-      const tel = telUrl(phone);
+      const wa = whatsAppUrl(phone, `Hola ${name}, hay cupo en ${businessName}. ¿Te agendo?`, tenantCountry);
+      const tel = telUrl(phone, tenantCountry);
       const book = bookAppUrl({
         date: w.preferredDate,
         clientName: name,

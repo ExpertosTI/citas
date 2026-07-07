@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { Tenant } from './store';
 import { countryPreset } from './geo';
+import { normalizePhoneDigits } from './phone';
 import { normalizeTenantModules } from './modules/tenant-modules';
 import { normalizeSubscription } from './subscription';
 
@@ -34,16 +35,22 @@ function sanitizeBusinessHours(t: Tenant) {
 export function normalizeTenant(t: Tenant): Tenant {
   const preset = countryPreset(t.country || 'DO');
   const hours = sanitizeBusinessHours(t);
+  const country = t.country || preset.code;
+  const phoneRaw = (t.phone || '').trim();
+  const waRaw = (t.whatsapp || t.phone || '').trim();
+  const phone = phoneRaw ? normalizePhoneDigits(phoneRaw, country) : '';
+  const whatsapp = waRaw ? normalizePhoneDigits(waRaw, country) : phone;
   return {
     ...t,
-    country: t.country || preset.code,
+    country,
     currency: t.currency || preset.currency,
     closedDays: t.closedDays || [],
     closedWeekdays: t.closedWeekdays ?? [0],
     slotBufferMin: t.slotBufferMin ?? 5,
     ...hours,
+    phone,
     instagram: t.instagram || '',
-    whatsapp: t.whatsapp || t.phone || '',
+    whatsapp: whatsapp || phone,
     logoUrl: t.logoUrl || '',
     accentColor: t.accentColor || '#e8b923',
     bio: t.bio || 'Reserva tu cita en línea · Servicio profesional',

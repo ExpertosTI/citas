@@ -4,6 +4,7 @@ import BookWizard from '../../../components/BookWizard.astro';
 import { readLogo } from '../../../lib/logo';
 import { tenantHasModule } from '../../../lib/modules/tenant-modules';
 import { tenantLogoUrl } from '../../../lib/tenant';
+import { formatPhoneDisplay } from '../../../lib/phone';
 import { getServices, getTenantBySlug, publicTenant } from '../../../lib/store';
 
 const slug = Astro.params.slug || '';
@@ -43,7 +44,7 @@ const waitlistEnabled = tenantHasModule(tenant, 'waitlist');
           <h1 class="brand-mark text-3xl sm:text-4xl">{t.businessName}</h1>
         </div>
         <p class="mt-2 text-sm text-muted">{t.bio}</p>
-        <p class="mt-2 text-sm text-muted">{[t.city, t.phone].filter(Boolean).join(' · ')}</p>
+        <p class="mt-2 text-sm text-muted">{[t.city, t.phone ? formatPhoneDisplay(t.phone, t.country) : ''].filter(Boolean).join(' · ')}</p>
       </div>
 
       {services.length === 0 ? (
@@ -54,6 +55,7 @@ const waitlistEnabled = tenantHasModule(tenant, 'waitlist');
           services={services}
           currency={t.currency}
           whatsapp={t.whatsapp || t.phone}
+          country={t.country}
           accentColor={t.accentColor}
           timezone={tenant.timezone}
           waitlistEnabled={waitlistEnabled}

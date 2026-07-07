@@ -2,6 +2,7 @@
 import AppLayout from '../../layouts/AppLayout.astro';
 import TimeField12 from '../../components/TimeField12.astro';
 import { COUNTRY_PRESETS } from '../../lib/geo';
+import { phoneForInput } from '../../lib/phone';
 import { catalogForTenant } from '../../lib/modules/tenant-modules';
 import { safeTenant } from '../../lib/store';
 
@@ -15,6 +16,9 @@ const closedDaysStr = (tenant.closedDays || []).join(', ');
 const closedWeekdaysStr = (tenant.closedWeekdays || []).join(', ');
 const countries = Object.values(COUNTRY_PRESETS);
 const currencies = [...new Set(countries.map((c) => c.currency))];
+const countryPreset = countries.find((c) => c.code === tenant.country) || countries[0];
+const phoneDisplay = phoneForInput(tenant.phone, tenant.country);
+const whatsappDisplay = phoneForInput(tenant.whatsapp, tenant.country);
 ---
 
 <AppLayout title="Perfil" active="perfil">
@@ -107,7 +111,10 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
       </div>
       <div>
         <label class="label" for="phone">Teléfono</label>
-        <input class="input" id="phone" name="phone" value={tenant.phone} />
+        <div class="phone-input-group">
+          <span class="phone-input-group__prefix" id="phone-prefix">{countryPreset.phonePrefix}</span>
+          <input class="input phone-input-group__field" id="phone" name="phone" type="tel" value={phoneDisplay} placeholder={countryPreset.phoneExample} inputmode="tel" autocomplete="tel" />
+        </div>
       </div>
     </div>
     <div class="grid gap-4 sm:grid-cols-3">
@@ -135,7 +142,11 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
     <div class="grid gap-4 sm:grid-cols-2">
       <div>
         <label class="label" for="whatsapp">WhatsApp</label>
-        <input class="input" id="whatsapp" name="whatsapp" value={tenant.whatsapp} placeholder="8095551234" />
+        <div class="phone-input-group">
+          <span class="phone-input-group__prefix" id="whatsapp-prefix">{countryPreset.phonePrefix}</span>
+          <input class="input phone-input-group__field" id="whatsapp" name="whatsapp" type="tel" value={whatsappDisplay} placeholder={countryPreset.phoneExample} inputmode="tel" autocomplete="tel" />
+        </div>
+        <p class="mt-1 text-xs text-muted">Se guarda con código de país para que el enlace de WhatsApp funcione bien.</p>
       </div>
       <div>
         <label class="label" for="instagram">Instagram</label>
@@ -189,9 +200,22 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
     </div>
   </form>
 
-  <script type="module" define:vars={{ publicUrl, whatsapp: tenant.whatsapp || tenant.phone }}>
+  <script type="module" define:vars={{ publicUrl, whatsapp: tenant.whatsapp || tenant.phone, tenantCountry: tenant.country, countryPresets: countries }}>
     import { toast } from '../../scripts/ui-feedback.js';
     import { bindTime12hFields } from '../../lib/time-12h.ts';
+    import { whatsAppUrl } from '../../lib/phone.ts';
+
+    function updatePhonePrefixes(code) {
+      const preset = countryPresets.find((c) => c.code === code) || countryPresets[0];
+      const phonePrefix = document.getElementById('phone-prefix');
+      const waPrefix = document.getElementById('whatsapp-prefix');
+      const phoneInput = document.getElementById('phone');
+      const waInput = document.getElementById('whatsapp');
+      if (phonePrefix) phonePrefix.textContent = preset.phonePrefix;
+      if (waPrefix) waPrefix.textContent = preset.phonePrefix;
+      if (phoneInput) phoneInput.placeholder = preset.phoneExample;
+      if (waInput) waInput.placeholder = preset.phoneExample;
+    }
 
     document.getElementById('copy-link')?.addEventListener('click', async () => {
       await navigator.clipboard.writeText(publicUrl);
@@ -199,14 +223,13 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
     });
     const wa = document.getElementById('wa-share');
     if (wa instanceof HTMLAnchorElement) {
-      const phone = String(whatsapp || '').replace(/\D/g, '');
-      wa.href = phone
-        ? `https://wa.me/${phone}?text=${encodeURIComponent(`Reserva tu cita: ${publicUrl}`)}`
-        : '#';
+      const href = whatsAppUrl(whatsapp, `Reserva tu cita: ${publicUrl}`, tenantCountry);
+      wa.href = href || '#';
     }
 
     document.getElementById('country')?.addEventListener('change', (e) => {
       const code = e.target.value;
+      updatePhonePrefixes(code);
       const presets = {
         DO: { timezone: 'America/Santo_Domingo', currency: 'DOP' },
         PR: { timezone: 'America/Puerto_Rico', currency: 'USD' },

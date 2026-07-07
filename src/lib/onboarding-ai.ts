@@ -1,5 +1,6 @@
 import { generateGeminiChat, generateGeminiText, isGeminiConfigured } from './gemini';
 import { formatHour, parseScheduleFromText, weekdayLabels } from './schedule-parser';
+import { normalizePhoneDigits } from './phone';
 import {
   APPOINTMENT_COLORS,
   type AppointmentColor,
@@ -355,16 +356,16 @@ function parseServiceRemovals(text: string, existing: Service[]): string[] {
   return [];
 }
 
-function parseContactHeuristic(text: string): Partial<OnboardingSetupDraft> {
+function parseContactHeuristic(text: string, country = 'DO'): Partial<OnboardingSetupDraft> {
   const patch: Partial<OnboardingSetupDraft> = {};
   const wa = text.match(/(?:whatsapp|wa)\s*[:\s]?\s*(\+?\d[\d\s-]{7,})/i);
-  if (wa) patch.whatsapp = wa[1].replace(/\D/g, '');
+  if (wa) patch.whatsapp = normalizePhoneDigits(wa[1], country);
 
   const ig = text.match(/(?:instagram|ig)\s*[:\s]?\s@?([\w.]+)/i);
   if (ig) patch.instagram = ig[1];
 
   const phone = text.match(/(?:tel[eé]fono|tel|cel)\s*[:\s]?\s*(\+?\d[\d\s-]{7,})/i);
-  if (phone) patch.phone = phone[1].replace(/\D/g, '');
+  if (phone) patch.phone = normalizePhoneDigits(phone[1], country);
 
   if (/^bio\s*[:\s]/i.test(text) || text.length > 40 && !/\d{3}/.test(text)) {
     const bio = text.replace(/^bio\s*[:\s]/i, '').trim();
@@ -608,7 +609,7 @@ export function chatOnboardingFallback(
     const services = parseServicesHeuristic(text);
     const updates = parseServiceUpdates(text, existingServices);
     const schedule = parseScheduleFromText(text);
-    const contact = parseContactHeuristic(text);
+    const contact = parseContactHeuristic(text, tenant.country || 'DO');
     const removals = parseServiceRemovals(text, existingServices);
 
     if (services.length) {
@@ -820,8 +821,10 @@ export async function applyOnboardingSetup(
 
   if (setup.businessName?.trim()) patch.businessName = setup.businessName.trim();
   if (setup.bio?.trim()) patch.bio = setup.bio.trim();
-  if (setup.phone?.trim()) patch.phone = setup.phone.trim();
-  if (setup.whatsapp?.trim()) patch.whatsapp = setup.whatsapp.trim();
+  if (setup.phone?.trim()) patch.phone = normalizePhoneDigits(setup.phone.trim(), tenant.country || 'DO');
+  if (setup.whatsapp?.trim()) {
+    patch.whatsapp = normalizePhoneDigits(setup.whatsapp.trim(), tenant.country || 'DO');
+  }
   if (setup.instagram?.trim()) patch.instagram = setup.instagram.replace(/^@/, '');
   if (setup.address?.trim()) patch.address = setup.address.trim();
   if (setup.city?.trim()) patch.city = setup.city.trim();

@@ -4,6 +4,12 @@ export type CountryPreset = {
   city: string;
   timezone: string;
   phonePrefix: string;
+  /** Código internacional sin + (ej. 1, 57, 34) */
+  dialCode: string;
+  /** Dígitos del número local sin prefijo país */
+  localDigits: number;
+  /** Ejemplo para placeholder */
+  phoneExample: string;
   currency: string;
   locale: string;
 };
@@ -14,7 +20,10 @@ export const COUNTRY_PRESETS: Record<string, CountryPreset> = {
     name: 'República Dominicana',
     city: 'Santo Domingo',
     timezone: 'America/Santo_Domingo',
-    phonePrefix: '+1 809',
+    phonePrefix: '+1',
+    dialCode: '1',
+    localDigits: 10,
+    phoneExample: '8095551234',
     currency: 'DOP',
     locale: 'es-DO',
   },
@@ -23,7 +32,10 @@ export const COUNTRY_PRESETS: Record<string, CountryPreset> = {
     name: 'Puerto Rico',
     city: 'San Juan',
     timezone: 'America/Puerto_Rico',
-    phonePrefix: '+1 787',
+    phonePrefix: '+1',
+    dialCode: '1',
+    localDigits: 10,
+    phoneExample: '7875551234',
     currency: 'USD',
     locale: 'es-PR',
   },
@@ -33,6 +45,9 @@ export const COUNTRY_PRESETS: Record<string, CountryPreset> = {
     city: 'Caracas',
     timezone: 'America/Caracas',
     phonePrefix: '+58',
+    dialCode: '58',
+    localDigits: 10,
+    phoneExample: '4121234567',
     currency: 'USD',
     locale: 'es-VE',
   },
@@ -42,6 +57,9 @@ export const COUNTRY_PRESETS: Record<string, CountryPreset> = {
     city: 'Bogotá',
     timezone: 'America/Bogota',
     phonePrefix: '+57',
+    dialCode: '57',
+    localDigits: 10,
+    phoneExample: '3001234567',
     currency: 'COP',
     locale: 'es-CO',
   },
@@ -51,6 +69,9 @@ export const COUNTRY_PRESETS: Record<string, CountryPreset> = {
     city: 'Ciudad de México',
     timezone: 'America/Mexico_City',
     phonePrefix: '+52',
+    dialCode: '52',
+    localDigits: 10,
+    phoneExample: '5512345678',
     currency: 'MXN',
     locale: 'es-MX',
   },
@@ -60,6 +81,9 @@ export const COUNTRY_PRESETS: Record<string, CountryPreset> = {
     city: 'Miami',
     timezone: 'America/New_York',
     phonePrefix: '+1',
+    dialCode: '1',
+    localDigits: 10,
+    phoneExample: '3055551234',
     currency: 'USD',
     locale: 'en-US',
   },
@@ -69,6 +93,9 @@ export const COUNTRY_PRESETS: Record<string, CountryPreset> = {
     city: 'Madrid',
     timezone: 'Europe/Madrid',
     phonePrefix: '+34',
+    dialCode: '34',
+    localDigits: 9,
+    phoneExample: '612345678',
     currency: 'EUR',
     locale: 'es-ES',
   },

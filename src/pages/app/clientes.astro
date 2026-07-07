@@ -6,6 +6,7 @@ import { bookAppUrl, telUrl, whatsAppUrl } from '../../scripts/client-actions.js
 const tenantId = Astro.locals.tenantId!;
 const clients = await getClients(tenantId);
 const businessName = Astro.locals.tenant?.businessName || 'tu negocio';
+const tenantCountry = Astro.locals.tenant?.country || 'DO';
 ---
 
 <AppLayout title="Clientes" active="clientes">
@@ -23,8 +24,8 @@ const businessName = Astro.locals.tenant?.businessName || 'tu negocio';
         <p class="p-6 text-sm text-muted">Aún no hay clientes. Se crean al agendar citas o aquí.</p>
       )}
       {clients.map((c) => {
-        const wa = whatsAppUrl(c.phone, `Hola ${c.name}, te escribe ${businessName}.`);
-        const tel = telUrl(c.phone);
+        const wa = whatsAppUrl(c.phone, `Hola ${c.name}, te escribe ${businessName}.`, tenantCountry);
+        const tel = telUrl(c.phone, tenantCountry);
         const book = bookAppUrl({ clientName: c.name, clientPhone: c.phone, clientEmail: c.email });
         return (
           <article class="client-card">

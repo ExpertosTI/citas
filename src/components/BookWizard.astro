@@ -1,18 +1,21 @@
 ---
 import { APPOINTMENT_COLORS, type Service } from '../lib/store';
 import { publicServiceMeta } from '../lib/service-display';
+import { countryPreset } from '../lib/geo';
 
 interface Props {
   slug: string;
   services: Service[];
   currency: string;
   whatsapp: string;
+  country: string;
   accentColor: string;
   timezone?: string;
   waitlistEnabled?: boolean;
 }
 
-const { slug, services, currency, whatsapp, timezone = 'America/Santo_Domingo', waitlistEnabled = true } = Astro.props;
+const { slug, services, currency, whatsapp, country, accentColor, timezone = 'America/Santo_Domingo', waitlistEnabled = true } = Astro.props;
+const phonePreset = countryPreset(country);
 const totalSteps = 4;
 ---
 
@@ -21,6 +24,7 @@ const totalSteps = 4;
   class="flow-wizard card overflow-hidden rounded-[1.75rem] p-5 sm:p-7"
   data-slug={slug}
   data-whatsapp={whatsapp}
+  data-country={country}
   data-timezone={timezone}
   data-total={totalSteps}
 >
@@ -79,9 +83,12 @@ const totalSteps = 4;
         <input class="field" id="name" name="name" required autocomplete="name" />
       </label>
       <div class="grid grid-cols-2 gap-3">
-        <label class="block">
+        <label class="block sm:col-span-2">
           <span class="label">Teléfono</span>
-          <input class="field" id="phone" name="phone" type="tel" autocomplete="tel" />
+          <div class="phone-input-group">
+            <span class="phone-input-group__prefix">{phonePreset.phonePrefix}</span>
+            <input class="field phone-input-group__field" id="phone" name="phone" type="tel" placeholder={phonePreset.phoneExample} inputmode="tel" autocomplete="tel" required />
+          </div>
         </label>
         <label class="block">
           <span class="label">Email</span>
