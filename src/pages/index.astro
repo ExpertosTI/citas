@@ -64,69 +64,36 @@ const features = [
       </div>
     </header>
 
-    <section class="mx-auto grid max-w-7xl gap-12 px-4 pb-20 pt-8 lg:grid-cols-2 lg:items-center lg:px-8">
-      <div class="reveal">
+    <section class="mx-auto max-w-4xl px-4 pb-16 pt-10 text-center lg:px-8">
+      <div class="reveal reveal--rise">
         <p class="hero-eyebrow text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">
           Agenda inteligente · {geo.city}
         </p>
-        <h1 class="hero-title font-display mt-4 text-4xl font-semibold tracking-tight text-ink sm:text-5xl lg:text-[3.5rem] lg:leading-[1.05]">
+        <h1 class="hero-title font-display mt-4 text-4xl font-semibold tracking-tight text-ink sm:text-5xl lg:text-6xl lg:leading-[1.05]">
           <span data-typewriter="Tu negocio listo en minutos." data-type-speed="38">Tu negocio listo en minutos.</span>
         </h1>
-        <p class="hero-copy mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-          Reservas para barberías, salones y spas. Panel con bahía del día, clientes y enlace público.
+        <p class="hero-copy mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
+          Reservas para barberías, salones y spas. Bahía del día, clientes y enlace público — en una sola app.
         </p>
-        <div class="hero-cta mt-8 flex flex-wrap gap-3">
+        <div class="hero-cta mt-8 flex flex-wrap justify-center gap-3">
           <a href="/registro" class="btn-primary !px-6 !py-3">Empezar gratis</a>
           <a href="#features" class="btn-ghost !px-6 !py-3">Ver la demo</a>
         </div>
       </div>
-
-      <div class="hero-visual card p-6 sm:p-7" data-parallax="0.08" data-tilt>
-        <div class="flex items-center gap-2">
-          <LandingIcon name="bay" class="landing-icon--sm" />
-          <p class="text-xs font-semibold uppercase tracking-wider text-muted">Panel del día</p>
-        </div>
-        <p class="brand-mark mt-1 text-2xl">Bahía de citas</p>
-        <div class="mt-5 space-y-2.5">
-          {[
-            { t: '09:00', n: 'Carlos M.', s: 'Corte ejecutivo', c: 'gold' },
-            { t: '10:30', n: 'Ana R.', s: 'Color + corte', c: 'crimson' },
-            { t: '12:00', n: 'Miguel S.', s: 'Barba premium', c: 'navy' },
-          ].map((row, i) => (
-            <div class="live-slot reveal" style={`transition-delay: ${0.1 + i * 0.08}s`}>
-              <span class:list={['live-slot__dot', `live-slot__dot--${row.c}`]}></span>
-              <span class="w-12 shrink-0 text-sm font-bold tabular-nums text-navy">{row.t}</span>
-              <div class="min-w-0">
-                <p class="truncate font-semibold text-ink">{row.n}</p>
-                <p class="truncate text-xs text-muted">{row.s}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </section>
 
-    <section id="features" class="border-t border-black/5 py-16 sm:py-20">
+    <section id="features" class="py-8 sm:py-12">
       <div class="mx-auto max-w-7xl px-4 lg:px-8">
-        <div class="reveal mb-12 max-w-2xl">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Producto</p>
-          <h2 class="font-display mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-            Todo lo que necesitas, en una sola app
-          </h2>
-          <p class="mt-3 text-base text-muted">
-            Cada función con una mini demo — así se ve Citas por dentro.
-          </p>
-        </div>
-
         <div class="feature-bento">
           {features.map((f, i) => (
             <article
               class:list={[
-                'feature-showcase reveal card',
+                'feature-showcase reveal reveal--rise card',
                 `feature-showcase--${f.size}`,
                 f.highlight && 'feature-showcase--highlight',
               ]}
-              style={`transition-delay: ${(i % 4) * 0.06}s`}
+              style={`transition-delay: ${i * 0.07}s`}
+              data-motion={f.variant}
               data-tilt
             >
               <div class="feature-showcase__demo">
