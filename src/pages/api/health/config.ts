@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { collectEnvStatus } from '../../../lib/env-status';
-import { isGeminiConfigured, probeGemini } from '../../../lib/gemini';
+import { isGeminiConfigured, probeGeminiStatus } from '../../../lib/gemini';
 import { isGoogleAuthConfigured } from '../../../lib/google-auth';
 import { bad, json } from '../../../lib/http';
 import { compareSecret, reminderSecret } from '../../../lib/security';
@@ -17,6 +17,7 @@ export const GET: APIRoute = async ({ request }) => {
 
   const status = collectEnvStatus();
   let geminiLive = false;
+  let geminiError: string | undefined;
   const geminiKey = (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '').trim();
   const geminiKeyType = geminiKey.startsWith('AQ.')
     ? 'auth'
@@ -26,11 +27,9 @@ export const GET: APIRoute = async ({ request }) => {
         ? 'custom'
         : 'missing';
   if (isGeminiConfigured()) {
-    try {
-      geminiLive = await probeGemini();
-    } catch {
-      geminiLive = false;
-    }
+    const probe = await probeGeminiStatus();
+    geminiLive = probe.live;
+    geminiError = probe.error;
   }
 
   return json({
@@ -39,6 +38,7 @@ export const GET: APIRoute = async ({ request }) => {
     runtime: {
       gemini: isGeminiConfigured(),
       geminiLive,
+      geminiError,
       geminiKeyType,
       geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
       google: isGoogleAuthConfigured(),

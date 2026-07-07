@@ -47,6 +47,8 @@ load_env_file() {
     if [[ "$val" =~ ^\"(.*)\"$ ]]; then val="${BASH_REMATCH[1]}"
     elif [[ "$val" =~ ^\'(.*)\'$ ]]; then val="${BASH_REMATCH[1]}"
     fi
+    val="${val%"${val##*[![:space:]]}"}"
+    val="${val#"${val%%[![:space:]]*}"}"
     export "$key=$val"
   done < "$file"
 }

@@ -125,8 +125,19 @@ export async function generateGeminiChat(
 
 /** Quick connectivity probe for deploy / health checks */
 export async function probeGemini() {
-  const text = await generateGeminiText('Responde solo: ok', { temperature: 0 });
-  return text.toLowerCase().includes('ok');
+  const result = await probeGeminiStatus();
+  return result.live;
+}
+
+export async function probeGeminiStatus(): Promise<{ live: boolean; error?: string }> {
+  try {
+    const text = await generateGeminiText('Responde solo: ok', { temperature: 0 });
+    return { live: text.toLowerCase().includes('ok') };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'gemini_failed';
+    const code = msg.match(/gemini_http_(\d+)/)?.[1] || 'error';
+    return { live: false, error: `http_${code}` };
+  }
 }
 
 export async function generateGeminiContent(

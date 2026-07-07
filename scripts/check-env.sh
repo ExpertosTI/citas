@@ -10,7 +10,7 @@ SERVICE_NAME="${SERVICE_NAME:-citas_web}"
 cd "$PROJECT_DIR"
 
 env_val() {
-  grep -m1 "^$1=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | sed 's/^["'\'']//;s/["'\'']$//' || true
+  grep -m1 "^$1=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | sed 's/^["'\'']//;s/["'\'']$//' | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true
 }
 
 status_ok() {
@@ -28,7 +28,7 @@ service_has_key() {
 
 runtime_env_len() {
   docker service inspect "$SERVICE_NAME" --format '{{range .Spec.TaskTemplate.ContainerSpec.Env}}{{.}}{{"\n"}}{{end}}' 2>/dev/null \
-    | grep "^$1=" | tail -1 | cut -d= -f2- | wc -c | tr -d ' '
+    | grep "^$1=" | tail -1 | cut -d= -f2- | tr -d '\r\n' | wc -c | tr -d ' '
 }
 
 key_type_label() {
@@ -45,6 +45,7 @@ echo "   service: $SERVICE_NAME"
 echo ""
 
 fail=0
+gemini_fail=0
 
 SMTP_HOST="$(env_val SMTP_HOST)"; [ -n "$SMTP_HOST" ] || SMTP_HOST="smtp.hostinger.com"
 SMTP_PORT="$(env_val SMTP_PORT)"; [ -n "$SMTP_PORT" ] || SMTP_PORT="465"
@@ -119,8 +120,12 @@ for key in SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASS SMTP_FROM_NAME SMTP_REPLY_TO 
   if service_has_key "$key"; then
     rlen="$(runtime_env_len "$key")"
     if [ "$key" = "GEMINI_API_KEY" ] || [ "$key" = "GOOGLE_CLIENT_SECRET" ] || [ "$key" = "SMTP_PASS" ] || [ "$key" = "SESSION_SECRET" ] || [ "$key" = "REMINDER_SECRET" ]; then
-      if [ "${rlen:-0}" -gt 1 ]; then
+      if [ "${rlen:-0}" -gt 0 ]; then
         status_ok "$key (runtime)" "${rlen} chars"
+        if [ "$key" = "GEMINI_API_KEY" ] && [ -n "$GEMINI_API_KEY" ] && [ "$rlen" != "${#GEMINI_API_KEY}" ]; then
+          status_fail "$key (runtime)" "longitud distinta a .env (${#GEMINI_API_KEY} vs ${rlen})"
+          fail=1
+        fi
       else
         status_fail "$key (runtime)" "vacío en contenedor"
         fail=1
@@ -148,8 +153,14 @@ if [ -n "$HDR" ]; then
   if echo "$CFG" | grep -q '"geminiLive":true'; then
     status_ok api/health/config "gemini live"
   elif echo "$CFG" | grep -q '"geminiLive":false'; then
-    status_fail api/health/config "gemini no responde (revisar clave/modelo en runtime)"
-    fail=1
+    GEM_ERR="$(printf '%s' "$CFG" | sed -n 's/.*"geminiError":"\([^"]*\)".*/\1/p' | head -1)"
+    if [ -n "$GEM_ERR" ]; then
+      status_fail api/health/config "gemini 401 — proyecto Google Cloud (API + service account)"
+      printf '    · detalle: %s\n' "$GEM_ERR"
+    else
+      status_fail api/health/config "gemini no responde"
+    fi
+    gemini_fail=1
   elif echo "$CFG" | grep -q '"ok":true'; then
     status_ok api/health/config "runtime"
   elif [ -n "$CFG" ]; then
@@ -161,9 +172,17 @@ if [ -n "$HDR" ]; then
 fi
 
 echo ""
-if [ "$fail" -eq 0 ]; then
-  echo "✅ Todas las variables críticas están configuradas."
+if [ "$fail" -eq 0 ] && [ "$gemini_fail" -eq 0 ]; then
+  echo "✅ Todas las variables críticas están configuradas y Gemini responde."
   exit 0
 fi
-echo "⚠️  Faltan variables. Usa scripts/seed-env.sh y luego sh scripts/deploy.sh"
+if [ "$fail" -eq 0 ] && [ "$gemini_fail" -eq 1 ]; then
+  echo "✅ Variables y deploy correctos."
+  echo "⚠️  Gemini API rechaza la clave auth (AQ.*). En Google AI Studio / Cloud Console:"
+  echo "    · Verifica que la clave no esté «Blocked»"
+  echo "    · Habilita «Generative Language API» en el proyecto de la clave"
+  echo "    · Confirma que el service account vinculado esté activo"
+  exit 1
+fi
+echo "⚠️  Faltan variables en .env o no llegaron al contenedor."
 exit 1
