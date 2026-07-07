@@ -327,6 +327,8 @@ export const POST: APIRoute = async ({ request }) => {
     return json({
       ok: true,
       ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
+      fallback: Boolean(ai.usedFallback),
+      geminiError: ai.geminiError,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
@@ -360,6 +362,10 @@ export const POST: APIRoute = async ({ request }) => {
       ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
       fallback: true,
       geminiError: msg,
+      reply:
+        chatMode === 'assistant'
+          ? 'No pude conectar con Gemini ahora. Revisa tu conexión e intenta de nuevo en un momento.'
+          : ai.reply,
     });
   }
 };

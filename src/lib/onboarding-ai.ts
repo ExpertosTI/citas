@@ -1,4 +1,4 @@
-import { generateGeminiText, isGeminiConfigured } from './gemini';
+import { generateGeminiChat, generateGeminiText, isGeminiConfigured } from './gemini';
 import { formatHour, parseScheduleFromText, weekdayLabels } from './schedule-parser';
 import {
   APPOINTMENT_COLORS,
@@ -52,6 +52,8 @@ export type OnboardingAiResponse = {
   cards?: AssistantAppointmentCard[];
   phase?: string;
   suggestions?: string[];
+  usedFallback?: boolean;
+  geminiError?: string;
 };
 
 export type AssistantAppointmentCard = {
@@ -113,7 +115,12 @@ Incluye en reply sugerencias concretas para el siguiente paso.
 Responde SOLO JSON:
 {"reply":"...","setup":{...},"readyToApply":boolean,"suggestions":["chip1","chip2"]}`;
 
-const ASSISTANT_PROMPT = `Eres el asistente permanente de configuración y operación de Citas — como Gemini: cálido, natural, útil. Habla en español latino, 2-4 frases máximo. Nunca suenes a menú robótico ni repitas la misma frase genérica.
+const ASSISTANT_PROMPT = `Eres el asistente permanente de configuración y operación de Citas — como Gemini: cálido, natural, útil. Habla en español latino (RD, MX, CO), 2-4 frases máximo.
+
+IMPORTANTE:
+- Responde SIEMPRE al tono del usuario. Si saluda ("klk", "hola", "qué tal"), saluda de vuelta y pregunta en qué ayudar — NUNCA repitas un menú de opciones.
+- Nunca suenes a menú robótico ni uses la misma frase genérica dos veces.
+- Si el mensaje es informal o corto, sé breve y humano.
 
 Capacidades:
 1. **Agenda** — consultas (el servidor maneja agendar/consultar aparte)
@@ -170,8 +177,16 @@ function tenantContext(
   };
 }
 
-function parseAiJson(raw: string): OnboardingAiResponse {
+function extractJsonObject(raw: string) {
   const cleaned = raw.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start >= 0 && end > start) return cleaned.slice(start, end + 1);
+  return cleaned;
+}
+
+function parseAiJson(raw: string): OnboardingAiResponse {
+  const cleaned = extractJsonObject(raw);
   const parsed = JSON.parse(cleaned) as OnboardingAiResponse;
   if (!parsed.reply || typeof parsed.reply !== 'string') {
     throw new Error('invalid_ai_response');
@@ -179,6 +194,18 @@ function parseAiJson(raw: string): OnboardingAiResponse {
   if (typeof parsed.readyToApply !== 'boolean') parsed.readyToApply = false;
   if (parsed.setup) parsed.setup = sanitizeSetupDraft(parsed.setup);
   return parsed;
+}
+
+function hasActionableHeuristics(text: string, existingServices: Service[]) {
+  return (
+    parseServicesHeuristic(text).length > 0 ||
+    parseServiceUpdates(text, existingServices).length > 0 ||
+    parseScheduleFromText(text).openHour !== undefined ||
+    Boolean(parseContactHeuristic(text).bio) ||
+    parseServiceRemovals(text, existingServices).length > 0 ||
+    wantsApply(text) ||
+    scheduleHasChange(text)
+  );
 }
 
 function clampHour(n: unknown, fallback: number) {
@@ -430,8 +457,19 @@ function buildAssistantStyleReply(
     };
   }
 
+  const casual = /^(klk|que lo que|qué lo que|hola|hey|buenas|buen dia|buenos dias|hi|hello|qué tal|que tal)\b/i.test(
+    lastText.trim(),
+  );
+  if (casual) {
+    const first = tenant.ownerName.split(' ')[0];
+    return {
+      reply: `¡Klk ${first}! 👋 Todo bien por aquí. ¿Qué movemos — servicios, horario, fotos o la agenda?`,
+      readyToApply: false,
+    };
+  }
+
   return {
-    reply: `Claro. Puedo ayudarte con servicios, fotos 📎, horario, logo o contacto. ¿Qué quieres cambiar?`,
+    reply: `Dime qué necesitas y lo hacemos — servicios, fotos 📎, horario o contacto.`,
     readyToApply: false,
   };
 }
@@ -606,43 +644,53 @@ export async function chatOnboarding(
     logoUrl: tenant.logoUrl,
   });
   const systemPrompt = chatMode === 'assistant' ? ASSISTANT_PROMPT : ONBOARDING_PROMPT;
+  const systemInstruction = `${systemPrompt}
 
-  const historyText = messages
-    .map((m) => `${m.role === 'user' ? 'Usuario' : 'Asistente'}: ${m.content}`)
-    .join('\n');
-
-  const prompt = `${systemPrompt}
-
-Contexto actual (JSON):
+Contexto del negocio (JSON):
 ${JSON.stringify(ctx, null, 2)}
 
-Borrador acumulado del cliente (JSON):
-${JSON.stringify(priorSetup, null, 2)}
+Borrador acumulado (JSON):
+${JSON.stringify(priorSetup, null, 2)}`;
 
-Conversación:
-${historyText || '(inicio)'}
+  const turns = messages.map((m) => ({
+    role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model',
+    text: m.content,
+  }));
 
-Responde el siguiente turno en JSON.`;
+  const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
+
+  async function callGemini(json: boolean) {
+    const text = await generateGeminiChat(systemInstruction, turns, { json, temperature: json ? 0.65 : 0.8 });
+    return parseAiJson(text);
+  }
+
+  let lastErr = 'gemini_failed';
+  try {
+    return await callGemini(true);
+  } catch (err) {
+    lastErr = err instanceof Error ? err.message : 'gemini_failed';
+    console.error('[onboarding/gemini]', lastErr);
+  }
 
   try {
-    const text = await generateGeminiText(prompt, { json: true });
-    return parseAiJson(text);
+    return await callGemini(false);
   } catch (err) {
-    console.error('[onboarding/gemini]', err instanceof Error ? err.message : err);
-    try {
-      const text = await generateGeminiText(prompt, { json: true, temperature: 0.35 });
-      return parseAiJson(text);
-    } catch (retryErr) {
-      console.error('[onboarding/gemini-retry]', retryErr instanceof Error ? retryErr.message : retryErr);
-      const prior =
-        Object.keys(priorSetup).length > 0
-          ? priorSetup
-          : messages.length > 1
-            ? chatOnboardingFallback(tenant, messages.slice(0, -1), priorSetup, mode, existingServices).setup || {}
-            : {};
-      return chatOnboardingFallback(tenant, messages, prior, mode, existingServices);
-    }
+    lastErr = err instanceof Error ? err.message : lastErr;
+    console.error('[onboarding/gemini-plain]', lastErr);
   }
+
+  if (hasActionableHeuristics(lastUser, existingServices)) {
+    const prior =
+      Object.keys(priorSetup).length > 0
+        ? priorSetup
+        : messages.length > 1
+          ? chatOnboardingFallback(tenant, messages.slice(0, -1), priorSetup, mode, existingServices).setup || {}
+          : {};
+    const local = chatOnboardingFallback(tenant, messages, prior, mode, existingServices);
+    return { ...local, usedFallback: true, geminiError: lastErr };
+  }
+
+  throw new Error(lastErr);
 }
 
 export async function applyOnboardingSetup(

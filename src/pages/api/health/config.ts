@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { collectEnvStatus } from '../../../lib/env-status';
-import { isGeminiConfigured } from '../../../lib/gemini';
+import { isGeminiConfigured, probeGemini } from '../../../lib/gemini';
 import { isGoogleAuthConfigured } from '../../../lib/google-auth';
 import { bad, json } from '../../../lib/http';
 import { compareSecret, reminderSecret } from '../../../lib/security';
@@ -16,11 +16,21 @@ export const GET: APIRoute = async ({ request }) => {
   if (!compareSecret(header, secret)) return bad('Unauthorized', 401);
 
   const status = collectEnvStatus();
+  let geminiLive = false;
+  if (isGeminiConfigured()) {
+    try {
+      geminiLive = await probeGemini();
+    } catch {
+      geminiLive = false;
+    }
+  }
+
   return json({
     ok: status.ok,
     commit: process.env.CITAS_COMMIT || null,
     runtime: {
       gemini: isGeminiConfigured(),
+      geminiLive,
       google: isGoogleAuthConfigured(),
     },
     checks: status.checks,

@@ -350,7 +350,12 @@ export function createConfigChat(opts) {
       hideTyping();
       if (json.fallback && geminiBadge) {
         geminiBadge.classList.remove('hidden');
-        geminiBadge.textContent = 'Asistente local';
+        geminiBadge.textContent = json.geminiError ? 'IA no disponible' : 'Asistente local';
+        if (json.geminiError) {
+          toast('Gemini no respondió — intenta de nuevo', 'error');
+        }
+      } else if (geminiBadge) {
+        geminiBadge.classList.add('hidden');
       }
       messages.push({
         role: 'assistant',
