@@ -1,0 +1,123 @@
+---
+interface Props {
+  variant: 'ai' | 'bay' | 'book' | 'notify' | 'wait' | 'brand';
+}
+
+const { variant } = Astro.props;
+---
+
+<div class:list={['feature-demo', `feature-demo--${variant}`]} aria-hidden="true">
+  {variant === 'ai' && (
+    <div class="feature-demo__phone">
+      <div class="feature-demo__phone-bar">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="feature-demo__chat">
+        <div class="feature-demo__bubble feature-demo__bubble--user">Corte 700, Barba 350</div>
+        <div class="feature-demo__bubble feature-demo__bubble--ai">
+          <span class="feature-demo__ai-dots"><i></i><i></i><i></i></span>
+          Listo · 3 servicios guardados
+        </div>
+        <div class="feature-demo__chips">
+          <span>Horario 9–20</span>
+          <span>Logo 📎</span>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {variant === 'bay' && (
+    <div class="feature-demo__bay">
+      <div class="feature-demo__bay-head">
+        <span>Hoy</span>
+        <strong>6 citas</strong>
+      </div>
+      <div class="feature-demo__bay-slots">
+        <div class="feature-demo__bay-row" style="--c: var(--color-gold)">
+          <span>09:00</span>
+          <div><b>Carlos</b><small>Corte</small></div>
+          <em class="feature-demo__pill feature-demo__pill--ok">✓</em>
+        </div>
+        <div class="feature-demo__bay-row feature-demo__bay-row--active" style="--c: #dc2626">
+          <span>10:30</span>
+          <div><b>Ana</b><small>Color</small></div>
+          <em class="feature-demo__pill">En curso</em>
+        </div>
+        <div class="feature-demo__bay-row" style="--c: var(--color-navy)">
+          <span>12:00</span>
+          <div><b>Miguel</b><small>Barba</small></div>
+          <em class="feature-demo__pill feature-demo__pill--wait">···</em>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {variant === 'book' && (
+    <div class="feature-demo__book">
+      <div class="feature-demo__book-steps">
+        <span class="is-done"></span>
+        <span class="is-done"></span>
+        <span class="is-active"></span>
+        <span></span>
+      </div>
+      <p class="feature-demo__book-label">¿A qué hora?</p>
+      <div class="feature-demo__book-times">
+        <span>10:00</span>
+        <span class="is-pick">10:30</span>
+        <span>11:00</span>
+        <span>11:30</span>
+      </div>
+      <div class="feature-demo__book-cta">Confirmar cita</div>
+    </div>
+  )}
+
+  {variant === 'notify' && (
+    <div class="feature-demo__notify">
+      <div class="feature-demo__notify-card">
+        <div class="feature-demo__notify-icon">✉</div>
+        <div>
+          <b>Cita confirmada</b>
+          <p>Mañana 10:30 · Corte</p>
+        </div>
+        <span class="feature-demo__notify-ping"></span>
+      </div>
+      <div class="feature-demo__notify-card feature-demo__notify-card--dim">
+        <div class="feature-demo__notify-icon">⏰</div>
+        <div>
+          <b>Recordatorio</b>
+          <p>En 2 horas · Ana R.</p>
+        </div>
+      </div>
+    </div>
+  )}
+
+  {variant === 'wait' && (
+    <div class="feature-demo__wait">
+      <div class="feature-demo__wait-head">
+        <span>Lista de espera</span>
+        <strong>3</strong>
+      </div>
+      <ul class="feature-demo__wait-list">
+        <li><span class="feature-demo__wait-rank">1</span> Laura · Tinte <em>Mar 12</em></li>
+        <li><span class="feature-demo__wait-rank">2</span> Pedro · Corte <em>Mar 12</em></li>
+        <li class="feature-demo__wait-new"><span class="feature-demo__wait-rank">+</span> Nuevo cupo libre</li>
+      </ul>
+    </div>
+  )}
+
+  {variant === 'brand' && (
+    <div class="feature-demo__brand">
+      <div class="feature-demo__brand-logo">S</div>
+      <div class="feature-demo__brand-meta">
+        <b>Studio Nova</b>
+        <span>Santo Domingo · 9:00 – 20:00</span>
+        <div class="feature-demo__brand-colors">
+          <i style="background:#e8b923"></i>
+          <i style="background:#1e3a5f"></i>
+          <i style="background:#dc2626"></i>
+        </div>
+      </div>
+      <div class="feature-demo__brand-link">citas.renace.tech/s/studio-nova</div>
+    </div>
+  )}
+</div>

@@ -1,50 +1,73 @@
 ---
-description: Reglas generales del usuario — consultar siempre antes de responder
+description: Reglas generales Brainiacx — idioma, secretos, despliegue, commits
 alwaysApply: true
 ---
 
 # Reglas generales (Brainiacx)
 
-Consultar este archivo antes de cada respuesta al usuario.
-
 ## Idioma y tono
 
 - Responder en **español** salvo que pida otro idioma.
-- Prosa clara; sin telegrafía. Comandos completos y listos para copiar.
+- Prosa mínima. El usuario automatiza todo: **ejecutar** en lugar de solo explicar cuando sea posible.
 
-## Secretos y credenciales
+## Comandos (obligatorio)
 
-- **Nunca** pegar, inventar ni usar como ejemplo claves reales o ficticias (API keys, tokens, contraseñas).
-- **Nunca** sugerir `nano`, `vim`, `vi` ni editores interactivos en el servidor para configurar secretos.
-- **Nunca** ejecutar ni proponer `cat .env`, `grep` de claves, `echo $GEMINI_API_KEY`, ni curls que impriman credenciales.
-- Para verificar config sin exponer valores: `test -n "$VAR" && echo "ok" || echo "falta"` (sin imprimir el valor).
-- Si hace falta una clave, indicar **qué variable** va en `.env` y que el usuario la pegue **solo en su máquina/servidor**, no en el chat.
+- Solo bloques **listos para copiar y pegar**, con rutas, hosts, stacks y dominios **reales**.
+- **Prohibido:** placeholders (`<tu-usuario>`, `YOUR_*`, `ejemplo`, `seed`), opciones múltiples en un mismo bloque, `nano`/`vim`/`vi`, editores interactivos.
+- **Prohibido:** datos de ejemplo o bloques `.env` ficticios en el chat.
+- Si hay dos proyectos, dar **dos bloques separados** (ZAV y Citas), cada uno completo.
+- Para secretos: usar `./deploy.sh` o el `.env` ya existente en el servidor; nunca pedir pegar claves en el chat.
+- Verificar sin exponer valores: `test -n "$SMTP_PASS" && echo "ok" || echo "falta"`
 
-## Despliegue y servidor
+## Secretos
 
-- Dar **comandos completos** en bloques copiables (ssh → cd → git → docker).
-- No mezclar despliegue con edición de secretos en la misma instrucción.
-- Servidor Citas: `/opt/citas`, stack `citas`, dominio `citas.renace.tech`.
-- No inspeccionar ni volcar archivos `.env` del servidor salvo petición explícita del usuario.
+- Nunca pegar, inventar ni imprimir claves, tokens ni contraseñas.
+- Nunca `cat .env`, `grep` de claves, ni curls que impriman credenciales.
 
-## Proyectos (no confundir)
+## VPS RenaceTech
 
-| Repo | Qué es |
-|------|--------|
-| **ZAV** (`/Users/brainiacx/APPS/ZAV`) | Landing limpieza · cotizaciones · WhatsApp |
-| **Citas** (`/Users/brainiacx/APPS/citas`) | Reservas salones · bahía · asistente Gemini · `citas.renace.tech` |
+- SSH: `ssh root@45.9.191.18`
+- Red: `RenaceNet`
 
-Si el usuario muestra pantallas de Studio BBShop, servicios, bahía o asistente → trabajar en **Citas**, no en ZAV.
+| Proyecto | Ruta VPS | Stack | Servicio | Dominio |
+|----------|----------|-------|----------|---------|
+| ZAV | `/opt/zuv` | `zuv` | `zuv_web` | `zavinteriorclean.com` |
+| Citas | `/opt/citas` | `citas` | `citas_web` | `citas.renace.tech` |
+
+## Proyectos locales
+
+| Repo | Ruta |
+|------|------|
+| ZAV | `/Users/brainiacx/APPS/ZAV` |
+| Citas | `/Users/brainiacx/APPS/citas` |
 
 ## Código y entrega
 
-- Cambios mínimos y enfocados; reutilizar convenciones del repo.
-- **No preguntar** “¿quieres que haga commit?” ni variantes: si el usuario pide desplegar, subir cambios o dice que sí → **hacer commit + push** y dar los comandos de deploy de inmediato.
-- Tras terminar features de Citas listas para producción → commit, push y comandos de deploy sin preguntar.
-- No pushear sin commit previo. No crear docs `.md` no pedidos.
+- Cambios mínimos; reutilizar convenciones del repo.
+- No crear `.md` no pedidos.
+- Commit + push solo cuando lo pida; entonces sin volver a preguntar.
 
-## Citas — contexto de producto
+## Deploy ZAV (producción)
 
-- Horarios en **zona horaria del negocio** (`America/Santo_Domingo` por defecto).
-- Servicios: **precio fijo** (público) vs **precio variable** (`pricingMode: quote` — solo agenda, sin precio en reserva pública).
-- Gemini: priorizar IA; modo básico solo si falta clave o falla la API.
+```bash
+ssh root@45.9.191.18
+cd /opt/zuv
+git fetch origin main && git reset --hard origin/main
+./deploy.sh
+git rev-parse --short HEAD
+curl -fsS https://zavinteriorclean.com/healthz && echo " OK"
+docker service ps zuv_web --no-trunc | head -3
+```
+
+## Deploy Citas (producción)
+
+```bash
+ssh root@45.9.191.18
+cd /opt/citas
+git fetch origin main && git reset --hard origin/main
+docker compose build --pull
+docker stack deploy -c docker-compose.yml citas
+docker service update --force citas_web
+docker service ps citas_web --no-trunc | head -3
+curl -fsS https://citas.renace.tech/healthz && echo " OK"
+```

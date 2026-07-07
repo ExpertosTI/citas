@@ -151,6 +151,7 @@ function initTilt() {
 }
 
 export function initMotion() {
+  document.documentElement.classList.add('motion-enabled');
   initReveal();
   initParallax();
   initTilt();

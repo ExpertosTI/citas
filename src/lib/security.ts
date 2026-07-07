@@ -43,6 +43,16 @@ export function sessionSecret() {
   return s || 'citas-dev-secret-local-only';
 }
 
+/** Null when sessions can be issued; otherwise a short ops-facing reason. */
+export function sessionSecretIssue(): string | null {
+  try {
+    sessionSecret();
+    return null;
+  } catch {
+    return 'SESSION_SECRET invalid or missing in production';
+  }
+}
+
 export function reminderSecret() {
   const s = process.env.REMINDER_SECRET?.trim() || process.env.SESSION_SECRET?.trim();
   if (!s || s.length < 16) return null;

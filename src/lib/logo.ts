@@ -31,8 +31,12 @@ export async function saveLogo(tenantId: string, bytes: Buffer, mime: string) {
   if (bytes.length > MAX_BYTES) throw new Error('too_large');
   await fs.mkdir(LOGO_DIR, { recursive: true });
   await fs.writeFile(logoPath(tenantId), bytes);
-  await fs.writeFile(logoMetaPath(tenantId), JSON.stringify({ mime: sniffed, updatedAt: new Date().toISOString() }));
-  return `/api/logo/${tenantId}`;
+  const v = Date.now();
+  await fs.writeFile(
+    logoMetaPath(tenantId),
+    JSON.stringify({ mime: sniffed, updatedAt: new Date().toISOString(), v }),
+  );
+  return `/api/logo/${tenantId}?v=${v}`;
 }
 
 export async function readLogo(tenantId: string) {

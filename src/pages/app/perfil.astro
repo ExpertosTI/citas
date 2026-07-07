@@ -160,10 +160,12 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
     </div>
   </form>
 
-  <script define:vars={{ publicUrl, whatsapp: tenant.whatsapp || tenant.phone }}>
+  <script type="module" define:vars={{ publicUrl, whatsapp: tenant.whatsapp || tenant.phone }}>
+    import { toast } from '../../scripts/ui-feedback.js';
+
     document.getElementById('copy-link')?.addEventListener('click', async () => {
       await navigator.clipboard.writeText(publicUrl);
-      alert('Enlace copiado');
+      toast('Enlace copiado', 'success');
     });
     const wa = document.getElementById('wa-share');
     if (wa instanceof HTMLAnchorElement) {
@@ -205,9 +207,9 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
           img.classList.remove('hidden');
           img.src = `${json.logoUrl}?t=${Date.now()}`;
         }
-        alert('Logo actualizado');
+        toast('Logo actualizado', 'success');
       } else {
-        alert(json.error || 'Error al subir');
+        toast(json.error || 'No se pudo subir el logo', 'error');
       }
     });
 
@@ -228,9 +230,12 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      msg?.classList.remove('hidden');
-      if (msg) msg.textContent = res.ok ? 'Perfil guardado' : json.error || 'Error';
-      if (res.ok) setTimeout(() => location.reload(), 600);
+      if (res.ok) {
+        toast('Perfil guardado', 'success');
+        setTimeout(() => location.reload(), 600);
+      } else {
+        toast(json.error || 'No se pudo guardar', 'error');
+      }
     });
   </script>
 </AppLayout>

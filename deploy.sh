@@ -64,7 +64,9 @@ export SESSION_SECRET="${SESSION_SECRET:-citas-change-me}"
 export REMINDER_SECRET="${REMINDER_SECRET:-$SESSION_SECRET}"
 
 if [ -z "$SESSION_SECRET" ] || [ ${#SESSION_SECRET} -lt 24 ] || [[ "$SESSION_SECRET" =~ change-me|citas-change-me|citas-dev ]]; then
-  red "WARNING: SESSION_SECRET is weak or missing in $PROJECT_DIR/.env"
+  red "ERROR: SESSION_SECRET is weak or missing in $PROJECT_DIR/.env"
+  red "Add a random string (32+ chars), e.g.: openssl rand -base64 32"
+  exit 1
 fi
 export GEMINI_API_KEY="${GEMINI_API_KEY:-}"
 export GEMINI_MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"

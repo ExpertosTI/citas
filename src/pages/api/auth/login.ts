@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createSessionToken, sessionCookie, verifyPassword } from '../../../lib/auth';
 import { bad, json, readBody } from '../../../lib/http';
-import { rateLimitRequest } from '../../../lib/security';
+import { rateLimitRequest, sessionSecretIssue } from '../../../lib/security';
 import { getTenantByEmail, safeTenant } from '../../../lib/store';
 
 export const prerender = false;
@@ -19,6 +19,11 @@ export const POST: APIRoute = async ({ request }) => {
   const tenant = await getTenantByEmail(email);
   if (!tenant || !verifyPassword(password, tenant.passwordHash)) {
     return bad('Credenciales incorrectas', 401);
+  }
+
+  if (sessionSecretIssue()) {
+    console.error('[auth/login] SESSION_SECRET missing or weak');
+    return bad('El servidor no está listo para iniciar sesión. Intenta más tarde.', 503);
   }
 
   const token = createSessionToken(tenant.id);

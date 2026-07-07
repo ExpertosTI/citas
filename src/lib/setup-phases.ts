@@ -72,9 +72,9 @@ export function computeSetupPhase(
 export function assistantSuggestions(tenant: Tenant, currency: string): string[] {
   const cur = currency === 'RD$' ? 'RD$' : currency;
   return [
+    'Fotos de servicios 📎',
     `Sube el corte a ${cur}700`,
     `Agrega tinte ${cur}3500, 90 min`,
-    'Limpia servicios inválidos',
     'Citas de hoy',
   ];
 }

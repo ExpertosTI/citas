@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import BookWizard from '../../../components/BookWizard.astro';
+import { readLogo } from '../../../lib/logo';
+import { tenantLogoUrl } from '../../../lib/tenant';
 import { getServices, getTenantBySlug, publicTenant } from '../../../lib/store';
 
 const slug = Astro.params.slug || '';
@@ -12,7 +14,8 @@ if (!tenant) {
 
 const t = publicTenant(tenant);
 const services = (await getServices(tenant.id)).filter((s) => s.active);
-const logoSrc = t.logoUrl?.startsWith('http') ? t.logoUrl : `/api/logo/${tenant.id}`;
+const hasLogo = Boolean(await readLogo(tenant.id));
+const logoSrc = hasLogo ? tenantLogoUrl(tenant) : '';
 ---
 
 <BaseLayout title={`Reservar · ${t.businessName}`} description={t.bio}>
@@ -21,12 +24,20 @@ const logoSrc = t.logoUrl?.startsWith('http') ? t.logoUrl : `/api/logo/${tenant.
       <div class="mb-6 text-center">
         <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Reserva en línea</p>
         <div class="mt-4 flex flex-col items-center gap-3">
-          <img
-            src={logoSrc}
-            alt={t.businessName}
-            class="h-20 w-20 rounded-2xl border border-black/8 object-cover bg-white shadow-sm"
-            onerror="this.style.display='none'"
-          />
+          {logoSrc ? (
+            <img
+              src={logoSrc}
+              alt={t.businessName}
+              class="h-20 w-20 rounded-2xl border border-black/8 object-cover bg-white shadow-sm"
+            />
+          ) : (
+            <div
+              class="flex h-20 w-20 items-center justify-center rounded-2xl border border-black/8 bg-white text-2xl font-semibold text-navy shadow-sm"
+              aria-hidden="true"
+            >
+              {t.businessName.slice(0, 1).toUpperCase()}
+            </div>
+          )}
           <h1 class="brand-mark text-3xl sm:text-4xl">{t.businessName}</h1>
         </div>
         <p class="mt-2 text-sm text-muted">{t.bio}</p>
@@ -42,6 +53,7 @@ const logoSrc = t.logoUrl?.startsWith('http') ? t.logoUrl : `/api/logo/${tenant.
           currency={t.currency}
           whatsapp={t.whatsapp || t.phone}
           accentColor={t.accentColor}
+          timezone={tenant.timezone}
         />
       )}
 

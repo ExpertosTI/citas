@@ -1,13 +1,4 @@
-const STYLE_LABELS = {
-  fade: 'Fade / Degradé',
-  low_fade: 'Low Fade',
-  buzz: 'Buzz / Rapado',
-  classic: 'Clásico',
-  lineup: 'Line Up / Diseño',
-  mullet: 'Mullet / Moderno',
-  curly: 'Rizado / Textura',
-  afro: 'Afro / Natural',
-};
+import { toast } from './ui-feedback.js';
 
 function bindChoiceCards(form, onSelect) {
   form.querySelectorAll('.flow-choice, .choice-card').forEach((card) => {
@@ -29,27 +20,34 @@ function bindChoiceCards(form, onSelect) {
   });
 }
 
-function renderDateChips(form) {
+function ymdInTz(date, tz) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+function renderDateChips(form, step, go, tz) {
   const grid = document.getElementById('date-grid');
   const hidden = document.getElementById('date-hidden');
   if (!grid || !(hidden instanceof HTMLInputElement)) return;
 
   const days = [];
+  const start = Date.now();
   for (let i = 0; i < 14; i++) {
-    const d = new Date();
-    d.setHours(12, 0, 0, 0);
-    d.setDate(d.getDate() + i);
-    days.push(d);
+    days.push(ymdInTz(new Date(start + i * 86_400_000), tz));
   }
 
   grid.innerHTML = days
-    .map((d, i) => {
-      const iso = d.toISOString().slice(0, 10);
-      const dayName = d.toLocaleDateString('es-DO', { weekday: 'short' }).replace('.', '');
-      const month = d.toLocaleDateString('es-DO', { month: 'short' }).replace('.', '');
-      const num = d.getDate();
+    .map((iso) => {
+      const ref = new Date(`${iso}T12:00:00`);
+      const dayName = ref.toLocaleDateString('es-DO', { weekday: 'short', timeZone: tz }).replace('.', '');
+      const month = ref.toLocaleDateString('es-DO', { month: 'short', timeZone: tz }).replace('.', '');
+      const num = ref.toLocaleDateString('es-DO', { day: 'numeric', timeZone: tz });
       return `
-        <label class="date-chip ${i === 0 ? '' : ''}" data-date="${iso}">
+        <label class="date-chip" data-date="${iso}">
           <input type="radio" name="datePick" value="${iso}" class="sr-only" />
           <span class="date-chip__day">${dayName} · ${month}</span>
           <span class="date-chip__num">${num}</span>
@@ -66,7 +64,7 @@ function renderDateChips(form) {
       chip.classList.add('is-selected');
       const input = chip.querySelector('input');
       if (input instanceof HTMLInputElement) input.checked = true;
-      if (step === 3) setTimeout(() => go(4), 220);
+      if (step === 2) setTimeout(() => go(3), 220);
     });
   });
 }
@@ -77,7 +75,8 @@ export function initBookWizard() {
   if (!root || !(form instanceof HTMLFormElement)) return;
 
   const slug = root.dataset.slug || '';
-  const total = Number(root.dataset.total || 5);
+  const tz = root.dataset.timezone || 'America/Santo_Domingo';
+  const total = Number(root.dataset.total || 4);
   const panels = [...form.querySelectorAll('.step-panel')];
   const dots = [...root.querySelectorAll('[data-step-dot]')];
   const stepLabel = document.getElementById('book-step-label');
@@ -91,28 +90,20 @@ export function initBookWizard() {
   const slotsWrap = document.getElementById('slots-grid');
   const successCode = document.getElementById('book-success-code');
   const successWhen = document.getElementById('book-success-when');
-  const successStyle = document.getElementById('book-success-style');
-  const styleSummary = document.getElementById('style-summary');
 
   let step = 1;
   let selectedStartAt = '';
 
-  renderDateChips(form);
+  function go(n) {
+    if (n > step && !validateStep(step)) return;
+    step = Math.max(1, Math.min(total, n));
+    render();
+  }
 
-  form.querySelectorAll('.style-card').forEach((card) => {
-    const input = card.querySelector('input[type="radio"]');
-    if (!(input instanceof HTMLInputElement)) return;
-    card.addEventListener('click', (e) => {
-      e.preventDefault();
-      input.checked = true;
-      form.querySelectorAll('.style-card').forEach((c) => c.classList.remove('is-selected'));
-      card.classList.add('is-selected');
-      if (step === 1) setTimeout(() => go(2), 200);
-    });
-  });
+  renderDateChips(form, step, go, tz);
 
   bindChoiceCards(form, (name) => {
-    if (name === 'serviceId' && step === 2) setTimeout(() => go(3), 200);
+    if (name === 'serviceId' && step === 1) setTimeout(() => go(2), 200);
   });
 
   function setError(msg) {
@@ -126,11 +117,6 @@ export function initBookWizard() {
     errorEl.classList.remove('hidden');
   }
 
-  function selectedHaircutStyle() {
-    const el = form.querySelector('input[name="haircutStyle"]:checked');
-    return el instanceof HTMLInputElement ? el.value : '';
-  }
-
   function selectedServiceId() {
     const el = form.querySelector('input[name="serviceId"]:checked');
     return el instanceof HTMLInputElement ? el.value : '';
@@ -141,33 +127,23 @@ export function initBookWizard() {
     return hidden instanceof HTMLInputElement ? hidden.value : '';
   }
 
-  function updateStyleSummary() {
-    if (!styleSummary) return;
-    const id = selectedHaircutStyle();
-    if (!id) {
-      styleSummary.classList.add('hidden');
-      return;
-    }
-    styleSummary.textContent = `Estilo: ${STYLE_LABELS[id] || id}`;
-    styleSummary.classList.remove('hidden');
-  }
-
   async function loadSlots() {
     if (!slotsWrap) return;
     const serviceId = selectedServiceId();
     const date = selectedDate();
     if (!serviceId || !date) {
-      slotsWrap.innerHTML = '<p class="text-sm text-muted">Elige servicio y fecha primero.</p>';
+      slotsWrap.innerHTML = '<p class="text-sm text-muted">Primero elige servicio y día.</p>';
       return;
     }
 
-    slotsWrap.innerHTML = '<p class="text-sm text-muted animate-pulse">Cargando horarios…</p>';
+    slotsWrap.innerHTML = '<p class="text-sm text-muted animate-pulse">Buscando horarios…</p>';
     const res = await fetch(
       `/api/slots?slug=${encodeURIComponent(slug)}&date=${encodeURIComponent(date)}&serviceId=${encodeURIComponent(serviceId)}`,
     );
     const data = await res.json();
     if (!res.ok || !data.slots?.length) {
-      slotsWrap.innerHTML = '<p class="text-sm text-muted">No hay horarios libres. Puedes unirte a la lista de espera.</p>';
+      slotsWrap.innerHTML =
+        '<p class="text-sm text-muted">Ese día no hay cupo disponible. Puedes pedir que te avisemos si se libera.</p>';
       return;
     }
 
@@ -185,39 +161,35 @@ export function initBookWizard() {
       .join('');
 
     bindChoiceCards(form, (name) => {
-      if (name === 'startAt' && step === 4) {
+      if (name === 'startAt' && step === 3) {
         const slot = form.querySelector('input[name="startAt"]:checked');
         if (slot instanceof HTMLInputElement) selectedStartAt = slot.value;
-        setTimeout(() => go(5), 200);
+        setTimeout(() => go(4), 200);
       }
     });
   }
 
   function validateStep(n) {
-    if (n === 1 && !selectedHaircutStyle()) {
-      setError('Elige un estilo');
+    if (n === 1 && !selectedServiceId()) {
+      setError('Elige un servicio para continuar');
       return false;
     }
-    if (n === 2 && !selectedServiceId()) {
-      setError('Elige un servicio');
+    if (n === 2 && !selectedDate()) {
+      setError('Elige el día de tu cita');
       return false;
     }
-    if (n === 3 && !selectedDate()) {
-      setError('Elige una fecha');
-      return false;
-    }
-    if (n === 4) {
+    if (n === 3) {
       const slot = form.querySelector('input[name="startAt"]:checked');
       if (!slot) {
-        setError('Elige un horario');
+        setError('Elige la hora que prefieras');
         return false;
       }
       selectedStartAt = slot.value;
     }
-    if (n === 5) {
+    if (n === 4) {
       const name = form.querySelector('input[name="name"]');
       if (name instanceof HTMLInputElement && name.value.trim().length < 2) {
-        setError('Nombre requerido');
+        setError('Necesitamos tu nombre');
         return false;
       }
     }
@@ -239,15 +211,8 @@ export function initBookWizard() {
     btnBack?.classList.toggle('hidden', step <= 1);
     btnNext?.classList.toggle('hidden', step >= total);
     btnSubmit?.classList.toggle('hidden', step !== total);
-    if (step === 3 && !document.querySelector('.date-chip.is-selected')) renderDateChips(form);
-    if (step === 4) loadSlots();
-    if (step === 5) updateStyleSummary();
-  }
-
-  function go(n) {
-    if (n > step && !validateStep(step)) return;
-    step = Math.max(1, Math.min(total, n));
-    render();
+    if (step === 2 && !document.querySelector('.date-chip.is-selected')) renderDateChips(form, step, go, tz);
+    if (step === 3) loadSlots();
   }
 
   btnBack?.addEventListener('click', () => go(step - 1));
@@ -255,20 +220,17 @@ export function initBookWizard() {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!validateStep(5)) return;
+    if (!validateStep(4)) return;
 
     const fd = new FormData(form);
-    const styleId = selectedHaircutStyle();
-    const styleLabel = STYLE_LABELS[styleId] || styleId;
     const payload = {
       slug,
       serviceId: selectedServiceId(),
       startAt: selectedStartAt || String(fd.get('startAt') || ''),
-      haircutStyle: styleId,
       name: fd.get('name'),
       phone: fd.get('phone'),
       email: fd.get('email'),
-      notes: [styleLabel, fd.get('notes')].filter(Boolean).join(' · '),
+      notes: String(fd.get('notes') || '').trim(),
     };
 
     btnSubmit?.setAttribute('disabled', 'true');
@@ -282,11 +244,11 @@ export function initBookWizard() {
 
     if (!res.ok) {
       if (res.status === 409) {
-        setError('Ese horario acaba de ocuparse. Elige otro.');
-        go(4);
+        setError('Ese horario se acaba de ocupar. Elige otro.');
+        go(3);
         return;
       }
-      setError(json.error || 'No se pudo reservar');
+      setError(json.error || 'No pudimos guardar la cita. Intenta de nuevo.');
       return;
     }
 
@@ -295,7 +257,6 @@ export function initBookWizard() {
     stepLabel?.classList.add('hidden');
     successEl?.classList.remove('hidden');
     if (successCode) successCode.textContent = json.appointment?.code || '—';
-    if (successStyle) successStyle.textContent = styleLabel;
     if (successWhen) {
       const when = new Date(json.appointment?.startAt || payload.startAt);
       successWhen.textContent = when.toLocaleString('es-DO', {
@@ -304,21 +265,23 @@ export function initBookWizard() {
         month: 'long',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: tz,
       });
     }
     if (btnWa instanceof HTMLAnchorElement) {
+      const whenText = successWhen?.textContent || '';
       const msg = encodeURIComponent(
-        `Hola, confirmé cita ${json.appointment?.code || ''} · ${styleLabel} · ${successWhen?.textContent || ''}`,
+        `Hola, confirmé mi cita ${json.appointment?.code || ''} · ${whenText}`,
       );
       const phone = (root.dataset.whatsapp || '').replace(/\D/g, '');
       btnWa.href = phone ? `https://wa.me/${phone}?text=${msg}` : '#';
       btnWa.classList.toggle('hidden', !phone);
     }
+    toast('Cita solicitada', 'success');
   });
 
   document.getElementById('book-waitlist')?.addEventListener('click', async () => {
     const fd = new FormData(form);
-    const styleId = selectedHaircutStyle();
     const res = await fetch('/api/waitlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -329,11 +292,11 @@ export function initBookWizard() {
         name: fd.get('name') || 'Cliente',
         phone: fd.get('phone'),
         email: fd.get('email'),
-        notes: `${STYLE_LABELS[styleId] || styleId} · ${fd.get('notes') || ''}`,
+        notes: String(fd.get('notes') || '').trim(),
       }),
     });
-    if (res.ok) alert('Te agregamos a la lista de espera.');
-    else setError('No se pudo agregar a lista de espera');
+    if (res.ok) toast('Te avisaremos si hay cupo', 'success');
+    else setError('No pudimos anotarte. Intenta de nuevo.');
   });
 
   btnAgain?.addEventListener('click', () => location.reload());

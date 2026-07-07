@@ -2,8 +2,36 @@ import { randomBytes } from 'node:crypto';
 import type { Tenant } from './store';
 import { countryPreset } from './geo';
 
+function sanitizeBusinessHours(t: Tenant) {
+  let openHour = t.openHour ?? 9;
+  let closeHour = t.closeHour ?? 20;
+  let lunchStartHour = t.lunchStartHour ?? 13;
+  let lunchEndHour = t.lunchEndHour ?? 14;
+
+  if (closeHour <= openHour || closeHour - openHour < 3) {
+    openHour = 9;
+    closeHour = 20;
+  }
+
+  if (lunchEndHour <= lunchStartHour) {
+    lunchStartHour = 13;
+    lunchEndHour = 14;
+  }
+
+  if (lunchStartHour <= openHour && lunchEndHour >= closeHour) {
+    lunchStartHour = 13;
+    lunchEndHour = 14;
+  }
+
+  lunchStartHour = Math.max(openHour, Math.min(lunchStartHour, closeHour - 2));
+  lunchEndHour = Math.max(lunchStartHour + 1, Math.min(lunchEndHour, closeHour));
+
+  return { openHour, closeHour, lunchStartHour, lunchEndHour };
+}
+
 export function normalizeTenant(t: Tenant): Tenant {
   const preset = countryPreset(t.country || 'DO');
+  const hours = sanitizeBusinessHours(t);
   return {
     ...t,
     country: t.country || preset.code,
@@ -11,10 +39,7 @@ export function normalizeTenant(t: Tenant): Tenant {
     closedDays: t.closedDays || [],
     closedWeekdays: t.closedWeekdays ?? [0],
     slotBufferMin: t.slotBufferMin ?? 5,
-    lunchStartHour: t.lunchStartHour ?? 13,
-    lunchEndHour: t.lunchEndHour ?? 14,
-    openHour: t.openHour ?? 9,
-    closeHour: t.closeHour ?? 19,
+    ...hours,
     instagram: t.instagram || '',
     whatsapp: t.whatsapp || t.phone || '',
     logoUrl: t.logoUrl || '',

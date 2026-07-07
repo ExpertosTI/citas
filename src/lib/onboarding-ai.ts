@@ -113,20 +113,21 @@ Incluye en reply sugerencias concretas para el siguiente paso.
 Responde SOLO JSON:
 {"reply":"...","setup":{...},"readyToApply":boolean,"suggestions":["chip1","chip2"]}`;
 
-const ASSISTANT_PROMPT = `Eres el asistente permanente de configuración y operación de Citas. Estilo Gemini: conversacional, proactivo, confirma cambios antes de aplicar.
+const ASSISTANT_PROMPT = `Eres el asistente permanente de configuración y operación de Citas — como Gemini: cálido, natural, útil. Habla en español latino, 2-4 frases máximo. Nunca suenes a menú robótico ni repitas la misma frase genérica.
 
 Capacidades:
 1. **Agenda** — consultas (el servidor maneja agendar/consultar aparte)
-2. **Configuración completa** — servicios, precios, horarios, bio, contacto, ciudad, color de acento (#hex), nombre del local
-3. **Fotos de servicios** — el usuario puede subir fotos con 📎; asócialas al servicio correcto del catálogo
-4. **Logo** — el usuario puede subir PNG con el botón adjunto; confirma y felicita cuando lo haga
-5. **Limpieza** — comando "limpia servicios inválidos" elimina entradas basura del catálogo
+2. **Configuración** — servicios, precios, horarios, bio, contacto, ciudad, color (#hex), nombre del local
+3. **Fotos de servicios** — el usuario sube con 📎; si pide fotos sin adjuntar, explícale: tocar 📎, elegir imagen, escribir "foto del [servicio]"
+4. **Logo** — subir PNG/JPG con 📎 (sin texto = logo del negocio)
+5. **Limpieza** — "limpia servicios inválidos"
+
+Si el usuario dice "fotos", "productos", "imágenes" o similar → guíalo a subir con 📎 y nombra servicios del catálogo (existingServices) que aún no tienen foto (hasPhoto=false).
 
 ${SCHEDULE_RULES}
 
 Para cambios: incluye en setup SOLO lo que cambió este turno. removeServices para quitar.
-NUNCA pongas frases de horario ni comandos en setup.services — solo nombres cortos de servicio existentes o nuevos (ej. "Corte", "Tinte").
-Si cambian precio, usa el nombre exacto del servicio en setup.services con el nuevo precio.
+NUNCA pongas frases de horario ni comandos en setup.services — solo nombres cortos de servicio.
 Si el cambio es claro o dice "aplica"/"guarda" → readyToApply=true.
 
 Responde SOLO JSON:
@@ -418,19 +419,19 @@ function buildAssistantStyleReply(
   }
   if (intent === 'help') {
     return {
-      reply: `Puedo ayudarte con:
-• **Servicios** — agregar, cambiar precios, quitar
+      reply: `Te ayudo con lo que necesites:
+• **Servicios** — agregar, precios, quitar
+• **Fotos** — toca 📎 y escribe "foto del Corte" (o el servicio)
 • **Horario** — apertura, almuerzo, días cerrados
-• **Contacto** — WhatsApp, Instagram, dirección
-• **Limpieza** — "limpia servicios inválidos"
+• **Logo y contacto** — WhatsApp, Instagram, dirección
 
-¿Qué quieres hacer?`,
+¿Qué ajustamos?`,
       readyToApply: false,
     };
   }
 
   return {
-    reply: `Cuéntame qué cambiar — servicios, horario, contacto. También puedes decir **limpia servicios inválidos**.`,
+    reply: `Claro. Puedo ayudarte con servicios, fotos 📎, horario, logo o contacto. ¿Qué quieres cambiar?`,
     readyToApply: false,
   };
 }
@@ -754,12 +755,11 @@ export function needsOnboarding(tenant: Tenant) {
 export function initialAssistantMessage(tenant: Tenant, mode: AssistantMode = 'onboarding') {
   const first = tenant.ownerName.split(' ')[0];
   if (mode === 'assistant') {
-    return `Hola ${first}. ¿Qué hacemos?
+    return `Hola ${first} 👋 ¿En qué te ayudo?
 
-**Configurar:** servicios, fotos 📎, horario, logo, contacto
-**Agenda:** citas pendientes, agendar, hoy
+Puedo ajustar **servicios**, subir **fotos** 📎, **horario**, **logo** o ver tu **agenda**.
 
-Escribe o toca una sugerencia abajo.`;
+Escribe lo que necesites o toca una sugerencia.`;
   }
   return `Hola ${first}. Armemos **${tenant.businessName}** juntos — paso a paso.
 

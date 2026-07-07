@@ -19,6 +19,7 @@ import {
 } from '../../../lib/onboarding-ai';
 import { answerAppointmentQuery } from '../../../lib/assistant-queries';
 import { bookAppointmentFromText } from '../../../lib/assistant-booking';
+import { answerLogoPhotoRequest, answerServicePhotoRequest, isLogoPhotoRequest, isServicePhotoRequest } from '../../../lib/assistant-photos';
 import { cleanupInvalidServices, isCleanupServicesRequest } from '../../../lib/assistant-maintenance';
 import {
   computeSetupPhase,
@@ -259,6 +260,22 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (isCleanupServicesRequest(last.content)) {
     const answer = await cleanupInvalidServices(tenantId);
+    return json({
+      ok: true,
+      ...enrichResponse(tenant, {}, answer, mode, { serviceCount }),
+    });
+  }
+
+  if (isServicePhotoRequest(last.content)) {
+    const answer = await answerServicePhotoRequest(tenantId, last.content);
+    return json({
+      ok: true,
+      ...enrichResponse(tenant, {}, answer, mode, { serviceCount }),
+    });
+  }
+
+  if (isLogoPhotoRequest(last.content)) {
+    const answer = await answerLogoPhotoRequest();
     return json({
       ok: true,
       ...enrichResponse(tenant, {}, answer, mode, { serviceCount }),

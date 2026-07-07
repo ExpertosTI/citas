@@ -1,0 +1,39 @@
+---
+description: Contexto Citas — producto, deploy y convenciones del repo
+alwaysApply: true
+---
+
+# Citas (Studio BBShop)
+
+Repo: `ExpertosTI/citas` · workspace: `/Users/brainiacx/APPS/citas`
+
+## Producto
+
+- Reservas de salones / bahía con asistente Gemini.
+- Horarios en **zona horaria del negocio** (`America/Santo_Domingo` por defecto).
+- Servicios: **precio fijo** (público) vs **precio variable** (`pricingMode: quote` — solo agenda, sin precio en reserva pública).
+- Gemini: priorizar IA; modo básico solo si falta clave o falla la API.
+
+## Deploy
+
+- VPS: `/opt/citas` · stack `citas` · servicio `citas_web`
+- Dominio: `citas.renace.tech`
+
+```bash
+ssh root@45.9.191.18
+cd /opt/citas
+git fetch origin main && git reset --hard origin/main
+docker compose build --pull
+docker stack deploy -c docker-compose.yml citas
+docker service ps citas_web --no-trunc
+curl -fsS https://citas.renace.tech/healthz && echo " OK"
+```
+
+## Verificación post-deploy
+
+```bash
+git rev-parse --short HEAD
+docker service logs citas_web --tail 30
+```
+
+Tras features listas para producción: commit + push + comandos de deploy sin preguntar (si el usuario lo pidió o confirmó).

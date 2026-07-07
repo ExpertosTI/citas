@@ -15,7 +15,7 @@ export const GET: APIRoute = async ({ params }) => {
     status: 200,
     headers: {
       'Content-Type': logo.mime,
-      'Cache-Control': 'public, max-age=86400',
+      'Cache-Control': 'public, max-age=300, must-revalidate',
       'X-Content-Type-Options': 'nosniff',
       'Content-Security-Policy': "default-src 'none'; sandbox",
     },

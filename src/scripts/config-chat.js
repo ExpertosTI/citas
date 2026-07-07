@@ -311,7 +311,7 @@ export function createConfigChat(opts) {
       if (json.suggestions) renderChips(json.suggestions);
       if (geminiBadge) {
         geminiBadge.classList.toggle('hidden', Boolean(json.geminiConfigured));
-        geminiBadge.textContent = json.geminiConfigured ? '' : 'Modo básico (sin Gemini)';
+        geminiBadge.textContent = json.geminiConfigured ? '' : 'Asistente local';
       }
       if (json.tenant?.logoUrl) logoUrl = json.tenant.logoUrl.startsWith('/') ? json.tenant.logoUrl : logoUrl;
     } catch {
@@ -349,7 +349,7 @@ export function createConfigChat(opts) {
       hideTyping();
       if (json.fallback && geminiBadge) {
         geminiBadge.classList.remove('hidden');
-        geminiBadge.textContent = 'Gemini no respondió · modo básico';
+        geminiBadge.textContent = 'Asistente local';
       }
       messages.push({
         role: 'assistant',
@@ -391,7 +391,8 @@ export function createConfigChat(opts) {
 
     const preview = URL.createObjectURL(file);
     const hint = inputEl?.value.trim() || '';
-    const wantsLogo = /logo|marca/i.test(hint) || mode === 'onboarding';
+    const serviceHint = /servicio|producto|foto|corte|barba|tinte|cejas|color|manicure|imagen/i.test(hint);
+    const wantsLogo = /logo|marca/i.test(hint) || (mode === 'onboarding' && !serviceHint);
     const isServicePhoto = !wantsLogo;
 
     if (isServicePhoto) {
