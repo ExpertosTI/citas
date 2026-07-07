@@ -339,3 +339,47 @@
   background: var(--color-brand-dim);
   color: var(--color-navy);
 }
+
+[data-theme='dark'] .modules-arch {
+  border-color: rgba(251, 191, 36, 0.28);
+}
+
+[data-theme='dark'] .modules-arch__core {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme='dark'] .modules-arch__chip:not(.modules-arch__chip--ghost) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .flow-choice:hover,
+[data-theme='dark'] .choice-card:hover,
+[data-theme='dark'] .flow-choice.is-selected,
+[data-theme='dark'] .choice-card.is-selected {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme='dark'] .chat-chip {
+  color: var(--color-ink-soft);
+}
+
+[data-theme='dark'] .chat-chip:hover,
+[data-theme='dark'] .chat-chip.is-selected {
+  color: var(--color-ink);
+}
+
+[data-theme='dark'] .asst-apt-card__badge--cancelled {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+}
+
+[data-theme='dark'] .asst-btn--reject {
+  background: var(--color-surface-2);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+[data-theme='dark'] .app-toast {
+  background: var(--color-surface);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}

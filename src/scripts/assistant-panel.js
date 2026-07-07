@@ -24,9 +24,11 @@ export function initAssistantPanel() {
         ? 'asst-apt-card__badge--pending'
         : c.status === 'confirmed'
           ? 'asst-apt-card__badge--confirmed'
-          : '';
+          : c.status === 'cancelled'
+            ? 'asst-apt-card__badge--cancelled'
+            : '';
     return `
-      <article class="asst-apt-card" data-id="${esc(c.id)}">
+      <article class="asst-apt-card${c.pending ? '' : ' asst-apt-card--done'}" data-id="${esc(c.id)}">
         <div class="asst-apt-card__head">
           <span class="asst-apt-card__glyph">${SCISSORS_SVG}</span>
           <div class="asst-apt-card__info">
@@ -67,6 +69,19 @@ export function initAssistantPanel() {
     }
   }
 
+  /** @param {HTMLElement} cardEl @param {'confirmed' | 'cancelled'} action */
+  function markCardDone(cardEl, action) {
+    cardEl.classList.add('asst-apt-card--done');
+    const badge = cardEl.querySelector('.asst-apt-card__badge');
+    if (badge) {
+      badge.textContent = action === 'confirmed' ? 'Confirmada' : 'Cancelada';
+      badge.className = `asst-apt-card__badge ${
+        action === 'confirmed' ? 'asst-apt-card__badge--confirmed' : 'asst-apt-card__badge--cancelled'
+      }`;
+    }
+    cardEl.querySelectorAll('[data-apt-action]').forEach((b) => b.remove());
+  }
+
   function bindCardActions() {
     document.getElementById('assistant-messages')?.querySelectorAll('[data-apt-action]').forEach((btn) => {
       if (btn.dataset.bound) return;
@@ -82,14 +97,17 @@ export function initAssistantPanel() {
           });
           if (!ok) return;
         }
+        const cardEl = btn.closest('.asst-apt-card');
         btn.setAttribute('disabled', 'true');
+        cardEl?.querySelectorAll('[data-apt-action]').forEach((b) => b.setAttribute('disabled', 'true'));
         try {
           await patchAppointment(id, { status: action, notify: true });
+          if (cardEl instanceof HTMLElement) markCardDone(cardEl, /** @type {'confirmed' | 'cancelled'} */ (action));
           toast(action === 'confirmed' ? 'Cita confirmada' : 'Cita cancelada', 'success');
-          setTimeout(() => location.reload(), 700);
         } catch (err) {
           toast(err instanceof Error ? err.message : 'Error', 'error');
           btn.removeAttribute('disabled');
+          cardEl?.querySelectorAll('[data-apt-action]').forEach((b) => b.removeAttribute('disabled'));
         }
       });
     });
@@ -121,11 +139,8 @@ export function initAssistantPanel() {
         greeting,
         variant: 'drawer',
         avatarHtml: `<span class="assistant-msg__avatar">${SCISSORS_SVG}</span>`,
-        renderCards: (cards) => {
-          const html = renderCards(cards);
-          setTimeout(bindCardActions, 0);
-          return html;
-        },
+        renderCards,
+        onMessagesRendered: bindCardActions,
         onSuccess: () => {
           clearConfigChatState('assistant');
           toast('Cambios guardados', 'success');
@@ -135,7 +150,9 @@ export function initAssistantPanel() {
       opened = true;
     }
 
-    document.getElementById('assistant-input')?.focus();
+    if (!window.matchMedia('(max-width: 640px)').matches) {
+      document.getElementById('assistant-input')?.focus();
+    }
   }
 
   function close() {

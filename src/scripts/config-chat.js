@@ -119,6 +119,7 @@ export function createConfigChat(opts) {
     avatarHtml = '<span class="onboarding-chat__avatar">AI</span>',
     bubbleClass = 'onboarding-chat__bubble',
     msgClassPrefix = 'onboarding-chat__bubble--',
+    onMessagesRendered,
   } = opts;
 
   /** @type {ChatMsg[]} */
@@ -130,6 +131,32 @@ export function createConfigChat(opts) {
   let currentPhase = 'brand';
   let logoUrl = root?.dataset.logoUrl || '';
   let serviceCount = Number(root?.dataset.serviceCount || 0);
+  /** @type {string[]} */
+  let lastSuggestions = [];
+
+  const isMobile = () => window.matchMedia('(max-width: 640px)').matches;
+
+  function setBusyState(isBusy) {
+    busy = isBusy;
+    if (inputEl) inputEl.disabled = isBusy;
+    if (isBusy) attachBtn?.setAttribute('disabled', 'true');
+    else attachBtn?.removeAttribute('disabled');
+    applyBtn?.toggleAttribute('disabled', isBusy);
+    formEl?.querySelector('button[type="submit"]')?.toggleAttribute('disabled', isBusy);
+    chipsEl?.querySelectorAll('.chat-chip').forEach((btn) => {
+      btn.toggleAttribute('disabled', isBusy);
+      btn.classList.toggle('is-busy', isBusy);
+    });
+  }
+
+  function scrollMessagesToEnd() {
+    if (!messagesEl) return;
+    messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior: 'smooth' });
+  }
+
+  function isPhotoChip(text) {
+    return /📎|fotos?\s+de\s+servicio/i.test(text);
+  }
 
   const saved = loadConfigChatState(mode);
   if (saved?.messages?.length) {
@@ -137,6 +164,7 @@ export function createConfigChat(opts) {
     draftSetup = saved.draftSetup || {};
     readyToApply = Boolean(saved.readyToApply);
     if (saved.currentPhase) currentPhase = saved.currentPhase;
+    if (saved.suggestions?.length) lastSuggestions = saved.suggestions;
   }
 
   function persistState() {
@@ -150,6 +178,7 @@ export function createConfigChat(opts) {
       draftSetup,
       readyToApply,
       currentPhase,
+      suggestions: lastSuggestions,
     });
   }
 
@@ -168,12 +197,10 @@ export function createConfigChat(opts) {
 
   function renderChips(suggestions) {
     if (!chipsEl) return;
-    let list = suggestions?.length ? [...suggestions] : [];
+    if (suggestions?.length) lastSuggestions = [...suggestions];
+    let list = lastSuggestions.length ? [...lastSuggestions] : [];
     if (readyToApply) {
       list = list.filter((s) => !/aplicar|abrir bah[ií]a/i.test(s));
-    }
-    if (variant === 'drawer' && list.length > 4) {
-      list = list.slice(0, 4);
     }
     if (!list.length) {
       chipsEl.innerHTML = '';
@@ -184,18 +211,31 @@ export function createConfigChat(opts) {
     chipsEl.innerHTML = list
       .map(
         (s) =>
-          `<button type="button" class="chat-chip" data-chip="${esc(s)}">${esc(s)}</button>`,
+          `<button type="button" class="chat-chip" data-chip="${esc(s)}" aria-label="Enviar: ${esc(s)}">${esc(s)}</button>`,
       )
       .join('');
     chipsEl.querySelectorAll('[data-chip]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const text = btn.getAttribute('data-chip');
-        if (text && inputEl) {
-          inputEl.value = text;
-          formEl?.requestSubmit();
+        if (busy) {
+          toast('Espera un momento…', 'info');
+          return;
         }
+        const text = btn.getAttribute('data-chip');
+        if (!text) return;
+        if (isPhotoChip(text)) {
+          fileInput?.click();
+          return;
+        }
+        btn.classList.add('is-selected');
+        sendUserMessage(text).finally(() => btn.classList.remove('is-selected'));
       });
     });
+    if (busy) {
+      chipsEl.querySelectorAll('.chat-chip').forEach((btn) => {
+        btn.setAttribute('disabled', 'true');
+        btn.classList.add('is-busy');
+      });
+    }
   }
 
   function showTyping() {
@@ -208,7 +248,7 @@ export function createConfigChat(opts) {
         <span></span><span></span><span></span>
       </div>`;
     messagesEl?.appendChild(el);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    scrollMessagesToEnd();
   }
 
   function hideTyping() {
@@ -243,7 +283,8 @@ export function createConfigChat(opts) {
         </div>`;
       })
       .join('');
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    scrollMessagesToEnd();
+    onMessagesRendered?.();
   }
 
   function renderPreview() {
@@ -325,6 +366,7 @@ export function createConfigChat(opts) {
     readyToApply = Boolean(json.readyToApply);
     if (json.phase) updatePhases(json.phase);
     if (json.suggestions) renderChips(json.suggestions);
+    else if (lastSuggestions.length) renderChips(lastSuggestions);
     if (json.tenant?.logoUrl) logoUrl = json.tenant.logoUrl;
     renderPreview();
     persistState();
@@ -332,9 +374,7 @@ export function createConfigChat(opts) {
 
   async function sendUserMessage(text, extra = {}) {
     if (busy || !inputEl) return;
-    busy = true;
-    inputEl.disabled = true;
-    attachBtn?.setAttribute('disabled', 'true');
+    setBusyState(true);
 
     messages.push({ role: 'user', content: text });
     renderMessages();
@@ -374,10 +414,8 @@ export function createConfigChat(opts) {
       renderMessages();
       persistState();
     } finally {
-      busy = false;
-      inputEl.disabled = false;
-      attachBtn?.removeAttribute('disabled');
-      inputEl.focus();
+      setBusyState(false);
+      if (!isMobile()) inputEl.focus();
     }
   }
 
@@ -393,7 +431,7 @@ export function createConfigChat(opts) {
     }
 
     busy = true;
-    attachBtn?.setAttribute('disabled', 'true');
+    setBusyState(true);
 
     const preview = URL.createObjectURL(file);
     const hint = inputEl?.value.trim() || '';
@@ -445,8 +483,7 @@ export function createConfigChat(opts) {
         });
         renderMessages();
       } finally {
-        busy = false;
-        attachBtn?.removeAttribute('disabled');
+        setBusyState(false);
       }
       return;
     }
@@ -489,8 +526,7 @@ export function createConfigChat(opts) {
       });
       renderMessages();
     } finally {
-      busy = false;
-      attachBtn?.removeAttribute('disabled');
+      setBusyState(false);
     }
   }
 
@@ -511,17 +547,21 @@ export function createConfigChat(opts) {
   attachBtn?.addEventListener('click', () => fileInput?.click());
 
   applyBtn?.addEventListener('click', async () => {
-    if (!(applyBtn instanceof HTMLButtonElement)) return;
+    if (!(applyBtn instanceof HTMLButtonElement) || busy) return;
+    const defaultLabel = mode === 'onboarding' ? 'Aplicar y abrir bahía' : 'Aplicar cambios';
     applyBtn.textContent = mode === 'onboarding' ? 'Aplicando…' : 'Guardando…';
+    applyBtn.classList.add('is-loading');
     applyBtn.disabled = true;
     try {
       await post({ action: 'apply', setup: draftSetup });
+      applyBtn.textContent = '¡Listo!';
       if (onApply) await onApply();
       else if (onSuccess) onSuccess();
     } catch (err) {
       toast(err instanceof Error ? err.message : 'No se pudo guardar', 'error');
-      applyBtn.textContent = mode === 'onboarding' ? 'Aplicar y abrir bahía' : 'Aplicar cambios';
+      applyBtn.textContent = defaultLabel;
     } finally {
+      applyBtn.classList.remove('is-loading');
       applyBtn.disabled = false;
     }
   });
