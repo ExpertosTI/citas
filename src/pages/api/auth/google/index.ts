@@ -3,9 +3,13 @@ import { googleAuthUrl, isGoogleAuthConfigured } from '../../../../lib/google-au
 
 export const prerender = false;
 
+function loginRedirect(request: Request, error: string) {
+  return Response.redirect(new URL(`/login?error=${error}`, request.url), 302);
+}
+
 export const GET: APIRoute = async ({ request }) => {
   if (!isGoogleAuthConfigured()) {
-    return new Response('Google Sign-In no configurado', { status: 503 });
+    return loginRedirect(request, 'google_unavailable');
   }
 
   const url = new URL(request.url);
@@ -13,7 +17,8 @@ export const GET: APIRoute = async ({ request }) => {
 
   try {
     return Response.redirect(googleAuthUrl(mode), 302);
-  } catch {
-    return new Response('Google Sign-In no disponible', { status: 503 });
+  } catch (err) {
+    console.error('[auth/google]', err instanceof Error ? err.message : err);
+    return loginRedirect(request, 'google_unavailable');
   }
 };

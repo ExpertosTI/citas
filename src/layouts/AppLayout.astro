@@ -1,6 +1,7 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import AssistantPanel from '../components/AssistantPanel.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
 import { navForTenant } from '../lib/modules/registry';
 import { enabledModuleIds, tenantHasModule } from '../lib/modules/tenant-modules';
 import { safeTenant } from '../lib/store';
@@ -46,10 +47,12 @@ const publicUrl = `${siteUrl}/s/${t.slug}`;
               {item.label}
             </a>
           ))}
-          <button id="logout-btn" type="button" class="btn-ghost btn-sm ml-2">Salir</button>
+          <ThemeToggle class="ml-1" />
+          <button id="logout-btn" type="button" class="btn-ghost btn-sm ml-1">Salir</button>
         </nav>
       </div>
-      <nav class="flex gap-1 overflow-x-auto border-t border-border px-2 py-2 sm:hidden">
+      <nav class="flex items-center gap-1 overflow-x-auto border-t border-border px-2 py-2 sm:hidden">
+        <ThemeToggle />
         {nav.map((item) => (
           <a
             href={item.href}

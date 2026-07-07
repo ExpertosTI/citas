@@ -1,0 +1,38 @@
+---
+import { hmToParts } from '../lib/time-12h';
+
+interface Props {
+  id: string;
+  name: string;
+  value?: string;
+  label?: string;
+  required?: boolean;
+}
+
+const { id, name, value = '10:00', label, required = false } = Astro.props;
+const parts = hmToParts(value);
+const hours = Array.from({ length: 12 }, (_, i) => i + 1);
+const minutes = ['00', '15', '30', '45'];
+---
+
+<div class="time-12h">
+  {label && <label class="label" for={`${id}-h`}>{label}</label>}
+  <div class="time-12h__row">
+    <select class="input time-12h__select" id={`${id}-h`} data-time-part="h" aria-label={`${label || name} hora`} required={required}>
+      {hours.map((n) => (
+        <option value={n} selected={n === parts.hour}>{n}</option>
+      ))}
+    </select>
+    <span class="time-12h__sep" aria-hidden="true">:</span>
+    <select class="input time-12h__select time-12h__min" id={`${id}-m`} data-time-part="m" aria-label={`${label || name} minutos`} required={required}>
+      {minutes.map((m) => (
+        <option value={m} selected={m === String(parts.minute).padStart(2, '0')}>{m}</option>
+      ))}
+    </select>
+    <select class="input time-12h__select time-12h__period" id={`${id}-p`} data-time-part="period" aria-label={`${label || name} AM o PM`} required={required}>
+      <option value="AM" selected={parts.period === 'AM'}>AM</option>
+      <option value="PM" selected={parts.period === 'PM'}>PM</option>
+    </select>
+    <input type="hidden" name={name} id={id} value={value} data-time-hidden />
+  </div>
+</div>

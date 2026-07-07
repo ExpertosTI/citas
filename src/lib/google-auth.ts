@@ -1,5 +1,4 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { sessionSecret } from './security';
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -32,7 +31,14 @@ export function isGoogleAuthConfigured() {
 }
 
 function oauthSecret() {
-  return sessionSecret();
+  const session = process.env.SESSION_SECRET?.trim();
+  if (session && session.length >= 24 && !/change-me|citas-change-me|citas-dev/i.test(session)) {
+    return session;
+  }
+  const google = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  if (google) return google;
+  if (process.env.NODE_ENV !== 'production') return 'citas-dev-secret-local-only';
+  throw new Error('oauth_secret_unavailable');
 }
 
 function sign(data: string) {

@@ -1,4 +1,5 @@
 import type { Appointment, Service, Tenant } from './store';
+import { formatTimeHm } from './time-12h';
 import { dayOfWeek, localMinutes, tenantTimezone, zonedDateTime } from './tz';
 
 function pad(n: number) {
@@ -57,7 +58,7 @@ export function generateAvailableSlots(
     const conflict = busy.some((b) => overlaps(s, e, b.start, b.end));
     if (conflict) continue;
 
-    const label = minute === 0 ? `${pad(hour)}:00` : `${pad(hour)}:${pad(minute)}`;
+    const label = formatTimeHm(minute === 0 ? `${pad(hour)}:00` : `${pad(hour)}:${pad(minute)}`);
 
     slots.push({ time: label, startAt: start.toISOString(), label });
   }

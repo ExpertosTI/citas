@@ -1,5 +1,6 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
+import TimeField12 from '../../components/TimeField12.astro';
 import { COUNTRY_PRESETS } from '../../lib/geo';
 import { catalogForTenant } from '../../lib/modules/tenant-modules';
 import { safeTenant } from '../../lib/store';
@@ -156,28 +157,16 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
       <textarea class="input" id="bio" name="bio" rows="3">{tenant.bio}</textarea>
     </div>
     <div class="grid gap-4 sm:grid-cols-3">
-      <div>
-        <label class="label" for="openHour">Abre</label>
-        <input class="input" id="openHour" name="openHour" type="number" min="0" max="23" value={tenant.openHour} />
-      </div>
-      <div>
-        <label class="label" for="closeHour">Cierra</label>
-        <input class="input" id="closeHour" name="closeHour" type="number" min="1" max="24" value={tenant.closeHour} />
-      </div>
+      <TimeField12 id="openHour" name="openHour" value={tenant.openHour} label="Abre" />
+      <TimeField12 id="closeHour" name="closeHour" value={tenant.closeHour} label="Cierra" />
       <div>
         <label class="label" for="accentColor">Color marca</label>
         <input class="input" id="accentColor" name="accentColor" type="color" value={tenant.accentColor} />
       </div>
     </div>
     <div class="grid gap-4 sm:grid-cols-3">
-      <div>
-        <label class="label" for="lunchStartHour">Almuerzo desde</label>
-        <input class="input" id="lunchStartHour" name="lunchStartHour" type="number" min="0" max="23" value={tenant.lunchStartHour} />
-      </div>
-      <div>
-        <label class="label" for="lunchEndHour">Almuerzo hasta</label>
-        <input class="input" id="lunchEndHour" name="lunchEndHour" type="number" min="0" max="24" value={tenant.lunchEndHour} />
-      </div>
+      <TimeField12 id="lunchStartHour" name="lunchStartHour" value={tenant.lunchStartHour} label="Almuerzo desde" />
+      <TimeField12 id="lunchEndHour" name="lunchEndHour" value={tenant.lunchEndHour} label="Almuerzo hasta" />
       <div>
         <label class="label" for="slotBufferMin">Buffer (min)</label>
         <input class="input" id="slotBufferMin" name="slotBufferMin" type="number" min="0" max="60" value={tenant.slotBufferMin} />
@@ -202,6 +191,7 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
 
   <script type="module" define:vars={{ publicUrl, whatsapp: tenant.whatsapp || tenant.phone }}>
     import { toast } from '../../scripts/ui-feedback.js';
+    import { bindTime12hFields } from '../../lib/time-12h.ts';
 
     document.getElementById('copy-link')?.addEventListener('click', async () => {
       await navigator.clipboard.writeText(publicUrl);
@@ -276,8 +266,10 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
 
     const form = document.getElementById('profile-form');
     const msg = document.getElementById('profile-msg');
+    bindTime12hFields(form);
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      bindTime12hFields(form);
       const fd = new FormData(form);
       const payload = Object.fromEntries(fd.entries());
       payload.openHour = Number(payload.openHour);

@@ -549,7 +549,7 @@ function formatScheduleReply(setup: OnboardingSetupDraft) {
     parts.push(`Horario **${formatHour(setup.openHour)} – ${formatHour(setup.closeHour)}**`);
   }
   if (setup.lunchStartHour !== undefined && setup.lunchEndHour !== undefined) {
-    parts.push(`almuerzo ${setup.lunchStartHour}:00–${setup.lunchEndHour}:00`);
+    parts.push(`almuerzo ${formatHour(setup.lunchStartHour)}–${formatHour(setup.lunchEndHour)}`);
   }
   if (setup.closedWeekdays?.length) {
     parts.push(`cierra **${weekdayLabels(setup.closedWeekdays)}**`);

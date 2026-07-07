@@ -6,6 +6,7 @@
 /** @typedef {import('../lib/onboarding-ai').OnboardingSetupDraft} Setup */
 
 import { toast } from './ui-feedback.js';
+import { formatHour } from '../lib/schedule-parser';
 
 const SCISSORS_SVG = `<svg class="asst-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8.5 8.5L20 3M8.5 15.5L20 21M20 3L14 12L20 21"/></svg>`;
 
@@ -270,7 +271,7 @@ export function createConfigChat(opts) {
             ${draftSetup.bio ? `<p class="setup-preview-card__bio">${esc(draftSetup.bio)}</p>` : ''}
           </div>
         </div>
-        ${draftSetup.openHour !== undefined ? `<p class="setup-preview-card__line">🕐 ${draftSetup.openHour}:00 – ${draftSetup.closeHour}:00</p>` : ''}
+        ${draftSetup.openHour !== undefined ? `<p class="setup-preview-card__line">🕐 ${formatHour(draftSetup.openHour)} – ${formatHour(draftSetup.closeHour)}</p>` : ''}
         ${draftSetup.closedWeekdays?.length ? `<p class="setup-preview-card__line">Cierra: ${draftSetup.closedWeekdays.map(weekdayLabel).join(', ')}</p>` : ''}
         ${draftSetup.whatsapp ? `<p class="setup-preview-card__line">WhatsApp: ${esc(draftSetup.whatsapp)}</p>` : ''}
         ${draftSetup.instagram ? `<p class="setup-preview-card__line">IG: @${esc(draftSetup.instagram.replace(/^@/, ''))}</p>` : ''}

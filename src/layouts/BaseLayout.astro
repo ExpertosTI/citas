@@ -24,12 +24,22 @@ const geo = geoFromRequest(Astro.request);
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      (function () {
+        try {
+          var t = localStorage.getItem('citas-theme');
+          document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#1e3a5f" />
+    <meta name="theme-color" content="#1e3a5f" id="meta-theme-color" />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Citas" />
@@ -66,6 +76,10 @@ const geo = geoFromRequest(Astro.request);
     <slot />
     <script>
       import { initMotion } from '../scripts/motion.js';
+      import { initThemeToggle, setTheme, getTheme } from '../scripts/theme.js';
+
+      setTheme(getTheme());
+      initThemeToggle();
       initMotion();
     </script>
   </body>

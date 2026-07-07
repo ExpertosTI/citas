@@ -4,6 +4,7 @@ import FeatureDemo from '../components/FeatureDemo.astro';
 import LandingIcon from '../components/LandingIcon.astro';
 import ModulesShowcase from '../components/ModulesShowcase.astro';
 import SiteFooter from '../components/SiteFooter.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
 import { geoFromRequest } from '../lib/geo';
 
 const geo = geoFromRequest(Astro.request);
@@ -60,6 +61,7 @@ const features = [
     <header class="reveal mx-auto flex max-w-7xl items-center justify-between px-4 py-5 lg:px-8">
       <a href="/" class="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">Citas</a>
       <div class="flex items-center gap-2">
+        <ThemeToggle />
         <span class="geo-badge hidden sm:inline-flex">{geo.city}</span>
         <a href="#modulos" class="btn-ghost hidden !py-2 !px-4 !text-sm sm:inline-flex">Módulos</a>
         <a href="/login" class="btn-ghost !py-2 !px-4 !text-sm">Entrar</a>

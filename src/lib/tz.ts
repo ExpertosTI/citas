@@ -77,7 +77,10 @@ export function dayBoundsUtc(dateYmd: string, tz: string) {
 
 export function formatTimeLabel(iso: string, tz: string) {
   const p = localParts(iso, tz);
-  const h = String(p.hour).padStart(2, '0');
-  const m = String(p.minute).padStart(2, '0');
-  return m === '00' ? `${h}:00` : `${h}:${m}`;
+  const d = new Date(2000, 0, 1, p.hour, p.minute);
+  return new Intl.DateTimeFormat('es', {
+    hour: 'numeric',
+    minute: p.minute ? '2-digit' : undefined,
+    hour12: true,
+  }).format(d);
 }

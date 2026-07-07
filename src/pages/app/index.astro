@@ -1,10 +1,12 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
+import TimeInput12 from '../../components/TimeInput12.astro';
 import { statusLabel } from '../../lib/appointment-status';
 import { buildDayBoard } from '../../lib/day-board';
 import { cutStyleLabel } from '../../lib/cut-styles';
 import { tenantHasModule } from '../../lib/modules/tenant-modules';
 import { adminServiceMeta } from '../../lib/service-display';
+import { formatIsoTime, formatTimeHm } from '../../lib/time-12h';
 import { getBoardDay, getBoardWeek, getDashboardStats } from '../../lib/store';
 
 const tenantId = Astro.locals.tenantId!;
@@ -27,13 +29,7 @@ const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.curren
 const defaultServiceId = board.services[0]?.id || '';
 
 function formatWhen(iso: string) {
-  return new Intl.DateTimeFormat('es', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(iso));
+  return formatIsoTime(iso, board.tenant?.timezone);
 }
 
 function aptDay(iso: string) {
@@ -74,18 +70,18 @@ function aptDay(iso: string) {
   </div>
 
   <div class="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-    <div class="stat-card">
+    <a href={`/app?date=${todayStr}#bay-board`} class="stat-card stat-card--link" aria-label="Ver citas de hoy">
       <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Hoy</p>
       <p class="stat-card__value mt-1">{stats.todayCount}</p>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="#pendientes" class="stat-card stat-card--link" aria-label="Ver pendientes">
       <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Pendientes</p>
       <p class="stat-card__value stat-card__value--warn mt-1">{stats.pendingCount}</p>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="/app/clientes" class="stat-card stat-card--link" aria-label="Ver clientes">
       <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Clientes</p>
       <p class="stat-card__value mt-1">{stats.clientsCount}</p>
-    </div>
+    </a>
     <div class="stat-card">
       <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Servicios</p>
       <p class="stat-card__value mt-1">{stats.servicesCount}</p>
@@ -100,6 +96,7 @@ function aptDay(iso: string) {
     </div>
   </div>
 
+  <div id="pendientes" class="scroll-mt-24">
   {stats.pendingList?.length > 0 && (
     <div class="card mb-4 border-2 border-gold/40 bg-gold-dim p-4">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -128,7 +125,12 @@ function aptDay(iso: string) {
       </div>
     </div>
   )}
+  {stats.pendingCount === 0 && (
+    <p class="sr-only">No hay citas pendientes de confirmar.</p>
+  )}
+  </div>
 
+  <div id="bay-board" class="scroll-mt-24">
   <div id="print-area" class="card p-4 sm:p-5">
     <div class="cmd-board__header">
       <span>Hora</span>
@@ -140,7 +142,7 @@ function aptDay(iso: string) {
       )}
       {daySlots.map((slot) => (
         <div class="cmd-row" style={slot.span > 1 ? `min-height:${slot.span * 4.5}rem` : undefined}>
-          <div class="cmd-row__time">{slot.time}</div>
+          <div class="cmd-row__time">{formatTimeHm(slot.time)}</div>
 
           {slot.kind === 'free' && (
             <button
@@ -192,29 +194,29 @@ function aptDay(iso: string) {
               <div class="cmd-slot__actions">
                 {slot.appointment.status === 'pending' && (
                   <>
-                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="confirmed" data-notify="1">Confirmar</button>
-                    <button type="button" class="btn-action btn-action--danger cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">Rechazar</button>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="confirmed" data-notify="1">✓ Confirmar</button>
+                    <button type="button" class="btn-action btn-action--danger cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">✕ Rechazar</button>
                   </>
                 )}
                 {slot.appointment.status === 'confirmed' && (
                   <>
-                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="received">Recibir</button>
-                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">Hecho</button>
-                    <button type="button" class="btn-action cmd-act-reschedule" data-id={slot.appointment.id} data-time={slot.time}>Cambiar hora</button>
-                    <button type="button" class="btn-action btn-action--danger cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">Quitar</button>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="received">→ Recibir</button>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">✓ Hecho</button>
+                    <button type="button" class="btn-action cmd-act-reschedule" data-id={slot.appointment.id} data-time={slot.time}>↻ Hora</button>
+                    <button type="button" class="btn-action btn-action--danger cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">✕ Quitar</button>
                   </>
                 )}
                 {slot.appointment.status === 'received' && (
                   <>
-                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">Hecho</button>
-                    <button type="button" class="btn-action cmd-act-reschedule" data-id={slot.appointment.id} data-time={slot.time}>Cambiar hora</button>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">✓ Hecho</button>
+                    <button type="button" class="btn-action cmd-act-reschedule" data-id={slot.appointment.id} data-time={slot.time}>↻ Hora</button>
                   </>
                 )}
                 {slot.appointment.status === 'completed' && (
-                  <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="invoiced">Facturar</button>
+                  <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="invoiced">$ Facturar</button>
                 )}
                 {(slot.appointment.status === 'confirmed' || slot.appointment.status === 'received') && (
-                  <button type="button" class="btn-action cmd-act" data-id={slot.appointment.id} data-action="no_show">No-show</button>
+                  <button type="button" class="btn-action cmd-act" data-id={slot.appointment.id} data-action="no_show">⊘ No-show</button>
                 )}
               </div>
             </div>
@@ -222,6 +224,7 @@ function aptDay(iso: string) {
         </div>
       ))}
     </div>
+  </div>
   </div>
 
   <dialog id="apt-modal" class="apt-dialog">
@@ -261,8 +264,7 @@ function aptDay(iso: string) {
             <input class="input" id="aptDate" name="aptDate" type="date" value={dateStr} required />
           </div>
           <div class="min-w-0">
-            <label class="label" for="aptTime">Hora</label>
-            <input class="input" id="aptTime" name="aptTime" type="time" value="10:00" required />
+            <TimeInput12 id="aptTime" name="aptTime" value="10:00" label="Hora" required />
           </div>
         </div>
         <div>
@@ -279,13 +281,13 @@ function aptDay(iso: string) {
   </dialog>
 
   <script>
-    import { confirmAction, promptText, toast } from '../../scripts/ui-feedback.js';
+    import { confirmAction, promptTime12, toast } from '../../scripts/ui-feedback.js';
+    import { bindTime12hFields } from '../../lib/time-12h.ts';
 
     const bayDate = document.getElementById('bay-date');
     const modal = document.getElementById('apt-modal');
     const form = document.getElementById('apt-form');
     const errorEl = document.getElementById('apt-error');
-    const aptTime = document.getElementById('aptTime');
     const dateStr = document.getElementById('bay-date')?.value || '';
 
     bayDate?.addEventListener('change', () => {
@@ -293,9 +295,28 @@ function aptDay(iso: string) {
     });
 
     function openModal(time) {
-      if (aptTime && time) aptTime.value = time;
+      if (time) {
+        const wrap = document.getElementById('aptTime')?.closest('.time-12h');
+        if (wrap) {
+          const parts = time.split(':');
+          const h24 = Number(parts[0]);
+          const m = parts[1] || '00';
+          const hSel = wrap.querySelector('[data-time-part="h"]');
+          const mSel = wrap.querySelector('[data-time-part="m"]');
+          const pSel = wrap.querySelector('[data-time-part="period"]');
+          let h12 = h24 % 12;
+          if (h12 === 0) h12 = 12;
+          const period = h24 >= 12 ? 'PM' : 'AM';
+          if (hSel instanceof HTMLSelectElement) hSel.value = String(h12);
+          if (mSel instanceof HTMLSelectElement) mSel.value = m;
+          if (pSel instanceof HTMLSelectElement) pSel.value = period;
+          bindTime12hFields(wrap);
+        }
+      }
       modal?.showModal();
     }
+
+    bindTime12hFields(form);
 
     document.getElementById('new-apt-btn')?.addEventListener('click', () => openModal('10:00'));
     document.getElementById('apt-cancel')?.addEventListener('click', () => modal?.close());
@@ -317,8 +338,9 @@ function aptDay(iso: string) {
     })();
 
     document.querySelectorAll('.cmd-free-slot').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const aptDateEl = document.getElementById('aptDate') as HTMLInputElement | null;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const aptDateEl = document.getElementById('aptDate');
         if (aptDateEl && bayDate?.value) aptDateEl.value = bayDate.value;
         openModal(btn.dataset.time || '10:00');
       });
@@ -326,6 +348,7 @@ function aptDay(iso: string) {
 
     form?.addEventListener('submit', async (e) => {
       e.preventDefault();
+      bindTime12hFields(form);
       errorEl?.classList.add('hidden');
       const fd = new FormData(form);
       const aptDate = String(fd.get('aptDate'));
@@ -354,26 +377,30 @@ function aptDay(iso: string) {
       location.reload();
     });
 
-    async function patchAppointment(id, body) {
+    async function patchAppointment(id, body, btn) {
+      if (btn) btn.classList.add('is-busy');
       const res = await fetch(`/api/appointments/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      if (btn) btn.classList.remove('is-busy');
       if (!res.ok) {
         const json = await res.json();
         toast(json.error || 'No se pudo actualizar', 'error');
         return false;
       }
-      location.reload();
+      toast('Cita actualizada', 'success');
+      setTimeout(() => location.reload(), 400);
       return true;
     }
 
     document.querySelectorAll('.cmd-act').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const id = btn.dataset.id;
         const action = btn.dataset.action;
-        if (!id || !action) return;
+        if (!id || !action || btn.classList.contains('is-busy')) return;
         const payload = { status: action };
         if (btn.dataset.notify === '1') payload.notify = true;
         if (action === 'cancelled') {
@@ -383,17 +410,19 @@ function aptDay(iso: string) {
           });
           if (!ok) return;
         }
-        await patchAppointment(id, payload);
+        await patchAppointment(id, payload, btn);
       });
     });
 
     document.querySelectorAll('.cmd-act-reschedule').forEach((btn) => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (btn.classList.contains('is-busy')) return;
         const id = btn.dataset.id;
-        const time = await promptText('Nueva hora (HH:MM)', btn.dataset.time || '10:00');
+        const time = await promptTime12('Nueva hora', btn.dataset.time || '10:00');
         if (!time || !id) return;
         const date = bayDate?.value || dateStr;
-        await patchAppointment(id, { aptDate: date, aptTime: time, notify: true });
+        await patchAppointment(id, { aptDate: date, aptTime: time, notify: true }, btn);
       });
     });
 

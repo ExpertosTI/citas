@@ -1,5 +1,5 @@
 import type { OnboardingAiResponse } from './onboarding-ai';
-import { parseHourToken } from './schedule-parser';
+import { parseHourToken, formatHour } from './schedule-parser';
 import { isAppointmentBookingRequest, toCard } from './assistant-queries';
 import {
   createAppointment,
@@ -134,7 +134,7 @@ export async function bookAppointmentFromText(
   const startHour = startMin / 60;
   if (startHour < open || startHour >= close) {
     return {
-      reply: `Ese horario queda fuera del local (${open}:00 – ${close}:00). Elige otra hora dentro del horario.`,
+      reply: `Ese horario queda fuera del local (${formatHour(open)} – ${formatHour(close)}). Elige otra hora dentro del horario.`,
       readyToApply: false,
     };
   }

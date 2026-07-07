@@ -1,0 +1,30 @@
+---
+import { hour24ToParts } from '../lib/time-12h';
+
+interface Props {
+  id: string;
+  name: string;
+  value: number;
+  label: string;
+}
+
+const { id, name, value, label } = Astro.props;
+const parts = hour24ToParts(value);
+const hours = Array.from({ length: 12 }, (_, i) => i + 1);
+---
+
+<div class="time-12h">
+  <label class="label" for={`${id}-h`}>{label}</label>
+  <div class="time-12h__row">
+    <select class="input time-12h__select" id={`${id}-h`} data-time-part="h" aria-label={`${label} hora`}>
+      {hours.map((n) => (
+        <option value={n} selected={n === parts.hour}>{n}</option>
+      ))}
+    </select>
+    <select class="input time-12h__select time-12h__period" id={`${id}-p`} data-time-part="period" aria-label={`${label} AM o PM`}>
+      <option value="AM" selected={parts.period === 'AM'}>AM</option>
+      <option value="PM" selected={parts.period === 'PM'}>PM</option>
+    </select>
+    <input type="hidden" name={name} id={id} value={value} data-time-hidden />
+  </div>
+</div>

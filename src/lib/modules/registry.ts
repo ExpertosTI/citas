@@ -91,9 +91,5 @@ export function navForTenant(enabledIds: Set<string>): NavItem[] {
 
   items.push({ id: 'perfil', href: '/app/perfil', label: 'Perfil', icon: '✦' });
 
-  if (enabledIds.has('assistant')) {
-    items.push({ id: 'asistente', href: '#asistente', label: 'Asistente', icon: '✦' });
-  }
-
   return items;
 }
