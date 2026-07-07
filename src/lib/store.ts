@@ -3,6 +3,7 @@ import path from 'node:path';
 import { hashPassword, newId, slugify } from './auth';
 import { countryPreset } from './geo';
 import { googlePasswordHash } from './google-auth';
+import type { TenantModuleState } from './modules/types';
 import { appointmentCode, normalizeTenant } from './tenant';
 import { dayBoundsUtc, localDateKey, tenantTimezone, zonedDateTime } from './tz';
 
@@ -47,6 +48,7 @@ export type Tenant = {
   instagram: string;
   whatsapp: string;
   onboardingComplete?: boolean;
+  modules?: Record<string, TenantModuleState>;
   createdAt: string;
 };
 

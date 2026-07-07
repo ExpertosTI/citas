@@ -173,10 +173,47 @@ function initTilt() {
   });
 }
 
+function initModuleMotion() {
+  const arch = document.querySelector('.modules-arch');
+  if (arch && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        arch.classList.add('is-visible');
+        io.disconnect();
+      },
+      { threshold: 0.35 },
+    );
+    io.observe(arch);
+  }
+
+  const cards = document.querySelectorAll('[data-module-card]');
+  if (!cards.length) return;
+
+  if (prefersReducedMotion()) {
+    cards.forEach((c) => c.classList.add('is-live'));
+    return;
+  }
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-live');
+        io.unobserve(entry.target);
+      });
+    },
+    { threshold: 0.15, rootMargin: '0px 0px -6% 0px' },
+  );
+
+  cards.forEach((card) => io.observe(card));
+}
+
 export function initMotion() {
   document.documentElement.classList.add('motion-enabled');
   initReveal();
   initFeatureMotion();
+  initModuleMotion();
   initParallax();
   initTilt();
   document.querySelectorAll('[data-typewriter]').forEach(initTypewriter);

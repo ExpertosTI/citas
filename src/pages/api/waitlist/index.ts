@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { bad, json, readBody } from '../../../lib/http';
+import { tenantHasModule } from '../../../lib/modules/tenant-modules';
 import { rateLimitRequest } from '../../../lib/security';
 import { addWaitlistEntry, getTenantBySlug } from '../../../lib/store';
 
@@ -22,6 +23,7 @@ export const POST: APIRoute = async ({ request }) => {
   const slug = String(body.slug || '').trim();
   const tenant = await getTenantBySlug(slug);
   if (!tenant) return bad('Local no encontrado', 404);
+  if (!tenantHasModule(tenant, 'waitlist')) return bad('Lista de espera no disponible', 404);
 
   const name = String(body.name || '').trim();
   if (name.length < 2 || !body.serviceId || !body.preferredDate) {

@@ -1,0 +1,126 @@
+---
+import {
+  LANDING_INDUSTRIES,
+  LANDING_MODULES,
+  MODULE_CATEGORY_LABELS,
+  MODULE_STATUS_LABELS,
+  type ModuleLandingItem,
+} from '../lib/modules/landing-catalog';
+
+const available = LANDING_MODULES.filter((m) => m.status !== 'roadmap');
+const roadmap = LANDING_MODULES.filter((m) => m.status === 'roadmap');
+
+function statusClass(status: ModuleLandingItem['status']) {
+  if (status === 'included') return 'module-card__badge--included';
+  if (status === 'available') return 'module-card__badge--available';
+  return 'module-card__badge--roadmap';
+}
+---
+
+<section id="modulos" class="modules-section py-14 sm:py-20">
+  <div class="mx-auto max-w-7xl px-4 lg:px-8">
+    <div class="reveal reveal--rise modules-section__intro text-center">
+      <p class="hero-eyebrow text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">
+        Arquitectura modular
+      </p>
+      <h2 class="font-display mt-3 text-3xl font-semibold tracking-tight text-ink sm:text-4xl lg:text-5xl">
+        Activa solo lo que tu negocio necesita
+      </h2>
+      <p class="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
+        Citas crece contigo: instala módulos por cliente — barbería con reservas, cafetería con POS,
+        salón con lista de espera. Sin pagar por funciones que no usas.
+      </p>
+    </div>
+
+    <div class="reveal modules-arch mt-10">
+      <div class="modules-arch__core">
+        <span class="modules-arch__icon" aria-hidden="true">◈</span>
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-mustard-deep">Núcleo</p>
+          <p class="font-display text-lg font-semibold text-ink">Reservas</p>
+          <p class="text-xs text-muted">Bahía · Servicios · Clientes · Link público</p>
+        </div>
+      </div>
+      <div class="modules-arch__plug" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="modules-arch__mods">
+        {available.filter((m) => m.id !== 'core').map((m) => (
+          <span class="modules-arch__chip">{m.icon} {m.label}</span>
+        ))}
+        <span class="modules-arch__chip modules-arch__chip--ghost">+ más módulos</span>
+      </div>
+    </div>
+
+    <div class="reveal modules-industries mt-10">
+      <p class="mb-3 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+        Ejemplos por industria
+      </p>
+      <div class="modules-industries__grid">
+        {LANDING_INDUSTRIES.map((ind) => (
+          <article class="modules-industry card" data-module-hover>
+            <span class="modules-industry__icon" aria-hidden="true">{ind.icon}</span>
+            <p class="font-display text-sm font-semibold text-ink">{ind.label}</p>
+            <div class="modules-industry__mods">
+              {ind.modules.map((id) => {
+                const mod = LANDING_MODULES.find((m) => m.id === id);
+                return mod ? (
+                  <span title={mod.label}>{mod.icon}</span>
+                ) : null;
+              })}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+
+    <div class="modules-grid mt-12">
+      {LANDING_MODULES.map((mod, i) => (
+        <article
+          class:list={[
+            'module-card reveal reveal--rise card',
+            mod.status === 'roadmap' && 'module-card--roadmap',
+            mod.status === 'included' && 'module-card--included',
+          ]}
+          style={`transition-delay: ${(i % 6) * 0.06}s`}
+          data-module-card
+        >
+          <div class="module-card__top">
+            <span class="module-card__icon" aria-hidden="true">{mod.icon}</span>
+            <span class:list={['module-card__badge', statusClass(mod.status)]}>
+              {MODULE_STATUS_LABELS[mod.status]}
+            </span>
+          </div>
+          <p class="module-card__category">{MODULE_CATEGORY_LABELS[mod.category]}</p>
+          <h3 class="font-display mt-1 text-lg font-semibold text-ink">{mod.label}</h3>
+          <p class="mt-1.5 text-sm leading-relaxed text-muted">{mod.description}</p>
+          <p class="module-card__pitch mt-2 text-xs text-ink-soft">{mod.pitch}</p>
+          <div class="module-card__tags mt-3">
+            {mod.tags.map((tag) => (
+              <span class="chip border border-border text-muted">{tag}</span>
+            ))}
+          </div>
+          {mod.id === 'pos' && (
+            <div class="module-card__demo" aria-hidden="true">
+              <div class="module-pos-demo">
+                <button type="button" class="module-pos-demo__item"><span>Café</span><em>RD$120</em></button>
+                <button type="button" class="module-pos-demo__item is-hit"><span>Jugo</span><em>RD$150</em></button>
+                <button type="button" class="module-pos-demo__item"><span>Agua</span><em>RD$60</em></button>
+              </div>
+            </div>
+          )}
+        </article>
+      ))}
+    </div>
+
+    {roadmap.length > 0 && (
+      <div class="reveal modules-roadmap mt-10 text-center">
+        <p class="text-sm text-muted">
+          <strong class="text-ink">{roadmap.length} módulos</strong> en roadmap —
+          inventario, fidelidad, reportes y más. ¿Necesitas uno primero?
+          <a href="/registro" class="font-semibold text-mustard-deep hover:underline">Cuéntanos al registrarte</a>.
+        </p>
+      </div>
+    )}
+  </div>
+</section>

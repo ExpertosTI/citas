@@ -3,11 +3,13 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import { statusLabel } from '../../lib/appointment-status';
 import { buildDayBoard } from '../../lib/day-board';
 import { cutStyleLabel } from '../../lib/cut-styles';
+import { tenantHasModule } from '../../lib/modules/tenant-modules';
 import { adminServiceMeta } from '../../lib/service-display';
 import { getBoardDay, getBoardWeek, getDashboardStats } from '../../lib/store';
 
 const tenantId = Astro.locals.tenantId!;
 const tenant = Astro.locals.tenant!;
+const showWaitlist = tenantHasModule(tenant, 'waitlist');
 
 const today = new Date();
 const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -47,10 +49,12 @@ function aptDay(iso: string) {
       <h1 class="font-display mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Bahía del día</h1>
       <p class="mt-1 text-sm text-muted">Todos los horarios visibles · acciones directas en cada cita</p>
     </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <input id="bay-date" class="input !w-auto !rounded-lg" type="date" value={dateStr} />
+    <div class="flex w-full flex-wrap items-stretch gap-2 sm:w-auto sm:items-center">
+      <input id="bay-date" class="input !w-full !rounded-lg sm:!w-auto" type="date" value={dateStr} />
       <button id="print-day" type="button" class="btn-ghost btn-sm">Imprimir</button>
-      <a href="/app/waitlist" class="btn-ghost btn-sm">Espera ({stats.waitlistCount})</a>
+      {showWaitlist && (
+        <a href="/app/waitlist" class="btn-ghost btn-sm">Espera ({stats.waitlistCount})</a>
+      )}
       <button id="new-apt-btn" type="button" class="btn-primary btn-sm">+ Nueva cita</button>
     </div>
   </div>
@@ -69,7 +73,7 @@ function aptDay(iso: string) {
     ))}
   </div>
 
-  <div class="mb-5 grid gap-2 grid-cols-3 lg:grid-cols-6">
+  <div class="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
     <div class="stat-card">
       <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Hoy</p>
       <p class="stat-card__value mt-1">{stats.todayCount}</p>
@@ -231,14 +235,14 @@ function aptDay(iso: string) {
             {board.clients.map((c) => <option value={c.name} />)}
           </datalist>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
+        <div class="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="min-w-0">
             <label class="label" for="clientPhone">Teléfono</label>
-            <input class="input" id="clientPhone" name="clientPhone" />
+            <input class="input" id="clientPhone" name="clientPhone" inputmode="tel" autocomplete="tel" />
           </div>
-          <div>
+          <div class="min-w-0">
             <label class="label" for="clientEmail">Email</label>
-            <input class="input" id="clientEmail" name="clientEmail" type="email" />
+            <input class="input" id="clientEmail" name="clientEmail" type="email" autocomplete="email" />
           </div>
         </div>
         <div>
@@ -251,12 +255,12 @@ function aptDay(iso: string) {
             ))}
           </select>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
+        <div class="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="min-w-0">
             <label class="label" for="aptDate">Fecha</label>
             <input class="input" id="aptDate" name="aptDate" type="date" value={dateStr} required />
           </div>
-          <div>
+          <div class="min-w-0">
             <label class="label" for="aptTime">Hora</label>
             <input class="input" id="aptTime" name="aptTime" type="time" value="10:00" required />
           </div>
@@ -267,9 +271,9 @@ function aptDay(iso: string) {
         </div>
         <p id="apt-error" class="hidden text-sm font-medium text-red-600"></p>
       </div>
-      <div class="mt-5 flex justify-end gap-2">
-        <button type="button" class="btn-ghost" id="apt-cancel">Cancelar</button>
-        <button type="submit" class="btn-primary">Guardar</button>
+      <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" class="btn-ghost w-full sm:w-auto" id="apt-cancel">Cancelar</button>
+        <button type="submit" class="btn-primary w-full sm:w-auto">Guardar</button>
       </div>
     </form>
   </dialog>

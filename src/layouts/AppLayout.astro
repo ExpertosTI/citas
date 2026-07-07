@@ -1,29 +1,25 @@
 ---
 import BaseLayout from './BaseLayout.astro';
 import AssistantPanel from '../components/AssistantPanel.astro';
+import { navForTenant } from '../lib/modules/registry';
+import { enabledModuleIds, tenantHasModule } from '../lib/modules/tenant-modules';
 import { safeTenant } from '../lib/store';
 
 interface Props {
   title?: string;
-  active?: 'bahia' | 'servicios' | 'clientes' | 'perfil' | 'asistente';
+  active?: 'bahia' | 'servicios' | 'clientes' | 'perfil' | 'asistente' | 'waitlist' | 'pos';
 }
 
 const { title = 'Panel', active = 'bahia' } = Astro.props;
 const tenantId = Astro.locals.tenantId!;
 const tenant = Astro.locals.tenant!;
 const t = safeTenant(tenant);
-const showAssistant = tenant.onboardingComplete === true;
+const enabled = enabledModuleIds(tenant);
+const nav = navForTenant(enabled);
+const showAssistant = tenant.onboardingComplete === true && tenantHasModule(tenant, 'assistant');
 const currencyLabel = t.currency === 'DOP' ? 'RD$' : t.currency === 'USD' ? 'USD' : t.currency;
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
 const publicUrl = `${siteUrl}/s/${t.slug}`;
-
-const nav = [
-  { id: 'bahia', href: '/app', label: 'Bahía', icon: '◈' },
-  { id: 'servicios', href: '/app/servicios', label: 'Servicios', icon: '✂' },
-  { id: 'clientes', href: '/app/clientes', label: 'Clientes', icon: '◎' },
-  { id: 'perfil', href: '/app/perfil', label: 'Perfil', icon: '✦' },
-  { id: 'asistente', href: '#asistente', label: 'Asistente', icon: '✦' },
-] as const;
 ---
 
 <BaseLayout title={`${title} · ${t.businessName}`}>

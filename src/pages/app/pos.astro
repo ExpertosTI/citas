@@ -1,0 +1,87 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import { safeTenant } from '../../lib/store';
+
+const tenant = safeTenant(Astro.locals.tenant!);
+const currency = tenant.currency === 'DOP' ? 'RD$' : tenant.currency || 'RD$';
+
+const demoProducts = [
+  { name: 'Café americano', price: 120, category: 'Bebidas calientes' },
+  { name: 'Capuchino', price: 180, category: 'Bebidas calientes' },
+  { name: 'Jugo natural', price: 150, category: 'Bebidas frías' },
+  { name: 'Agua', price: 60, category: 'Bebidas frías' },
+  { name: 'Brownie', price: 95, category: 'Snacks' },
+];
+---
+
+<AppLayout title="Punto de venta" active="pos">
+  <div class="mb-6">
+    <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Módulo POS</p>
+    <h1 class="font-display mt-1 text-3xl font-semibold tracking-tight text-ink">Punto de venta</h1>
+    <p class="mt-1 text-sm text-muted">Vende bebidas y productos en mostrador — ideal para cafeterías y bares.</p>
+  </div>
+
+  <div class="mb-4 grid gap-3 sm:grid-cols-3">
+    <div class="card p-4">
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Hoy</p>
+      <p class="font-display mt-1 text-2xl font-semibold text-ink">{currency} 0</p>
+      <p class="text-xs text-muted">Ventas del día</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Tickets</p>
+      <p class="font-display mt-1 text-2xl font-semibold text-ink">0</p>
+      <p class="text-xs text-muted">Transacciones</p>
+    </div>
+    <div class="card p-4">
+      <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Productos</p>
+      <p class="font-display mt-1 text-2xl font-semibold text-ink">{demoProducts.length}</p>
+      <p class="text-xs text-muted">En catálogo demo</p>
+    </div>
+  </div>
+
+  <div class="card p-5">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p class="label">Catálogo rápido</p>
+        <p class="text-xs text-muted">Toca un producto para simular una venta (próximamente: cobro e inventario).</p>
+      </div>
+      <button type="button" class="btn-primary btn-sm" disabled>+ Producto</button>
+    </div>
+
+    <div class="grid gap-2 sm:grid-cols-2">
+      {demoProducts.map((p) => (
+        <button
+          type="button"
+          class="flex items-center justify-between rounded-xl border border-border bg-surface-2 px-4 py-3 text-left transition hover:border-mustard-deep/40"
+          data-pos-item
+          data-name={p.name}
+          data-price={p.price}
+        >
+          <span>
+            <span class="block text-sm font-semibold text-ink">{p.name}</span>
+            <span class="text-[11px] text-muted">{p.category}</span>
+          </span>
+          <span class="text-sm font-semibold text-mustard-deep">{currency} {p.price}</span>
+        </button>
+      ))}
+    </div>
+
+    <p id="pos-msg" class="mt-4 hidden text-sm font-medium text-mustard-deep"></p>
+  </div>
+
+  <script type="module" define:vars={{ currency }}>
+    import { toast } from '../../scripts/ui-feedback.js';
+
+    let total = 0;
+    let tickets = 0;
+    document.querySelectorAll('[data-pos-item]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const name = btn.getAttribute('data-name') || 'Producto';
+        const price = Number(btn.getAttribute('data-price') || 0);
+        total += price;
+        tickets += 1;
+        toast(`${name} · ${currency} ${price}`, 'success');
+      });
+    });
+  </script>
+</AppLayout>

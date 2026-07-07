@@ -1,6 +1,8 @@
 import { defineMiddleware } from 'astro:middleware';
 import { tenantIdFromRequest } from './lib/auth';
 import { GEO_COOKIE, detectCountryCode } from './lib/geo';
+import { moduleForPath } from './lib/modules/registry';
+import { tenantHasModule } from './lib/modules/tenant-modules';
 import { postAuthPath } from './lib/page-auth';
 import { securityHeaders } from './lib/security';
 import { getTenantById } from './lib/store';
@@ -43,6 +45,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
         }
       } else if (tenant.onboardingComplete !== true) {
         return context.redirect('/app/onboarding');
+      }
+
+      const modId = moduleForPath(pathname);
+      if (modId && !tenantHasModule(tenant, modId)) {
+        return context.redirect('/app/perfil?module=disabled');
       }
     }
 

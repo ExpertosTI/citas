@@ -8,7 +8,7 @@ const [waitlist, services] = await Promise.all([getWaitlist(tenantId), getServic
 const businessName = Astro.locals.tenant?.businessName || 'tu negocio';
 ---
 
-<AppLayout title="Lista de espera" active="bahia">
+<AppLayout title="Lista de espera" active="waitlist">
   <div class="mb-6">
     <h1 class="brand-mark text-3xl">Lista de espera</h1>
     <p class="mt-1 text-sm text-ink-soft">Clientes que buscaron cupo cuando no había horario</p>

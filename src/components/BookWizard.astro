@@ -9,9 +9,10 @@ interface Props {
   whatsapp: string;
   accentColor: string;
   timezone?: string;
+  waitlistEnabled?: boolean;
 }
 
-const { slug, services, currency, whatsapp, timezone = 'America/Santo_Domingo' } = Astro.props;
+const { slug, services, currency, whatsapp, timezone = 'America/Santo_Domingo', waitlistEnabled = true } = Astro.props;
 const totalSteps = 4;
 ---
 
@@ -64,9 +65,11 @@ const totalSteps = 4;
     <fieldset data-step="3" class="step-panel hidden space-y-3">
       <legend class="wizard-title mb-3 block">¿A qué hora?</legend>
       <div id="slots-grid" class="grid grid-cols-1 gap-3 sm:grid-cols-2"></div>
-      <button type="button" id="book-waitlist" class="btn-ghost mt-2 w-full !text-xs">
-        Avisarme si se libera un cupo
-      </button>
+      {waitlistEnabled && (
+        <button type="button" id="book-waitlist" class="btn-ghost mt-2 w-full !text-xs">
+          Avisarme si se libera un cupo
+        </button>
+      )}
     </fieldset>
 
     <fieldset data-step="4" class="step-panel hidden space-y-3">

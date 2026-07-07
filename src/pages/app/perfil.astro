@@ -1,9 +1,12 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
 import { COUNTRY_PRESETS } from '../../lib/geo';
+import { catalogForTenant } from '../../lib/modules/tenant-modules';
 import { safeTenant } from '../../lib/store';
 
 const tenant = safeTenant(Astro.locals.tenant!);
+const modules = catalogForTenant(Astro.locals.tenant!);
+const moduleDisabled = Astro.url.searchParams.get('module') === 'disabled';
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
 const publicUrl = `${siteUrl}/s/${tenant.slug}`;
 const logoPreview = tenant.logoUrl?.startsWith('http') ? tenant.logoUrl : `/api/logo/${tenant.id}?t=${Date.now()}`;
@@ -18,6 +21,11 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
     <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">Tu negocio</p>
     <h1 class="font-display mt-1 text-3xl font-semibold tracking-tight text-ink">Perfil del local</h1>
     <p class="mt-1 text-sm text-muted">Logo, horarios, datos de contacto y enlace público</p>
+    {moduleDisabled && (
+      <p class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        Ese módulo no está activo en tu cuenta. Actívalo abajo en <strong>Módulos</strong>.
+      </p>
+    )}
   </div>
 
   <div class="card mb-4 flex flex-wrap items-center justify-between gap-4 p-4">
@@ -45,6 +53,38 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
         <input class="input !max-w-xs" type="file" name="logo" accept="image/png,image/jpeg,image/webp" />
         <button type="submit" class="btn-primary !py-2 !text-xs w-fit">Subir logo</button>
       </form>
+    </div>
+  </div>
+
+  <div class="card mb-4 p-5" id="modules-panel">
+    <div class="mb-4">
+      <p class="label">Módulos</p>
+      <p class="text-xs text-muted">Activa o desactiva funciones según el tipo de negocio de cada cliente.</p>
+    </div>
+    <div class="space-y-3">
+      {modules.map((mod) => (
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface-2 px-4 py-3">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-ink">
+              <span class="mr-1.5" aria-hidden="true">{mod.icon}</span>
+              {mod.label}
+            </p>
+            <p class="text-xs text-muted">{mod.description}</p>
+          </div>
+          <button
+            type="button"
+            class:list={[
+              'btn-sm shrink-0',
+              mod.enabled ? 'btn-ghost' : 'btn-primary',
+            ]}
+            data-module-toggle
+            data-module-id={mod.id}
+            data-enabled={mod.enabled ? '1' : '0'}
+          >
+            {mod.enabled ? 'Desactivar' : 'Activar'}
+          </button>
+        </div>
+      ))}
     </div>
   </div>
 
@@ -193,6 +233,27 @@ const currencies = [...new Set(countries.map((c) => c.currency))];
         if (tz) tz.value = p.timezone;
         if (cur) cur.value = p.currency;
       }
+    });
+
+    document.querySelectorAll('[data-module-toggle]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const moduleId = btn.getAttribute('data-module-id');
+        const enabled = btn.getAttribute('data-enabled') !== '1';
+        btn.disabled = true;
+        const res = await fetch('/api/modules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ moduleId, enabled }),
+        });
+        const json = await res.json();
+        btn.disabled = false;
+        if (res.ok) {
+          toast(enabled ? 'Módulo activado' : 'Módulo desactivado', 'success');
+          setTimeout(() => location.reload(), 500);
+        } else {
+          toast(json.error || 'No se pudo cambiar el módulo', 'error');
+        }
+      });
     });
 
     document.getElementById('logo-form')?.addEventListener('submit', async (e) => {

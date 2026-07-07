@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { bad, json, readBody } from '../../lib/http';
+import { tenantHasModule } from '../../lib/modules/tenant-modules';
 import { rateLimitRequest } from '../../lib/security';
 import { sendAppointmentNotifications } from '../../lib/mail';
 import {
@@ -90,6 +91,9 @@ export const POST: APIRoute = async ({ request }) => {
     const msg = err instanceof Error ? err.message : 'error';
     if (msg === 'slot_taken') {
       if (body.joinWaitlist) {
+        if (!tenantHasModule(tenant, 'waitlist')) {
+          return bad('Lista de espera no disponible', 403);
+        }
         const { addWaitlistEntry } = await import('../../lib/store');
         await addWaitlistEntry(tenant.id, {
           clientName: name,

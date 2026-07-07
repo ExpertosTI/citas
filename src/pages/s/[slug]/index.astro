@@ -2,6 +2,7 @@
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import BookWizard from '../../../components/BookWizard.astro';
 import { readLogo } from '../../../lib/logo';
+import { tenantHasModule } from '../../../lib/modules/tenant-modules';
 import { tenantLogoUrl } from '../../../lib/tenant';
 import { getServices, getTenantBySlug, publicTenant } from '../../../lib/store';
 
@@ -16,6 +17,7 @@ const t = publicTenant(tenant);
 const services = (await getServices(tenant.id)).filter((s) => s.active);
 const hasLogo = Boolean(await readLogo(tenant.id));
 const logoSrc = hasLogo ? tenantLogoUrl(tenant) : '';
+const waitlistEnabled = tenantHasModule(tenant, 'waitlist');
 ---
 
 <BaseLayout title={`Reservar · ${t.businessName}`} description={t.bio}>
@@ -54,6 +56,7 @@ const logoSrc = hasLogo ? tenantLogoUrl(tenant) : '';
           whatsapp={t.whatsapp || t.phone}
           accentColor={t.accentColor}
           timezone={tenant.timezone}
+          waitlistEnabled={waitlistEnabled}
         />
       )}
 

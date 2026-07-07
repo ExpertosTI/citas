@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { tenantIdFromRequest } from '../../../lib/auth';
 import { analyzeLogoImage, isGeminiConfigured, matchServiceFromImage } from '../../../lib/gemini';
 import { bad, json, readBody } from '../../../lib/http';
+import { tenantHasModule } from '../../../lib/modules/tenant-modules';
 import { readLogo } from '../../../lib/logo';
 import { saveServiceImage } from '../../../lib/service-image';
 import { rateLimit } from '../../../lib/security';
@@ -169,6 +170,10 @@ export const GET: APIRoute = async ({ request }) => {
 
   const url = new URL(request.url);
   const mode: AssistantMode = url.searchParams.get('mode') === 'assistant' ? 'assistant' : 'onboarding';
+  const chatMode = effectiveChatMode(tenant, mode);
+  if (chatMode === 'assistant' && !tenantHasModule(tenant, 'assistant')) {
+    return bad('Asistente no activo', 403);
+  }
   const services = await getServices(tenantId);
   const serviceCount = services.filter((s) => s.active).length;
   const phase = computeSetupPhase(tenant, {}, { serviceCount });
@@ -209,10 +214,13 @@ export const POST: APIRoute = async ({ request }) => {
   if (!tenant) return bad('Sesión inválida', 401);
 
   const mode: AssistantMode = body.mode === 'assistant' ? 'assistant' : 'onboarding';
+  const chatMode = effectiveChatMode(tenant, mode);
+  if (chatMode === 'assistant' && !tenantHasModule(tenant, 'assistant')) {
+    return bad('Asistente no activo', 403);
+  }
   const existingServices = await getServices(tenantId);
   const serviceCount = existingServices.filter((s) => s.active).length;
   const priorSetup = body.setup && typeof body.setup === 'object' ? body.setup : {};
-  const chatMode = effectiveChatMode(tenant, mode);
 
   if (body.action === 'skip') {
     await skipOnboarding(tenantId);
