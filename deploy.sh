@@ -69,7 +69,7 @@ if [ -z "$SESSION_SECRET" ] || [ ${#SESSION_SECRET} -lt 24 ] || [[ "$SESSION_SEC
   exit 1
 fi
 export GEMINI_API_KEY="${GEMINI_API_KEY:-}"
-export GEMINI_MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"
+export GEMINI_MODEL="${GEMINI_MODEL:-gemini-3.5-flash}"
 export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}"
 export GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"
 
@@ -107,25 +107,35 @@ docker stack deploy -c docker-compose.yml "$STACK_NAME"
 
 cyan "── 6. Inject secrets into service ─────────────"
 sleep 2
-docker service update \
-  --env-add "SMTP_HOST=${SMTP_HOST}" \
-  --env-add "SMTP_PORT=${SMTP_PORT}" \
-  --env-add "SMTP_USER=${SMTP_USER}" \
-  --env-add "SMTP_PASS=${SMTP_PASS}" \
-  --env-add "SMTP_FROM_NAME=${SMTP_FROM_NAME}" \
-  --env-add "SMTP_REPLY_TO=${SMTP_REPLY_TO}" \
-  --env-add "ADMIN_EMAIL=${ADMIN_EMAIL}" \
-  --env-add "ADMIN_PASSWORD=${ADMIN_PASSWORD}" \
-  --env-add "PUBLIC_SITE_URL=${PUBLIC_SITE_URL}" \
-  --env-add "PUBLIC_SITE_URL=${PUBLIC_SITE_URL}" \
-  --env-add "SESSION_SECRET=${SESSION_SECRET}" \
-  --env-add "REMINDER_SECRET=${REMINDER_SECRET}" \
-  --env-add "GEMINI_API_KEY=${GEMINI_API_KEY}" \
-  --env-add "GEMINI_MODEL=${GEMINI_MODEL}" \
-  --env-add "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}" \
-  --env-add "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" \
-  --force \
-  "$SERVICE_NAME" >/dev/null
+
+ENV_PAIRS=(
+  "SMTP_HOST=${SMTP_HOST}"
+  "SMTP_PORT=${SMTP_PORT}"
+  "SMTP_USER=${SMTP_USER}"
+  "SMTP_PASS=${SMTP_PASS}"
+  "SMTP_FROM_NAME=${SMTP_FROM_NAME}"
+  "SMTP_REPLY_TO=${SMTP_REPLY_TO}"
+  "ADMIN_EMAIL=${ADMIN_EMAIL}"
+  "ADMIN_PASSWORD=${ADMIN_PASSWORD}"
+  "PUBLIC_SITE_URL=${PUBLIC_SITE_URL}"
+  "SESSION_SECRET=${SESSION_SECRET}"
+  "REMINDER_SECRET=${REMINDER_SECRET}"
+  "GEMINI_API_KEY=${GEMINI_API_KEY}"
+  "GEMINI_MODEL=${GEMINI_MODEL}"
+  "GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}"
+  "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}"
+)
+
+UPDATE_ARGS=(--force)
+for pair in "${ENV_PAIRS[@]}"; do
+  key="${pair%%=*}"
+  UPDATE_ARGS+=(--env-rm "$key")
+done
+for pair in "${ENV_PAIRS[@]}"; do
+  UPDATE_ARGS+=(--env-add "$pair")
+done
+
+docker service update "${UPDATE_ARGS[@]}" "$SERVICE_NAME" >/dev/null
 
 cyan "── 7. Cleanup dangling images ─────────────────"
 docker image prune -f >/dev/null

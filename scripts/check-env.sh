@@ -26,6 +26,19 @@ service_has_key() {
     | grep -q "^$1="
 }
 
+runtime_env_len() {
+  docker service inspect "$SERVICE_NAME" --format '{{range .Spec.TaskTemplate.ContainerSpec.Env}}{{.}}{{"\n"}}{{end}}' 2>/dev/null \
+    | grep "^$1=" | tail -1 | cut -d= -f2- | wc -c | tr -d ' '
+}
+
+key_type_label() {
+  case "$1" in
+    AIza*) echo "standard" ;;
+    AQ.*) echo "auth" ;;
+    *) echo "custom" ;;
+  esac
+}
+
 echo "── Citas · check-env ──"
 echo "   .env:    $ENV_FILE"
 echo "   service: $SERVICE_NAME"
@@ -42,7 +55,7 @@ SMTP_REPLY_TO="$(env_val SMTP_REPLY_TO)"; [ -n "$SMTP_REPLY_TO" ] || SMTP_REPLY_
 SESSION_SECRET="$(env_val SESSION_SECRET)"
 REMINDER_SECRET="$(env_val REMINDER_SECRET)"
 GEMINI_API_KEY="$(env_val GEMINI_API_KEY)"
-GEMINI_MODEL="$(env_val GEMINI_MODEL)"; [ -n "$GEMINI_MODEL" ] || GEMINI_MODEL="gemini-2.5-flash"
+GEMINI_MODEL="$(env_val GEMINI_MODEL)"; [ -n "$GEMINI_MODEL" ] || GEMINI_MODEL="gemini-3.5-flash"
 GOOGLE_CLIENT_ID="$(env_val GOOGLE_CLIENT_ID)"
 GOOGLE_CLIENT_SECRET="$(env_val GOOGLE_CLIENT_SECRET)"
 PUBLIC_SITE_URL="$(env_val PUBLIC_SITE_URL)"; [ -n "$PUBLIC_SITE_URL" ] || PUBLIC_SITE_URL="https://citas.renace.tech"
@@ -75,7 +88,14 @@ else
 fi
 
 if [ -n "$GEMINI_API_KEY" ]; then
-  status_ok GEMINI_API_KEY "$GEMINI_MODEL"
+  kt="$(key_type_label "$GEMINI_API_KEY")"
+  if [ "$kt" = "custom" ] && [ "${#GEMINI_API_KEY}" -lt 20 ]; then
+    status_fail GEMINI_API_KEY "valor demasiado corto"
+    fail=1
+  else
+    status_ok GEMINI_API_KEY "${#GEMINI_API_KEY} chars · $kt"
+  fi
+  status_ok GEMINI_MODEL "$GEMINI_MODEL"
 else
   status_fail GEMINI_API_KEY
   fail=1
@@ -97,7 +117,17 @@ for key in SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASS SMTP_FROM_NAME SMTP_REPLY_TO 
   PUBLIC_SITE_URL SESSION_SECRET REMINDER_SECRET GEMINI_API_KEY GEMINI_MODEL \
   GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ADMIN_EMAIL; do
   if service_has_key "$key"; then
-    status_ok "$key (runtime)"
+    rlen="$(runtime_env_len "$key")"
+    if [ "$key" = "GEMINI_API_KEY" ] || [ "$key" = "GOOGLE_CLIENT_SECRET" ] || [ "$key" = "SMTP_PASS" ] || [ "$key" = "SESSION_SECRET" ] || [ "$key" = "REMINDER_SECRET" ]; then
+      if [ "${rlen:-0}" -gt 1 ]; then
+        status_ok "$key (runtime)" "${rlen} chars"
+      else
+        status_fail "$key (runtime)" "vacío en contenedor"
+        fail=1
+      fi
+    else
+      status_ok "$key (runtime)"
+    fi
   else
     status_fail "$key (runtime)" "no en $SERVICE_NAME"
     fail=1
@@ -115,7 +145,12 @@ fi
 HDR="${REMINDER_SECRET:-$SESSION_SECRET}"
 if [ -n "$HDR" ]; then
   CFG="$(curl -fsS -H "x-reminder-secret: $HDR" https://citas.renace.tech/api/health/config 2>/dev/null || true)"
-  if echo "$CFG" | grep -q '"ok":true'; then
+  if echo "$CFG" | grep -q '"geminiLive":true'; then
+    status_ok api/health/config "gemini live"
+  elif echo "$CFG" | grep -q '"geminiLive":false'; then
+    status_fail api/health/config "gemini no responde (revisar clave/modelo en runtime)"
+    fail=1
+  elif echo "$CFG" | grep -q '"ok":true'; then
     status_ok api/health/config "runtime"
   elif [ -n "$CFG" ]; then
     status_fail api/health/config "revisar checks en runtime"

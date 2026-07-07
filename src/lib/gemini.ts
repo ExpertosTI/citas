@@ -1,15 +1,15 @@
-const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+import { GoogleGenAI } from '@google/genai';
 
+/** Stable Gemini 3 models (Jul 2026). See https://ai.google.dev/gemini-api/docs/models */
 const MODEL_FALLBACKS = [
-  'gemini-2.0-flash',
+  'gemini-3.5-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-3-flash',
   'gemini-2.5-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
 ];
 
 export function isGeminiConfigured() {
-  return Boolean(process.env.GEMINI_API_KEY?.trim());
+  return Boolean((process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '').trim());
 }
 
 export function geminiModelName() {
@@ -21,44 +21,77 @@ function modelCandidates() {
   return [preferred, ...MODEL_FALLBACKS.filter((m) => m !== preferred)];
 }
 
+function apiKeyRaw() {
+  return (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '').trim();
+}
+
 function apiKey() {
-  const key = process.env.GEMINI_API_KEY?.trim();
+  const key = apiKeyRaw();
   if (!key) throw new Error('gemini_not_configured');
+  if (key.startsWith('gemini-')) {
+    throw new Error('gemini_key_looks_like_model: GEMINI_API_KEY contiene un nombre de modelo, no la clave');
+  }
   return key;
+}
+
+let client: GoogleGenAI | null = null;
+
+function getClient() {
+  if (!client) client = new GoogleGenAI({ apiKey: apiKey() });
+  return client;
 }
 
 type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
 
 type GeminiChatTurn = { role: 'user' | 'model'; text: string };
 
-async function callGemini(
-  model: string,
-  body: Record<string, unknown>,
-) {
-  const url = `${GEMINI_BASE}/models/${model}:generateContent`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey(),
-    },
-    body: JSON.stringify(body),
-  });
+type CallResult =
+  | { ok: true; text: string }
+  | { ok: false; status: number; error: string };
 
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => '');
-    return { ok: false as const, status: res.status, error: `gemini_http_${res.status}:${errBody.slice(0, 240)}` };
-  }
-
-  const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!text) return { ok: false as const, status: 200, error: 'gemini_empty_response' };
-  return { ok: true as const, text };
+function errStatus(err: unknown) {
+  const e = err as { status?: number; code?: number };
+  return Number(e?.status || e?.code || 500);
 }
 
-/** Native Gemini REST — compatible with Google AI Studio keys via x-goog-api-key */
+function errMessage(err: unknown) {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+async function callGemini(
+  model: string,
+  body: {
+    systemInstruction?: string;
+    contents: unknown;
+    json?: boolean;
+    temperature?: number;
+  },
+): Promise<CallResult> {
+  try {
+    const response = await getClient().models.generateContent({
+      model,
+      contents: body.contents as never,
+      config: {
+        systemInstruction: body.systemInstruction,
+        temperature: body.temperature,
+        ...(body.json ? { responseMimeType: 'application/json' } : {}),
+      },
+    });
+    const text = response.text?.trim();
+    if (!text) return { ok: false, status: 200, error: 'gemini_empty_response' };
+    return { ok: true, text };
+  } catch (err) {
+    const status = errStatus(err);
+    return {
+      ok: false,
+      status,
+      error: `gemini_http_${status}:${errMessage(err).slice(0, 200)}`,
+    };
+  }
+}
+
+/** Google Gen AI SDK — soporta claves AIza (legacy) y AQ.* (auth keys, 2026) */
 export async function generateGeminiText(prompt: string, opts?: { json?: boolean; temperature?: number }) {
   return generateGeminiContent([{ text: prompt }], opts);
 }
@@ -74,21 +107,17 @@ export async function generateGeminiChat(
     parts: [{ text: t.text }],
   }));
 
-  const baseBody = {
-    systemInstruction: { parts: [{ text: systemInstruction }] },
-    contents,
-    generationConfig: {
-      temperature: opts?.temperature ?? 0.75,
-      ...(opts?.json ? { responseMimeType: 'application/json' } : {}),
-    },
-  };
-
   for (const model of modelCandidates()) {
-    const result = await callGemini(model, baseBody);
+    const result = await callGemini(model, {
+      systemInstruction,
+      contents,
+      json: opts?.json,
+      temperature: opts?.temperature ?? 0.75,
+    });
     if (result.ok) return result.text;
     lastErr = result.error;
     if (result.status === 404 || result.status === 400 || result.error === 'gemini_empty_response') continue;
-    throw new Error(lastErr);
+    if (result.status === 401 || result.status === 403) throw new Error(lastErr);
   }
 
   throw new Error(lastErr);
@@ -109,15 +138,13 @@ export async function generateGeminiContent(
   for (const model of modelCandidates()) {
     const result = await callGemini(model, {
       contents: [{ parts }],
-      generationConfig: {
-        temperature: opts?.temperature ?? 0.6,
-        ...(opts?.json ? { responseMimeType: 'application/json' } : {}),
-      },
+      json: opts?.json,
+      temperature: opts?.temperature ?? 0.6,
     });
     if (result.ok) return result.text;
     lastErr = result.error;
     if (result.status === 404 || result.status === 400 || result.error === 'gemini_empty_response') continue;
-    throw new Error(lastErr);
+    if (result.status === 401 || result.status === 403) throw new Error(lastErr);
   }
 
   throw new Error(lastErr);

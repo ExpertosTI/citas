@@ -35,7 +35,7 @@ export function collectEnvStatus() {
   const gemini: EnvCheck = {
     ok: Boolean(env('GEMINI_API_KEY')),
     label: 'gemini',
-    detail: env('GEMINI_API_KEY') ? env('GEMINI_MODEL', 'gemini-2.5-flash') : 'GEMINI_API_KEY vacío',
+    detail: env('GEMINI_API_KEY') ? env('GEMINI_MODEL', 'gemini-3.5-flash') : 'GEMINI_API_KEY vacío',
   };
 
   const google: EnvCheck = {

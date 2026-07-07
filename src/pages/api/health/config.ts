@@ -17,6 +17,14 @@ export const GET: APIRoute = async ({ request }) => {
 
   const status = collectEnvStatus();
   let geminiLive = false;
+  const geminiKey = (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '').trim();
+  const geminiKeyType = geminiKey.startsWith('AQ.')
+    ? 'auth'
+    : geminiKey.startsWith('AIza')
+      ? 'standard'
+      : geminiKey
+        ? 'custom'
+        : 'missing';
   if (isGeminiConfigured()) {
     try {
       geminiLive = await probeGemini();
@@ -31,6 +39,8 @@ export const GET: APIRoute = async ({ request }) => {
     runtime: {
       gemini: isGeminiConfigured(),
       geminiLive,
+      geminiKeyType,
+      geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
       google: isGoogleAuthConfigured(),
     },
     checks: status.checks,
