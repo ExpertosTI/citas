@@ -1,16 +1,19 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
+import { adminServiceMeta } from '../../lib/service-display';
 import { APPOINTMENT_COLORS, getServices } from '../../lib/store';
 
 const tenantId = Astro.locals.tenantId!;
+const tenant = Astro.locals.tenant!;
 const services = await getServices(tenantId);
+const currency = tenant.currency || 'DOP';
 ---
 
 <AppLayout title="Servicios" active="servicios">
   <div class="mb-6 flex items-end justify-between gap-3">
     <div>
       <h1 class="brand-mark text-3xl font-bold">Servicios</h1>
-      <p class="mt-1 text-sm text-ink-soft">Catálogo del salón con color en la bahía</p>
+      <p class="mt-1 text-sm text-ink-soft">Precio fijo o variable según diseño · foto y color en la bahía</p>
     </div>
     <button id="new-svc" type="button" class="btn-primary">+ Servicio</button>
   </div>
@@ -18,19 +21,36 @@ const services = await getServices(tenantId);
   <div class="grid gap-3 sm:grid-cols-2">
     {services.map((s) => {
       const color = APPOINTMENT_COLORS.find((c) => c.id === s.color)?.hex || '#e8b923';
+      const imgSrc = s.imageUrl || '';
+      const isQuote = s.pricingMode === 'quote';
       return (
         <article class="card flex items-start gap-4 p-4" data-id={s.id}>
-          <span class="mt-1 h-10 w-10 shrink-0 rounded-xl" style={`background:${color}`}></span>
+          {imgSrc ? (
+            <img
+              src={imgSrc}
+              alt={s.name}
+              class="mt-1 h-14 w-14 shrink-0 rounded-xl object-cover"
+            />
+          ) : (
+            <span class="mt-1 h-14 w-14 shrink-0 rounded-xl" style={`background:${color}`}></span>
+          )}
           <div class="min-w-0 flex-1">
-            <h2 class="font-bold">{s.name}</h2>
-            <p class="text-sm text-muted">{s.durationMin} min · ${s.price}</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="font-bold">{s.name}</h2>
+              {isQuote ? (
+                <span class="rounded-full bg-gold-dim px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-mustard-deep">Variable</span>
+              ) : null}
+            </div>
+            <p class="text-sm text-muted">{adminServiceMeta(s, currency)}</p>
             <div class="mt-3 flex gap-2">
               <button type="button" class="btn-ghost !px-3 !py-1.5 !text-xs edit-svc"
                 data-id={s.id}
                 data-name={s.name}
                 data-duration={s.durationMin}
                 data-price={s.price}
+                data-pricing={s.pricingMode || 'fixed'}
                 data-color={s.color}
+                data-image={imgSrc}
               >Editar</button>
               <button type="button" class="btn-ghost !px-3 !py-1.5 !text-xs text-red-600 del-svc" data-id={s.id}>Eliminar</button>
             </div>
@@ -46,17 +66,46 @@ const services = await getServices(tenantId);
       <input type="hidden" name="id" id="svc-id" />
       <div class="mt-4 space-y-3">
         <div>
+          <label class="label" for="svc-photo">Foto del servicio</label>
+          <div class="flex items-center gap-3">
+            <img id="svc-photo-preview" class="hidden h-16 w-16 rounded-xl object-cover" alt="" />
+            <span id="svc-photo-placeholder" class="flex h-16 w-16 items-center justify-center rounded-xl bg-surface-2 text-xs text-muted">Sin foto</span>
+            <input type="file" id="svc-photo" class="sr-only" accept="image/png,image/jpeg,image/webp" />
+            <button type="button" id="svc-photo-btn" class="btn-ghost !text-xs">Elegir foto</button>
+          </div>
+        </div>
+        <div>
           <label class="label" for="svc-name">Nombre</label>
           <input class="input" id="svc-name" name="name" required />
+        </div>
+        <div>
+          <span class="label">Tipo de precio</span>
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <label class="svc-pricing-opt">
+              <input type="radio" name="pricingMode" value="fixed" id="pricing-fixed" checked />
+              <span>
+                <strong>Precio fijo</strong>
+                <small>Se muestra en la reserva pública</small>
+              </span>
+            </label>
+            <label class="svc-pricing-opt">
+              <input type="radio" name="pricingMode" value="quote" id="pricing-quote" />
+              <span>
+                <strong>Precio variable</strong>
+                <small>Solo agenda · sin precio público</small>
+              </span>
+            </label>
+          </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="label" for="svc-duration">Minutos</label>
             <input class="input" id="svc-duration" name="durationMin" type="number" min="5" step="5" value="30" required />
           </div>
-          <div>
-            <label class="label" for="svc-price">Precio</label>
-            <input class="input" id="svc-price" name="price" type="number" min="0" step="0.01" value="20" required />
+          <div id="svc-price-wrap">
+            <label class="label" for="svc-price">Precio de referencia</label>
+            <input class="input" id="svc-price" name="price" type="number" min="0" step="0.01" value="20" />
+            <p class="mt-1 text-[11px] text-muted">Solo visible para ti en el panel</p>
           </div>
         </div>
         <div>
@@ -73,21 +122,96 @@ const services = await getServices(tenantId);
     </form>
   </dialog>
 
+  <style>
+    .svc-pricing-opt {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      padding: 0.75rem;
+      border: 1px solid var(--color-border, #e5e7eb);
+      border-radius: 0.75rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .svc-pricing-opt:has(input:checked) {
+      border-color: var(--color-navy, #1e3a5f);
+      background: color-mix(in srgb, var(--color-navy, #1e3a5f) 6%, white);
+    }
+    .svc-pricing-opt strong { display: block; font-size: 0.85rem; }
+    .svc-pricing-opt small { display: block; color: #6b7280; margin-top: 0.15rem; }
+    .svc-pricing-opt input { margin-top: 0.2rem; }
+  </style>
+
   <script>
-    import { confirmAction } from '../../scripts/ui-feedback.js';
+    import { confirmAction, toast } from '../../scripts/ui-feedback.js';
 
     const modal = document.getElementById('svc-modal') as HTMLDialogElement;
     const form = document.getElementById('svc-form') as HTMLFormElement;
+    const photoInput = document.getElementById('svc-photo') as HTMLInputElement;
+    const photoPreview = document.getElementById('svc-photo-preview') as HTMLImageElement;
+    const photoPlaceholder = document.getElementById('svc-photo-placeholder') as HTMLElement;
+    const priceWrap = document.getElementById('svc-price-wrap');
+    const priceInput = document.getElementById('svc-price') as HTMLInputElement;
+    let pendingPhoto: File | null = null;
+
+    function syncPricingMode() {
+      const quote = (document.getElementById('pricing-quote') as HTMLInputElement)?.checked;
+      if (priceWrap) priceWrap.style.opacity = quote ? '0.55' : '1';
+      if (priceInput) priceInput.required = !quote;
+    }
+
+    document.getElementById('pricing-fixed')?.addEventListener('change', syncPricingMode);
+    document.getElementById('pricing-quote')?.addEventListener('change', syncPricingMode);
+
+    function setPhotoPreview(src: string | null) {
+      if (src) {
+        photoPreview.src = src;
+        photoPreview.classList.remove('hidden');
+        photoPlaceholder.classList.add('hidden');
+      } else {
+        photoPreview.src = '';
+        photoPreview.classList.add('hidden');
+        photoPlaceholder.classList.remove('hidden');
+      }
+    }
+
+    function setPricingMode(mode: string) {
+      const fixed = document.getElementById('pricing-fixed') as HTMLInputElement;
+      const quote = document.getElementById('pricing-quote') as HTMLInputElement;
+      if (mode === 'quote') quote.checked = true;
+      else fixed.checked = true;
+      syncPricingMode();
+    }
 
     function openNew() {
       (document.getElementById('svc-title') as HTMLElement).textContent = 'Nuevo servicio';
       (document.getElementById('svc-id') as HTMLInputElement).value = '';
+      pendingPhoto = null;
+      setPhotoPreview(null);
       form.reset();
+      setPricingMode('fixed');
       modal.showModal();
     }
 
     document.getElementById('new-svc')?.addEventListener('click', openNew);
     document.getElementById('svc-cancel')?.addEventListener('click', () => modal.close());
+    document.getElementById('svc-photo-btn')?.addEventListener('click', () => photoInput?.click());
+
+    photoInput?.addEventListener('change', () => {
+      const file = photoInput.files?.[0];
+      photoInput.value = '';
+      if (!file) return;
+      if (!/^image\/(png|jpeg|webp)$/i.test(file.type)) {
+        toast('Usa PNG, JPG o WEBP', 'error');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        toast('Imagen muy grande (máx 2MB)', 'error');
+        return;
+      }
+      pendingPhoto = file;
+      setPhotoPreview(URL.createObjectURL(file));
+    });
 
     document.querySelectorAll('.edit-svc').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -98,6 +222,9 @@ const services = await getServices(tenantId);
         (document.getElementById('svc-duration') as HTMLInputElement).value = el.dataset.duration || '30';
         (document.getElementById('svc-price') as HTMLInputElement).value = el.dataset.price || '0';
         (document.getElementById('svc-color') as HTMLSelectElement).value = el.dataset.color || 'gold';
+        setPricingMode(el.dataset.pricing || 'fixed');
+        pendingPhoto = null;
+        setPhotoPreview(el.dataset.image || null);
         modal.showModal();
       });
     });
@@ -118,19 +245,42 @@ const services = await getServices(tenantId);
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
+      const pricingMode = String(fd.get('pricingMode') || 'fixed');
       const payload: Record<string, unknown> = {
         name: fd.get('name'),
         durationMin: Number(fd.get('durationMin')),
-        price: Number(fd.get('price')),
+        price: pricingMode === 'quote' ? 0 : Number(fd.get('price') || 0),
+        pricingMode,
         color: fd.get('color'),
       };
       const id = String(fd.get('id') || '');
       if (id) payload.id = id;
-      await fetch('/api/services', {
+
+      const res = await fetch('/api/services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      const json = await res.json();
+      if (!res.ok) {
+        toast(String(json.error || 'No se pudo guardar'), 'error');
+        return;
+      }
+
+      const serviceId = json.service?.id || id;
+      if (pendingPhoto && serviceId) {
+        const imgFd = new FormData();
+        imgFd.append('image', pendingPhoto);
+        imgFd.append('serviceId', serviceId);
+        const up = await fetch('/api/services/image', { method: 'POST', body: imgFd });
+        if (!up.ok) {
+          const upJson = await up.json().catch(() => ({}));
+          toast(String(upJson.error || 'Servicio guardado, pero la foto falló'), 'error');
+          location.reload();
+          return;
+        }
+      }
+
       location.reload();
     });
   </script>

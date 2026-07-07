@@ -1,11 +1,22 @@
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+const MODEL_FALLBACKS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+];
+
 export function isGeminiConfigured() {
   return Boolean(process.env.GEMINI_API_KEY?.trim());
 }
 
 export function geminiModelName() {
-  return process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
+  return process.env.GEMINI_MODEL?.trim() || MODEL_FALLBACKS[0];
+}
+
+function modelCandidates() {
+  const preferred = geminiModelName();
+  return [preferred, ...MODEL_FALLBACKS.filter((m) => m !== preferred)];
 }
 
 function apiKey() {
@@ -25,36 +36,45 @@ export async function generateGeminiContent(
   parts: GeminiPart[],
   opts?: { json?: boolean; temperature?: number },
 ) {
-  const model = geminiModelName();
-  const url = `${GEMINI_BASE}/models/${model}:generateContent`;
+  let lastErr = 'gemini_failed';
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey(),
-    },
-    body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: {
-        temperature: opts?.temperature ?? 0.6,
-        ...(opts?.json ? { responseMimeType: 'application/json' } : {}),
+  for (const model of modelCandidates()) {
+    const url = `${GEMINI_BASE}/models/${model}:generateContent`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey(),
       },
-    }),
-  });
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: opts?.temperature ?? 0.6,
+          ...(opts?.json ? { responseMimeType: 'application/json' } : {}),
+        },
+      }),
+    });
 
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => '');
-    throw new Error(`gemini_http_${res.status}:${errBody.slice(0, 200)}`);
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      lastErr = `gemini_http_${res.status}:${errBody.slice(0, 200)}`;
+      if (res.status === 404 || res.status === 400) continue;
+      throw new Error(lastErr);
+    }
+
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!text) {
+      lastErr = 'gemini_empty_response';
+      continue;
+    }
+    return text;
   }
 
-  const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-  if (!text) throw new Error('gemini_empty_response');
-  return text;
+  throw new Error(lastErr);
 }
 
 /** Analyze logo image — suggest accent hex and short brand note */
@@ -76,4 +96,41 @@ El accentColor debe ser un color dominante o complementario del logo, formato #R
   const hex = String(parsed.accentColor || '').trim();
   if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return null;
   return { accentColor: hex, note: String(parsed.note || '').trim() };
+}
+
+/** Match uploaded service photo to an existing service name */
+export async function matchServiceFromImage(
+  base64: string,
+  mimeType: string,
+  serviceNames: string[],
+  userHint?: string,
+) {
+  const list = serviceNames.map((n) => `"${n}"`).join(', ');
+  const hint = userHint?.trim() ? `\nEl usuario dijo: "${userHint.trim()}"` : '';
+  const prompt = `Esta foto es de un servicio de belleza/barbería/salón.
+Servicios del catálogo: [${list}]${hint}
+Responde SOLO JSON: {"serviceName":"nombre exacto del catálogo o null","confidence":"high|low","note":"frase corta"}
+Si no coincide con ninguno, serviceName=null.`;
+
+  const text = await generateGeminiContent(
+    [
+      { text: prompt },
+      { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64 } },
+    ],
+    { json: true, temperature: 0.2 },
+  );
+
+  const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+  const parsed = JSON.parse(cleaned) as { serviceName?: string | null; note?: string; confidence?: string };
+  const raw = String(parsed.serviceName || '').trim();
+  if (!raw) return { serviceName: null, note: String(parsed.note || '').trim() };
+
+  const match = serviceNames.find((n) => n.toLowerCase() === raw.toLowerCase())
+    || serviceNames.find((n) => n.toLowerCase().includes(raw.toLowerCase()) || raw.toLowerCase().includes(n.toLowerCase()));
+
+  return {
+    serviceName: match || null,
+    note: String(parsed.note || '').trim(),
+    confidence: parsed.confidence || 'low',
+  };
 }

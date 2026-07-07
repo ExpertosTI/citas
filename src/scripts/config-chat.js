@@ -382,7 +382,7 @@ export function createConfigChat(opts) {
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast('Logo muy grande (máx 2MB)', 'error');
+      toast('Imagen muy grande (máx 2MB)', 'error');
       return;
     }
 
@@ -390,6 +390,60 @@ export function createConfigChat(opts) {
     attachBtn?.setAttribute('disabled', 'true');
 
     const preview = URL.createObjectURL(file);
+    const hint = inputEl?.value.trim() || '';
+    const wantsLogo = /logo|marca/i.test(hint) || mode === 'onboarding';
+    const isServicePhoto = !wantsLogo;
+
+    if (isServicePhoto) {
+      messages.push({
+        role: 'user',
+        content: hint || 'Subí una foto de servicio',
+        imageUrl: preview,
+      });
+      renderMessages();
+      showTyping();
+
+      try {
+        const fd = new FormData();
+        fd.append('image', file);
+        if (hint) fd.append('hint', hint);
+        const up = await fetch('/api/services/image', { method: 'POST', body: fd, credentials: 'same-origin' });
+        const upJson = await up.json();
+        if (!up.ok) throw new Error(String(upJson.error || 'No se pudo subir'));
+
+        const json = await post({
+          action: 'chat',
+          messages: messages.map(({ role, content }) => ({ role, content })),
+          setup: draftSetup,
+          servicePhoto: { serviceId: upJson.service?.id, hint },
+        });
+        hideTyping();
+        URL.revokeObjectURL(preview);
+        if (upJson.imageUrl) messages[messages.length - 1].imageUrl = upJson.imageUrl;
+        messages.push({
+          role: 'assistant',
+          content: String(json.reply || `¡Foto guardada para **${upJson.serviceName}**!`),
+          cards: Array.isArray(json.cards) ? json.cards : [],
+        });
+        applyResponse(json);
+        renderMessages();
+        persistState();
+        if (inputEl) inputEl.value = '';
+        toast('Foto de servicio guardada', 'success');
+      } catch (err) {
+        hideTyping();
+        messages.push({
+          role: 'assistant',
+          content: `No pude guardar la foto: ${err instanceof Error ? err.message : 'error'}. Indica el servicio — ej. "foto del Corte".`,
+        });
+        renderMessages();
+      } finally {
+        busy = false;
+        attachBtn?.removeAttribute('disabled');
+      }
+      return;
+    }
+
     messages.push({ role: 'user', content: 'Subí el logo de mi negocio', imageUrl: preview });
     renderMessages();
     showTyping();

@@ -97,7 +97,7 @@ Estilo: español cálido, claro, 1-2 preguntas por turno. Celebra avances ("Perf
 Fases (avanzar en orden, no saltar sin datos):
 1. **Marca** — nombre del local, bio corta para la página pública
 2. **Logo** — el usuario puede SUBIR PNG con el botón adjunto; confirma cuando lo suba y sugiere color de acento si aplica
-3. **Servicios** — mínimo 2 servicios con precio y duración en moneda local
+3. **Servicios** — mínimo 2 servicios con precio y duración en moneda local. El usuario puede SUBIR FOTOS con el botón 📎 — asócialas al servicio correcto
 4. **Horario** — apertura/cierre, almuerzo opcional, días cerrados
 5. **Contacto** — WhatsApp, Instagram, dirección, teléfono
 6. **Revisión** — resume todo y marca readyToApply=true
@@ -118,8 +118,9 @@ const ASSISTANT_PROMPT = `Eres el asistente permanente de configuración y opera
 Capacidades:
 1. **Agenda** — consultas (el servidor maneja agendar/consultar aparte)
 2. **Configuración completa** — servicios, precios, horarios, bio, contacto, ciudad, color de acento (#hex), nombre del local
-3. **Logo** — el usuario puede subir PNG con el botón adjunto; confirma y felicita cuando lo haga
-4. **Limpieza** — comando "limpia servicios inválidos" elimina entradas basura del catálogo
+3. **Fotos de servicios** — el usuario puede subir fotos con 📎; asócialas al servicio correcto del catálogo
+4. **Logo** — el usuario puede subir PNG con el botón adjunto; confirma y felicita cuando lo haga
+5. **Limpieza** — comando "limpia servicios inválidos" elimina entradas basura del catálogo
 
 ${SCHEDULE_RULES}
 
@@ -162,6 +163,7 @@ function tenantContext(
       name: s.name,
       price: s.price,
       durationMin: s.durationMin,
+      hasPhoto: Boolean(s.imageUrl),
     })),
     appointments: appointments || [],
   };
@@ -754,7 +756,7 @@ export function initialAssistantMessage(tenant: Tenant, mode: AssistantMode = 'o
   if (mode === 'assistant') {
     return `Hola ${first}. ¿Qué hacemos?
 
-**Configurar:** servicios, horario, logo 📎, contacto
+**Configurar:** servicios, fotos 📎, horario, logo, contacto
 **Agenda:** citas pendientes, agendar, hoy
 
 Escribe o toca una sugerencia abajo.`;

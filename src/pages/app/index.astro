@@ -3,6 +3,7 @@ import AppLayout from '../../layouts/AppLayout.astro';
 import { statusLabel } from '../../lib/appointment-status';
 import { buildDayBoard } from '../../lib/day-board';
 import { cutStyleLabel } from '../../lib/cut-styles';
+import { adminServiceMeta } from '../../lib/service-display';
 import { getBoardDay, getBoardWeek, getDashboardStats } from '../../lib/store';
 
 const tenantId = Astro.locals.tenantId!;
@@ -176,7 +177,7 @@ function aptDay(iso: string) {
                   <p class="cmd-slot__meta">
                     {slot.appointment.service?.name}
                     {slot.appointment.haircutStyle ? ` · ${cutStyleLabel(slot.appointment.haircutStyle)}` : ''}
-                    · {currency}{slot.appointment.service?.price || 0}
+                    {slot.appointment.service?.pricingMode !== 'quote' ? ` · ${currency}${slot.appointment.service?.price || 0}` : ' · Precio variable'}
                     {slot.appointment.code ? ` · ${slot.appointment.code}` : ''}
                   </p>
                 </div>
@@ -245,7 +246,7 @@ function aptDay(iso: string) {
           <select class="input" id="serviceId" name="serviceId" required>
             {board.services.map((s) => (
               <option value={s.id} selected={s.id === defaultServiceId}>
-                {s.name} · {s.durationMin} min · {currency}{s.price}
+                {s.name} · {adminServiceMeta(s, board.tenant?.currency || 'DOP')}
               </option>
             ))}
           </select>
@@ -313,6 +314,8 @@ function aptDay(iso: string) {
 
     document.querySelectorAll('.cmd-free-slot').forEach((btn) => {
       btn.addEventListener('click', () => {
+        const aptDateEl = document.getElementById('aptDate') as HTMLInputElement | null;
+        if (aptDateEl && bayDate?.value) aptDateEl.value = bayDate.value;
         openModal(btn.dataset.time || '10:00');
       });
     });
@@ -321,9 +324,8 @@ function aptDay(iso: string) {
       e.preventDefault();
       errorEl?.classList.add('hidden');
       const fd = new FormData(form);
-      const date = String(fd.get('aptDate'));
-      const time = String(fd.get('aptTime'));
-      const startAt = new Date(`${date}T${time}:00`).toISOString();
+      const aptDate = String(fd.get('aptDate'));
+      const aptTime = String(fd.get('aptTime'));
 
       const res = await fetch('/api/appointments', {
         method: 'POST',
@@ -333,7 +335,8 @@ function aptDay(iso: string) {
           clientPhone: fd.get('clientPhone'),
           clientEmail: fd.get('clientEmail'),
           serviceId: fd.get('serviceId'),
-          startAt,
+          aptDate,
+          aptTime,
           notes: fd.get('notes'),
           notify: true,
         }),
@@ -386,8 +389,7 @@ function aptDay(iso: string) {
         const time = await promptText('Nueva hora (HH:MM)', btn.dataset.time || '10:00');
         if (!time || !id) return;
         const date = bayDate?.value || dateStr;
-        const startAt = new Date(`${date}T${time}:00`).toISOString();
-        await patchAppointment(id, { startAt, notify: true });
+        await patchAppointment(id, { aptDate: date, aptTime: time, notify: true });
       });
     });
 

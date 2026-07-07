@@ -3,6 +3,7 @@ import path from 'node:path';
 import { hashPassword, newId, slugify } from './auth';
 import { countryPreset } from './geo';
 import { appointmentCode, normalizeTenant } from './tenant';
+import { dayBoundsUtc, localDateKey, tenantTimezone, zonedDateTime } from './tz';
 
 const DATA_DIR = process.env.CITAS_DATA_DIR || path.join(process.cwd(), 'data');
 
@@ -54,8 +55,10 @@ export type Service = {
   name: string;
   durationMin: number;
   price: number;
+  pricingMode?: 'fixed' | 'quote';
   color: AppointmentColor;
   active: boolean;
+  imageUrl?: string;
 };
 
 export type Client = {
@@ -285,8 +288,10 @@ export async function saveService(tenantId: string, input: Partial<Service> & { 
       name: input.name.trim(),
       durationMin: Number(input.durationMin ?? all[idx].durationMin),
       price: Number(input.price ?? all[idx].price),
+      pricingMode: input.pricingMode ?? all[idx].pricingMode ?? 'fixed',
       color: (input.color || all[idx].color) as AppointmentColor,
       active: input.active ?? all[idx].active,
+      imageUrl: input.imageUrl !== undefined ? input.imageUrl : all[idx].imageUrl,
     };
     await writeJson('services.json', all);
     return all[idx];
@@ -298,6 +303,7 @@ export async function saveService(tenantId: string, input: Partial<Service> & { 
     name: input.name.trim(),
     durationMin: Number(input.durationMin || 30),
     price: Number(input.price || 0),
+    pricingMode: input.pricingMode === 'quote' ? 'quote' : 'fixed',
     color: (input.color || 'gold') as AppointmentColor,
     active: input.active ?? true,
   };
@@ -315,26 +321,32 @@ export async function deleteService(tenantId: string, id: string) {
 
 export async function replaceTenantServices(
   tenantId: string,
-  items: Array<{ name: string; durationMin: number; price: number; color: AppointmentColor; active?: boolean }>,
+  items: Array<{ name: string; durationMin: number; price: number; pricingMode?: 'fixed' | 'quote'; color: AppointmentColor; active?: boolean; imageUrl?: string }>,
 ) {
   const all = await getAllServices();
+  const existing = all.filter((s) => s.tenantId === tenantId);
   const kept = all.filter((s) => s.tenantId !== tenantId);
-  const next = items.map((item) => ({
-    id: newId('svc'),
-    tenantId,
-    name: item.name.trim(),
-    durationMin: item.durationMin,
-    price: item.price,
-    color: item.color,
-    active: item.active ?? true,
-  }));
+  const next = items.map((item) => {
+    const prev = existing.find((s) => s.name.toLowerCase() === item.name.trim().toLowerCase());
+    return {
+      id: prev?.id || newId('svc'),
+      tenantId,
+      name: item.name.trim(),
+      durationMin: item.durationMin,
+      price: item.price,
+      pricingMode: item.pricingMode ?? prev?.pricingMode ?? 'fixed',
+      color: item.color,
+      active: item.active ?? true,
+      imageUrl: item.imageUrl ?? prev?.imageUrl,
+    };
+  });
   await writeJson('services.json', [...kept, ...next]);
   return next;
 }
 
 export async function mergeTenantServices(
   tenantId: string,
-  items: Array<{ name: string; durationMin: number; price: number; color?: AppointmentColor; active?: boolean }>,
+  items: Array<{ name: string; durationMin: number; price: number; pricingMode?: 'fixed' | 'quote'; color?: AppointmentColor; active?: boolean; imageUrl?: string }>,
 ) {
   const all = await getAllServices();
   const existing = all.filter((s) => s.tenantId === tenantId);
@@ -352,7 +364,9 @@ export async function mergeTenantServices(
         price: item.price,
         durationMin: item.durationMin,
         color: item.color || merged[idx].color,
+        pricingMode: item.pricingMode ?? merged[idx].pricingMode ?? 'fixed',
         active: item.active ?? merged[idx].active,
+        imageUrl: item.imageUrl ?? merged[idx].imageUrl,
       };
     } else {
       merged.push({
@@ -361,6 +375,7 @@ export async function mergeTenantServices(
         name: item.name.trim(),
         durationMin: item.durationMin,
         price: item.price,
+        pricingMode: item.pricingMode === 'quote' ? 'quote' : 'fixed',
         color: item.color || 'gold',
         active: item.active ?? true,
       });
@@ -493,6 +508,9 @@ export async function createAppointment(
     haircutStyle?: string;
   },
 ) {
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) throw new Error('tenant_not_found');
+
   const services = await getServices(tenantId);
   const service = services.find((s) => s.id === input.serviceId);
   if (!service) throw new Error('service_not_found');
@@ -505,17 +523,18 @@ export async function createAppointment(
   if (!Number.isFinite(start.getTime())) throw new Error('invalid_start');
   const end = new Date(start.getTime() + service.durationMin * 60_000);
 
-  const dayStart = new Date(start);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(start);
-  dayEnd.setHours(23, 59, 59, 999);
+  const tz = tenantTimezone(tenant);
+  const dayKey = localDateKey(start.toISOString(), tz);
+  const { from, to } = dayBoundsUtc(dayKey, tz);
+  const buffer = tenant.slotBufferMin ?? 5;
 
-  const existing = await getAppointments(tenantId, dayStart.toISOString(), dayEnd.toISOString());
-  const conflict = existing.some(
-    (a) =>
-      a.status !== 'cancelled' &&
-      overlaps(start.getTime(), end.getTime(), new Date(a.startAt).getTime(), new Date(a.endAt).getTime()),
-  );
+  const existing = await getAppointments(tenantId, from, to);
+  const conflict = existing.some((a) => {
+    if (a.status === 'cancelled') return false;
+    const aStart = new Date(a.startAt).getTime() - buffer * 60_000;
+    const aEnd = new Date(a.endAt).getTime() + buffer * 60_000;
+    return overlaps(start.getTime(), end.getTime(), aStart, aEnd);
+  });
   if (conflict) throw new Error('slot_taken');
 
   const appointment: Appointment = {
@@ -583,26 +602,14 @@ export async function getBoardDay(tenantId: string, dateIso: string) {
       range: { from: '', to: '' },
     };
   }
-  const from = `${day}T00:00:00.000Z`;
-  const to = `${day}T23:59:59.999Z`;
 
-  // Use local-ish range: expand window to cover timezone offsets
-  const fromLocal = new Date(`${day}T00:00:00`);
-  const toLocal = new Date(`${day}T23:59:59.999`);
-  const appointments = await getAppointments(
-    tenantId,
-    new Date(fromLocal.getTime() - 12 * 3600_000).toISOString(),
-    new Date(toLocal.getTime() + 12 * 3600_000).toISOString(),
-  );
+  const tenant = await getTenantById(tenantId);
+  const tz = tenantTimezone(tenant || {});
+  const { from, to } = dayBoundsUtc(day, tz);
+  const appointments = await getAppointments(tenantId, from, to);
 
-  const dayAppts = appointments.filter(
-    (a) => a.startAt!.slice(0, 10) === day || localDate(a.startAt!) === day,
-  );
-  const [services, clients, tenant] = await Promise.all([
-    getServices(tenantId),
-    getClients(tenantId),
-    getTenantById(tenantId),
-  ]);
+  const dayAppts = appointments.filter((a) => localDateKey(a.startAt!, tz) === day);
+  const [services, clients] = await Promise.all([getServices(tenantId), getClients(tenantId)]);
 
   const enriched = dayAppts.map((a) => ({
     ...a,
@@ -672,7 +679,7 @@ export async function getDashboardStats(tenantId: string) {
       })
       .reduce((sum, a) => {
         const svc = services.find((s) => s.id === a.serviceId);
-        return sum + (svc?.price || 0);
+        return sum + (svc?.pricingMode === 'quote' ? 0 : (svc?.price || 0));
       }, 0),
     noShowCount: appointments.filter((a) => a.status === 'no_show').length,
     waitlistCount: (await getWaitlist(tenantId)).length,
@@ -756,7 +763,7 @@ export async function getBoardWeek(tenantId: string, startDate: string) {
     days.push({
       date: key,
       count: active.length,
-      revenue: active.reduce((s, a) => s + (a.service?.price || 0), 0),
+      revenue: active.reduce((s, a) => s + (a.service?.pricingMode === 'quote' ? 0 : (a.service?.price || 0)), 0),
     });
   }
   return days;

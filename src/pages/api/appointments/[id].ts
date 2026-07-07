@@ -9,6 +9,7 @@ import {
   getTenantById,
   updateAppointment,
 } from '../../../lib/store';
+import { zonedDateTime } from '../../../lib/tz';
 
 export const prerender = false;
 
@@ -22,15 +23,25 @@ export const PATCH: APIRoute = async ({ request, params }) => {
     notes?: string;
     color?: string;
     startAt?: string;
+    aptDate?: string;
+    aptTime?: string;
     cancelReason?: string;
     notify?: boolean;
   }>(request);
+
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) return bad('Sesión inválida', 401);
+
+  let startAt = body.startAt;
+  if (body.aptDate && body.aptTime) {
+    startAt = zonedDateTime(body.aptDate, body.aptTime, tenant.timezone).toISOString();
+  }
 
   const appointment = await updateAppointment(tenantId, id, {
     status: body.status as never,
     notes: body.notes,
     color: body.color as never,
-    startAt: body.startAt,
+    startAt,
     cancelReason: body.cancelReason,
   });
 

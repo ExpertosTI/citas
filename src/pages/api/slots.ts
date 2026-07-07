@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { bad, json } from '../../lib/http';
 import { generateAvailableSlots } from '../../lib/slots';
 import { getAppointments, getServices, getTenantBySlug } from '../../lib/store';
+import { dayBoundsUtc } from '../../lib/tz';
 
 export const prerender = false;
 
@@ -20,14 +21,10 @@ export const GET: APIRoute = async ({ request }) => {
   const service = services.find((s) => s.id === serviceId && s.active);
   if (!service) return bad('Servicio no encontrado', 404);
 
-  const dayStart = new Date(`${date.slice(0, 10)}T00:00:00`);
-  const dayEnd = new Date(`${date.slice(0, 10)}T23:59:59`);
-  const appointments = await getAppointments(
-    tenant.id,
-    new Date(dayStart.getTime() - 12 * 3600_000).toISOString(),
-    new Date(dayEnd.getTime() + 12 * 3600_000).toISOString(),
-  );
+  const day = date.slice(0, 10);
+  const { from, to } = dayBoundsUtc(day, tenant.timezone);
+  const appointments = await getAppointments(tenant.id, from, to);
 
-  const slots = generateAvailableSlots(tenant, service, date.slice(0, 10), appointments);
+  const slots = generateAvailableSlots(tenant, service, day, appointments);
   return json({ ok: true, slots, closed: slots.length === 0 });
 };

@@ -1,4 +1,5 @@
 import type { Appointment, Service, Tenant } from './store';
+import { dayOfWeek, localMinutes, tenantTimezone, zonedDateTime } from './tz';
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -10,8 +11,7 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
 
 export function isDayClosed(tenant: Tenant, date: string) {
   if (tenant.closedDays?.includes(date)) return true;
-  const dow = new Date(`${date}T12:00:00`).getDay();
-  if (tenant.closedWeekdays?.includes(dow)) return true;
+  if (tenant.closedWeekdays?.includes(dayOfWeek(date))) return true;
   return false;
 }
 
@@ -24,6 +24,7 @@ export function generateAvailableSlots(
 ) {
   if (isDayClosed(tenant, date)) return [];
 
+  const tz = tenantTimezone(tenant);
   const buffer = tenant.slotBufferMin ?? 5;
   const openMin = tenant.openHour * 60;
   const closeMin = tenant.closeHour * 60;
@@ -46,7 +47,7 @@ export function generateAvailableSlots(
 
     if (lunchStart != null && lunchEnd != null && hour >= lunchStart && hour < lunchEnd) continue;
 
-    const start = new Date(`${date}T${pad(hour)}:${pad(minute)}:00`);
+    const start = zonedDateTime(date, `${pad(hour)}:${pad(minute)}`, tz);
     const end = new Date(start.getTime() + service.durationMin * 60_000);
 
     if (start.getTime() <= now) continue;
@@ -56,10 +57,7 @@ export function generateAvailableSlots(
     const conflict = busy.some((b) => overlaps(s, e, b.start, b.end));
     if (conflict) continue;
 
-    const label =
-      minute === 0
-        ? `${pad(hour)}:00`
-        : `${pad(hour)}:${pad(minute)}`;
+    const label = minute === 0 ? `${pad(hour)}:00` : `${pad(hour)}:${pad(minute)}`;
 
     slots.push({ time: label, startAt: start.toISOString(), label });
   }

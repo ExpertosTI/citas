@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
 import { tenantIdFromRequest } from '../../../lib/auth';
-import { analyzeLogoImage, isGeminiConfigured } from '../../../lib/gemini';
+import { analyzeLogoImage, isGeminiConfigured, matchServiceFromImage } from '../../../lib/gemini';
 import { bad, json, readBody } from '../../../lib/http';
 import { readLogo } from '../../../lib/logo';
+import { saveServiceImage } from '../../../lib/service-image';
 import { rateLimit } from '../../../lib/security';
 import {
   applyOnboardingSetup,
@@ -26,7 +27,7 @@ import {
   publicLogoPreview,
   SETUP_PHASES,
 } from '../../../lib/setup-phases';
-import { getServices, getTenantById, safeTenant, updateTenant } from '../../../lib/store';
+import { getServices, getTenantById, safeTenant, saveService, updateTenant } from '../../../lib/store';
 
 export const prerender = false;
 
@@ -97,6 +98,67 @@ async function handleLogoUploaded(tenantId: string) {
   });
 }
 
+async function handleServicePhotoUploaded(
+  tenantId: string,
+  serviceId: string,
+  hint: string,
+  imageBytes?: Buffer,
+  mime?: string,
+) {
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) throw new Error('tenant_not_found');
+
+  const services = await getServices(tenantId);
+  let target = services.find((s) => s.id === serviceId);
+
+  if (!target && imageBytes && isGeminiConfigured()) {
+    const match = await matchServiceFromImage(
+      imageBytes.toString('base64'),
+      mime || 'image/jpeg',
+      services.map((s) => s.name),
+      hint,
+    );
+    if (match.serviceName) {
+      target = services.find((s) => s.name === match.serviceName);
+    }
+  }
+
+  if (!target && hint) {
+    const h = hint.toLowerCase();
+    target = services.find((s) => {
+      const key = s.name.toLowerCase();
+      return key === h || key.includes(h) || h.includes(key);
+    });
+  }
+
+  if (!target) {
+    const names = services.map((s) => s.name).join(', ') || 'ninguno';
+    const ai: OnboardingAiResponse = {
+      reply: `No pude asociar la foto a un servicio. Tienes: **${names}**. Dime cuál es — ej. "foto del Corte".`,
+      readyToApply: false,
+      suggestions: services.slice(0, 4).map((s) => `Foto de ${s.name}`),
+    };
+    return enrichResponse(tenant, {}, ai, 'assistant', { serviceCount: services.filter((s) => s.active).length });
+  }
+
+  if (imageBytes) {
+    const url = await saveServiceImage(tenantId, target.id, imageBytes, mime || 'image/jpeg');
+    await saveService(tenantId, { id: target.id, name: target.name, imageUrl: url });
+  }
+
+  const updated = await getTenantById(tenantId);
+  const fresh = await getServices(tenantId);
+  const ai: OnboardingAiResponse = {
+    reply: `¡Foto guardada para **${target.name}**! Ya se ve en tu catálogo y en la página de reservas.`,
+    readyToApply: false,
+    suggestions: ['Agregar otro servicio', 'Cambiar un precio', '¿Qué citas tengo hoy?'],
+  };
+
+  return enrichResponse(updated!, {}, ai, 'assistant', {
+    serviceCount: fresh.filter((s) => s.active).length,
+  });
+}
+
 export const GET: APIRoute = async ({ request }) => {
   const tenantId = tenantIdFromRequest(request);
   if (!tenantId) return bad('No autenticado', 401);
@@ -139,6 +201,7 @@ export const POST: APIRoute = async ({ request }) => {
     messages?: ChatMessage[];
     setup?: OnboardingSetupDraft;
     logoJustUploaded?: boolean;
+    servicePhoto?: { serviceId?: string; hint?: string; imageBase64?: string; mimeType?: string };
   }>(request);
 
   const tenant = await getTenantById(tenantId);
@@ -171,7 +234,21 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (body.logoJustUploaded) {
     const payload = await handleLogoUploaded(tenantId);
-    return json({ ok: true, ...payload, fallback: true });
+    return json({ ok: true, ...payload, fallback: !isGeminiConfigured() });
+  }
+
+  if (body.servicePhoto) {
+    const bytes = body.servicePhoto.imageBase64
+      ? Buffer.from(body.servicePhoto.imageBase64, 'base64')
+      : undefined;
+    const payload = await handleServicePhotoUploaded(
+      tenantId,
+      String(body.servicePhoto.serviceId || ''),
+      String(body.servicePhoto.hint || ''),
+      bytes,
+      body.servicePhoto.mimeType,
+    );
+    return json({ ok: true, ...payload, fallback: !isGeminiConfigured() });
   }
 
   const messages = Array.isArray(body.messages) ? body.messages : [];
@@ -188,27 +265,27 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  if (chatMode === 'assistant') {
-    const bookingAnswer = await bookAppointmentFromText(tenantId, last.content);
-    if (bookingAnswer) {
-      return json({
-        ok: true,
-        ...enrichResponse(tenant, {}, bookingAnswer, mode, { serviceCount }),
-        fallback: true,
-      });
-    }
-
-    const queryAnswer = await answerAppointmentQuery(tenantId, last.content);
-    if (queryAnswer) {
-      return json({
-        ok: true,
-        ...enrichResponse(tenant, {}, queryAnswer, mode, { serviceCount }),
-        fallback: true,
-      });
-    }
-  }
-
   if (!isGeminiConfigured()) {
+    if (chatMode === 'assistant') {
+      const bookingAnswer = await bookAppointmentFromText(tenantId, last.content);
+      if (bookingAnswer) {
+        return json({
+          ok: true,
+          ...enrichResponse(tenant, {}, bookingAnswer, mode, { serviceCount }),
+          fallback: true,
+        });
+      }
+
+      const queryAnswer = await answerAppointmentQuery(tenantId, last.content);
+      if (queryAnswer) {
+        return json({
+          ok: true,
+          ...enrichResponse(tenant, {}, queryAnswer, mode, { serviceCount }),
+          fallback: true,
+        });
+      }
+    }
+
     const ai = chatOnboardingFallback(tenant, messages, priorSetup, mode, existingServices);
     return json({
       ok: true,
@@ -229,6 +306,29 @@ export const POST: APIRoute = async ({ request }) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'error';
     console.error('[onboarding/chat] request failed', msg);
+
+    if (chatMode === 'assistant') {
+      const bookingAnswer = await bookAppointmentFromText(tenantId, last.content);
+      if (bookingAnswer) {
+        return json({
+          ok: true,
+          ...enrichResponse(tenant, {}, bookingAnswer, mode, { serviceCount }),
+          fallback: true,
+          geminiError: msg,
+        });
+      }
+
+      const queryAnswer = await answerAppointmentQuery(tenantId, last.content);
+      if (queryAnswer) {
+        return json({
+          ok: true,
+          ...enrichResponse(tenant, {}, queryAnswer, mode, { serviceCount }),
+          fallback: true,
+          geminiError: msg,
+        });
+      }
+    }
+
     const ai = chatOnboardingFallback(tenant, messages, priorSetup, mode, existingServices);
     return json({
       ok: true,

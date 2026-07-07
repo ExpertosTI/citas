@@ -7,6 +7,7 @@ import {
   getServices,
   getTenantById,
 } from './store';
+import { localMinutes, localParts, tenantTimezone, zonedDateTime } from './tz';
 
 function normalize(text: string) {
   return text
@@ -42,9 +43,8 @@ function parseServiceName(text: string) {
   return m?.[1] || null;
 }
 
-function resolveBookingStart(text: string): Date | null {
+function resolveBookingStart(text: string, tz: string): Date | null {
   const n = normalize(text);
-  const now = new Date();
 
   let dayOffset: number | null = null;
   if (/pasado\s*manana|pasado\s*mañana/.test(n)) dayOffset = 2;
@@ -73,20 +73,27 @@ function resolveBookingStart(text: string): Date | null {
 
   if (hour == null) return null;
 
-  const target = new Date(now);
-  if (dayOffset != null) {
-    target.setDate(target.getDate() + dayOffset);
-  }
-  target.setHours(hour, minute, 0, 0);
-  if (target.getTime() <= now.getTime()) {
-    target.setDate(target.getDate() + 1);
+  const now = localParts(Date.now(), tz);
+  const base = new Date(Date.UTC(now.year, now.month - 1, now.day + (dayOffset ?? 0)));
+  const y = base.getUTCFullYear();
+  const mo = base.getUTCMonth() + 1;
+  const d = base.getUTCDate();
+  const dateStr = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
+  let start = zonedDateTime(dateStr, timeStr, tz);
+  if (start.getTime() <= Date.now()) {
+    const next = new Date(Date.UTC(y, mo - 1, d + 1));
+    const nextDate = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}-${String(next.getUTCDate()).padStart(2, '0')}`;
+    start = zonedDateTime(nextDate, timeStr, tz);
   }
 
-  return target;
+  return start;
 }
 
-function formatWhen(iso: string) {
+function formatWhen(iso: string, tz: string) {
   return new Intl.DateTimeFormat('es', {
+    timeZone: tz,
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -112,7 +119,8 @@ export async function bookAppointmentFromText(
     };
   }
 
-  const start = resolveBookingStart(text);
+  const tz = tenantTimezone(tenant);
+  const start = resolveBookingStart(text, tz);
   if (!start) {
     return {
       reply: 'Para agendar dime el día y la hora. Ej: **"Cita para mañana a las 10"** o **"Agendar a Juan mañana 3pm"**.',
@@ -122,7 +130,8 @@ export async function bookAppointmentFromText(
 
   const open = tenant.openHour ?? 9;
   const close = tenant.closeHour ?? 20;
-  const startHour = start.getHours() + start.getMinutes() / 60;
+  const startMin = localMinutes(start.toISOString(), tz);
+  const startHour = startMin / 60;
   if (startHour < open || startHour >= close) {
     return {
       reply: `Ese horario queda fuera del local (${open}:00 – ${close}:00). Elige otra hora dentro del horario.`,
@@ -149,7 +158,7 @@ export async function bookAppointmentFromText(
     });
 
     const card = toCard(appointment, [client], services);
-    const when = formatWhen(appointment.startAt);
+    const when = formatWhen(appointment.startAt, tz);
 
     return {
       reply: `Listo — agendé **${service.name}** para **${clientName}** el **${when}**.`,
@@ -160,7 +169,7 @@ export async function bookAppointmentFromText(
     const msg = err instanceof Error ? err.message : 'error';
     if (msg === 'slot_taken') {
       return {
-        reply: `Ese horario (${formatWhen(start.toISOString())}) ya está ocupado. Prueba otra hora o revisa la bahía.`,
+        reply: `Ese horario (${formatWhen(start.toISOString(), tz)}) ya está ocupado. Prueba otra hora o revisa la bahía.`,
         readyToApply: false,
       };
     }

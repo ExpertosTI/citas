@@ -1,20 +1,8 @@
 import type { Appointment, Service, Tenant } from './store';
+import { formatTimeLabel, localDateKey, localMinutes, tenantTimezone, zonedDateTime } from './tz';
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
-}
-
-function localDate(iso: string) {
-  const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function toLocalMin(iso: string) {
-  const d = new Date(iso);
-  return d.getHours() * 60 + d.getMinutes();
 }
 
 function isLunch(tenant: Tenant, hour: number) {
@@ -44,6 +32,7 @@ export function buildDayBoard(
   enriched: EnrichedAppointment[],
   stepMin = 30,
 ): DayBoardSlot[] {
+  const tz = tenantTimezone(tenant);
   const openMin = tenant.openHour * 60;
   const closeMin = tenant.closeHour * 60;
   if (!Number.isFinite(openMin) || !Number.isFinite(closeMin) || closeMin <= openMin) {
@@ -51,7 +40,7 @@ export function buildDayBoard(
   }
   const now = Date.now();
   const dayAppts = enriched.filter(
-    (a) => localDate(a.startAt) === date && a.status !== 'cancelled',
+    (a) => localDateKey(a.startAt, tz) === date && a.status !== 'cancelled',
   );
 
   const rows: DayBoardSlot[] = [];
@@ -63,7 +52,7 @@ export function buildDayBoard(
     const hour = Math.floor(cursor / 60);
     const minute = cursor % 60;
     const time = `${pad(hour)}:${pad(minute)}`;
-    const start = new Date(`${date}T${time}:00`);
+    const start = zonedDateTime(date, time, tz);
     const startAt = start.toISOString();
 
     if (isLunch(tenant, hour)) {
@@ -72,7 +61,7 @@ export function buildDayBoard(
     }
 
     const apt = dayAppts.find((a) => {
-      const aMin = toLocalMin(a.startAt);
+      const aMin = localMinutes(a.startAt, tz);
       return aMin >= cursor && aMin < cursor + stepMin;
     });
 
@@ -103,3 +92,5 @@ export function buildDayBoard(
 
   return rows;
 }
+
+export { formatTimeLabel };

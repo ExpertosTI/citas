@@ -11,6 +11,7 @@ import {
   getServices,
   getTenantById,
 } from '../../../lib/store';
+import { zonedDateTime } from '../../../lib/tz';
 
 export const prerender = false;
 
@@ -42,6 +43,8 @@ export const POST: APIRoute = async ({ request }) => {
     clientPhone?: string;
     serviceId?: string;
     startAt?: string;
+    aptDate?: string;
+    aptTime?: string;
     notes?: string;
     color?: string;
     status?: string;
@@ -49,6 +52,9 @@ export const POST: APIRoute = async ({ request }) => {
   }>(request);
 
   try {
+    const tenant = await getTenantById(tenantId);
+    if (!tenant) return bad('Sesión inválida', 401);
+
     let clientId = body.clientId;
     if (!clientId) {
       if (!body.clientName) return bad('Cliente requerido');
@@ -60,12 +66,18 @@ export const POST: APIRoute = async ({ request }) => {
       clientId = client.id;
     }
 
-    if (!body.serviceId || !body.startAt) return bad('Servicio y horario requeridos');
+    if (!body.serviceId) return bad('Servicio y horario requeridos');
+
+    let startAt = body.startAt;
+    if (body.aptDate && body.aptTime) {
+      startAt = zonedDateTime(body.aptDate, body.aptTime, tenant.timezone).toISOString();
+    }
+    if (!startAt) return bad('Servicio y horario requeridos');
 
     const appointment = await createAppointment(tenantId, {
       clientId,
       serviceId: body.serviceId,
-      startAt: body.startAt,
+      startAt,
       notes: body.notes,
       color: body.color as never,
       status: (body.status as never) || 'confirmed',
@@ -73,8 +85,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
 
     if (body.notify !== false) {
-      const [tenant, clients, services] = await Promise.all([
-        getTenantById(tenantId),
+      const [clients, services] = await Promise.all([
         getClients(tenantId),
         getServices(tenantId),
       ]);

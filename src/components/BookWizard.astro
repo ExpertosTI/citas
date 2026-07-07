@@ -1,6 +1,7 @@
 ---
 import { APPOINTMENT_COLORS, type Service } from '../lib/store';
 import { CUT_STYLES } from '../lib/cut-styles';
+import { publicServiceMeta } from '../lib/service-display';
 import StyleCard from './StyleCard.astro';
 
 interface Props {
@@ -12,7 +13,6 @@ interface Props {
 }
 
 const { slug, services, currency, whatsapp } = Astro.props;
-const sym = currency === 'DOP' ? 'RD$' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'RD$';
 const totalSteps = 5;
 ---
 
@@ -50,8 +50,11 @@ const totalSteps = 5;
             <label class="flow-choice choice-card cursor-pointer" style={`border-left: 3px solid ${color}`}>
               <input type="radio" name="serviceId" value={s.id} class="sr-only" required />
               <span class="flow-choice__body">
+                {s.imageUrl ? (
+                  <img src={s.imageUrl} alt="" class="mb-2 h-12 w-12 rounded-lg object-cover" />
+                ) : null}
                 <span class="flow-choice__title">{s.name}</span>
-                <span class="flow-choice__meta">{s.durationMin} min · {sym}{s.price}</span>
+                <span class="flow-choice__meta">{publicServiceMeta(s, currency)}</span>
               </span>
               <span class="flow-radio" aria-hidden="true"></span>
             </label>

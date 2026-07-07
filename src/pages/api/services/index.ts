@@ -20,6 +20,7 @@ export const POST: APIRoute = async ({ request }) => {
     name?: string;
     durationMin?: number;
     price?: number;
+    pricingMode?: 'fixed' | 'quote';
     color?: string;
     active?: boolean;
   }>(request);
@@ -31,6 +32,7 @@ export const POST: APIRoute = async ({ request }) => {
     name: String(body.name),
     durationMin: body.durationMin,
     price: body.price,
+    pricingMode: body.pricingMode === 'quote' ? 'quote' : 'fixed',
     color: body.color as never,
     active: body.active,
   });
