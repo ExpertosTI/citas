@@ -24,10 +24,18 @@ set_var() {
   echo "${key}: ok"
 }
 
+set_var SMTP_HOST
+set_var SMTP_PORT
+set_var SMTP_USER
+set_var SMTP_PASS
+set_var SMTP_FROM_NAME
+set_var SMTP_REPLY_TO
+set_var PUBLIC_SITE_URL
+set_var ADMIN_EMAIL
 set_var SESSION_SECRET
 set_var REMINDER_SECRET
-set_var SMTP_PASS
 set_var GEMINI_API_KEY
+set_var GEMINI_MODEL
 set_var GOOGLE_CLIENT_ID
 set_var GOOGLE_CLIENT_SECRET
 set_var ADMIN_PASSWORD

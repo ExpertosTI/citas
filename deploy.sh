@@ -117,6 +117,7 @@ docker service update \
   --env-add "ADMIN_EMAIL=${ADMIN_EMAIL}" \
   --env-add "ADMIN_PASSWORD=${ADMIN_PASSWORD}" \
   --env-add "PUBLIC_SITE_URL=${PUBLIC_SITE_URL}" \
+  --env-add "PUBLIC_SITE_URL=${PUBLIC_SITE_URL}" \
   --env-add "SESSION_SECRET=${SESSION_SECRET}" \
   --env-add "REMINDER_SECRET=${REMINDER_SECRET}" \
   --env-add "GEMINI_API_KEY=${GEMINI_API_KEY}" \
