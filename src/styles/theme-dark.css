@@ -166,18 +166,46 @@
 }
 
 [data-theme='dark'] .feature-demo__phone,
+[data-theme='dark'] .feature-demo__bay,
+[data-theme='dark'] .feature-demo__book,
+[data-theme='dark'] .feature-demo__wait,
+[data-theme='dark'] .feature-demo__brand,
+[data-theme='dark'] .feature-demo__notify-card,
+[data-theme='dark'] .feature-showcase--highlight {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
 [data-theme='dark'] .feature-demo__bubble--ai,
 [data-theme='dark'] .feature-demo__bay-head,
 [data-theme='dark'] .feature-demo__bay-row,
-[data-theme='dark'] .feature-demo__chips span {
-  background: var(--color-surface);
+[data-theme='dark'] .feature-demo__chips span,
+[data-theme='dark'] .feature-demo__wait-list li,
+[data-theme='dark'] .feature-demo__book-times span {
+  background: var(--color-surface-2);
   border-color: var(--color-border);
   color: var(--color-ink);
 }
 
 [data-theme='dark'] .feature-demo__bubble--user {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(99, 102, 241, 0.15));
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(99, 102, 241, 0.25));
   color: var(--color-ink);
+}
+
+[data-theme='dark'] .feature-showcase__demo {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.06) 0%, transparent 100%);
+}
+
+[data-theme='dark'] .landing-cta {
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-gold-dim) 100%) !important;
+}
+
+[data-theme='dark'] .module-card--included {
+  background: linear-gradient(165deg, var(--color-surface) 0%, var(--color-surface-2) 100%);
+}
+
+[data-theme='dark'] .module-card--roadmap {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 [data-theme='dark'] .cmd-slot--free {
