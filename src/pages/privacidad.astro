@@ -1,0 +1,88 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { LEGAL } from '../lib/legal';
+---
+
+<LegalLayout
+  title="Política de privacidad"
+  heading="Política de privacidad"
+  intro={`En ${LEGAL.company} respetamos tu privacidad. Esta política explica qué datos recopilamos en ${LEGAL.product}, para qué los usamos y cuáles son tus derechos.`}
+>
+  <section class="legal-section">
+    <h2>1. Responsable del tratamiento</h2>
+    <p>
+      <strong>{LEGAL.company}</strong> opera {LEGAL.product} en {LEGAL.siteUrl}.
+      Contacto: <a href={`mailto:${LEGAL.privacyEmail}`}>{LEGAL.privacyEmail}</a>.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>2. Datos que recopilamos</h2>
+    <ul>
+      <li><strong>Cuenta de negocio:</strong> nombre del local, responsable, email, teléfono, ciudad, país, contraseña (almacenada de forma segura).</li>
+      <li><strong>Datos operativos:</strong> servicios, horarios, clientes, citas, lista de espera, logo e imágenes que subas.</li>
+      <li><strong>Clientes finales:</strong> nombre, teléfono y email cuando reservan en tu enlace público.</li>
+      <li><strong>Inicio con Google:</strong> si usas Google Sign-In, recibimos email verificado, nombre y foto de perfil según los permisos que autorices.</li>
+      <li><strong>Técnicos:</strong> dirección IP aproximada (país/ciudad para configuración regional), cookies de sesión y preferencias.</li>
+      <li><strong>Asistente AI (opcional):</strong> mensajes que envías al configurar tu negocio, procesados con Google Gemini si activas el módulo.</li>
+    </ul>
+  </section>
+
+  <section class="legal-section">
+    <h2>3. Para qué usamos los datos</h2>
+    <ul>
+      <li>Proveer reservas, bahía de citas, notificaciones y funciones del panel.</li>
+      <li>Enviar confirmaciones y recordatorios por correo (SMTP).</li>
+      <li>Autenticación, seguridad y prevención de abuso.</li>
+      <li>Mejorar el servicio y dar soporte.</li>
+      <li>Cumplir obligaciones legales cuando aplique.</li>
+    </ul>
+  </section>
+
+  <section class="legal-section">
+    <h2>4. Base legal</h2>
+    <p>
+      Tratamos datos para ejecutar el contrato de servicio (cuenta y reservas), por interés legítimo (seguridad, mejora del producto)
+      y, cuando corresponda, con tu consentimiento (cookies no esenciales, comunicaciones opcionales).
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>5. Compartición con terceros</h2>
+    <p>Podemos usar proveedores que procesan datos en nuestro nombre:</p>
+    <ul>
+      <li><strong>Google</strong> — OAuth (inicio de sesión) y Gemini (asistente AI), según sus políticas.</li>
+      <li><strong>Hostinger / SMTP</strong> — envío de correos transaccionales.</li>
+      <li><strong>Infraestructura</strong> — servidores que alojan la aplicación y datos.</li>
+    </ul>
+    <p>No vendemos datos personales a terceros.</p>
+  </section>
+
+  <section class="legal-section">
+    <h2>6. Conservación</h2>
+    <p>
+      Conservamos los datos mientras tu cuenta esté activa y el tiempo necesario para obligaciones legales, disputas o copias de seguridad.
+      Puedes solicitar eliminación según la sección de <a href="/eliminar-cuenta">eliminación de cuenta</a>.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>7. Tus derechos</h2>
+    <p>Según tu jurisdicción, puedes solicitar acceso, rectificación, eliminación, portabilidad, oposición o limitación del tratamiento escribiendo a {LEGAL.privacyEmail}.</p>
+  </section>
+
+  <section class="legal-section">
+    <h2>8. Menores</h2>
+    <p>{LEGAL.product} está dirigido a negocios y mayores de 18 años. No recopilamos datos de menores de forma intencional.</p>
+  </section>
+
+  <section class="legal-section">
+    <h2>9. Transferencias internacionales</h2>
+    <p>Algunos proveedores (p. ej. Google) pueden procesar datos fuera de tu país con salvaguardas contractuales estándar.</p>
+  </section>
+
+  <section class="legal-section">
+    <h2>10. Cambios</h2>
+    <p>Publicaremos cambios en esta página con fecha de actualización. El uso continuado implica aceptación de la versión vigente.</p>
+  </section>
+</LegalLayout>

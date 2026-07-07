@@ -1,0 +1,61 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { LEGAL } from '../lib/legal';
+---
+
+<LegalLayout
+  title="Eliminar cuenta"
+  heading="Eliminar tu cuenta y datos"
+  intro="Cumplimos con los requisitos de Google Play, Apple App Store y regulaciones de protección de datos para el borrado de cuentas."
+>
+  <section class="legal-section">
+    <h2>1. Quién puede solicitarlo</h2>
+    <p>
+      El titular de la cuenta de negocio en {LEGAL.product} o su representante autorizado puede pedir la eliminación
+      de la cuenta y los datos asociados.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>2. Qué se elimina</h2>
+    <ul>
+      <li>Perfil del negocio, servicios, clientes y citas almacenados en tu tenant.</li>
+      <li>Logo e imágenes subidas a tu cuenta.</li>
+      <li>Configuración de módulos y suscripción.</li>
+      <li>Credenciales de acceso (email/contraseña o vínculo con Google).</li>
+    </ul>
+    <p>
+      Podemos conservar registros mínimos de facturación o logs de seguridad el tiempo exigido por ley.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>3. Cómo solicitar la eliminación</h2>
+    <p>Envía un correo desde el email registrado en tu cuenta a:</p>
+    <p class="legal-highlight">
+      <a href={`mailto:${LEGAL.supportEmail}?subject=Solicitud%20eliminar%20cuenta%20Citas`}>{LEGAL.supportEmail}</a>
+    </p>
+    <p>Incluye:</p>
+    <ul>
+      <li>Asunto: «Solicitud eliminar cuenta Citas»</li>
+      <li>Nombre del negocio y enlace público (slug)</li>
+      <li>Confirmación de que entiendes que la acción es irreversible</li>
+    </ul>
+    <p>Responderemos en un plazo máximo de <strong>30 días</strong> y confirmaremos cuando la eliminación esté completa.</p>
+  </section>
+
+  <section class="legal-section">
+    <h2>4. Clientes finales</h2>
+    <p>
+      Si eres cliente que reservó en un negocio (enlace /s/...), contacta directamente a ese negocio.
+      Como plataforma podemos ayudar a derivar la solicitud al titular de la cuenta.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>5. Tiendas de aplicaciones</h2>
+    <p>
+      Esta URL cumple el requisito de enlace web para eliminación de cuenta en Google Play y App Store Connect.
+    </p>
+  </section>
+</LegalLayout>

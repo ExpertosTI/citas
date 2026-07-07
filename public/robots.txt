@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /privacidad
+Allow: /terminos
+Allow: /cookies
+Allow: /eliminar-cuenta
+Allow: /legal
+Allow: /login
+Allow: /registro
+Allow: /s/
+Disallow: /app/
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://citas.renace.tech/sitemap.xml

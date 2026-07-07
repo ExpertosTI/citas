@@ -1,0 +1,24 @@
+---
+import { LEGAL, LEGAL_LINKS } from '../lib/legal';
+
+interface Props {
+  compact?: boolean;
+}
+
+const { compact = false } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<footer class:list={['site-footer', compact && 'site-footer--compact']}>
+  <nav class="site-footer__nav" aria-label="Legal">
+    {LEGAL_LINKS.map((link) => (
+      <a href={link.href} class="site-footer__link">{link.label}</a>
+    ))}
+  </nav>
+  <p class="site-footer__copy">
+    {LEGAL.product} · {LEGAL.company} · {year}
+  </p>
+  <p class="site-footer__contact">
+    <a href={`mailto:${LEGAL.supportEmail}`}>{LEGAL.supportEmail}</a>
+  </p>
+</footer>

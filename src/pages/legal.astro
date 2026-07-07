@@ -1,0 +1,71 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { LEGAL, LEGAL_LINKS } from '../lib/legal';
+---
+
+<LegalLayout
+  title="Información legal"
+  heading="Centro legal y publicación en tiendas"
+  intro="Enlaces y datos requeridos para Google Play, Apple App Store y cumplimiento web."
+>
+  <section class="legal-section">
+    <h2>Documentos</h2>
+    <ul class="legal-links-list">
+      {LEGAL_LINKS.filter((l) => l.href !== '/legal').map((link) => (
+        <li><a href={link.href}>{link.label}</a></li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="legal-section">
+    <h2>Datos del desarrollador (stores)</h2>
+    <dl class="legal-dl">
+      <dt>Aplicación / producto</dt>
+      <dd>{LEGAL.product}</dd>
+      <dt>Desarrollador</dt>
+      <dd>{LEGAL.company}</dd>
+      <dt>Sitio web</dt>
+      <dd><a href={LEGAL.siteUrl}>{LEGAL.siteUrl}</a></dd>
+      <dt>Email de soporte</dt>
+      <dd><a href={`mailto:${LEGAL.supportEmail}`}>{LEGAL.supportEmail}</a></dd>
+      <dt>Política de privacidad</dt>
+      <dd><a href={`${LEGAL.siteUrl}/privacidad`}>{LEGAL.siteUrl}/privacidad</a></dd>
+      <dt>Términos de servicio</dt>
+      <dd><a href={`${LEGAL.siteUrl}/terminos`}>{LEGAL.siteUrl}/terminos</a></dd>
+      <dt>Eliminación de cuenta</dt>
+      <dd><a href={`${LEGAL.siteUrl}/eliminar-cuenta`}>{LEGAL.siteUrl}/eliminar-cuenta</a></dd>
+      <dt>Categoría sugerida</dt>
+      <dd>Negocios / Productividad</dd>
+      <dt>Edad mínima</dt>
+      <dd>18+ (cuentas de negocio)</dd>
+    </dl>
+  </section>
+
+  <section class="legal-section">
+    <h2>Checklist Google Play</h2>
+    <ul>
+      <li>URL de política de privacidad → /privacidad</li>
+      <li>URL eliminación de cuenta → /eliminar-cuenta</li>
+      <li>Email de contacto del desarrollador</li>
+      <li>Declaración de datos en Play Console (cuenta, contacto, fotos, ubicación aproximada)</li>
+    </ul>
+  </section>
+
+  <section class="legal-section">
+    <h2>Checklist App Store Connect</h2>
+    <ul>
+      <li>Privacy Policy URL → /privacidad</li>
+      <li>App Privacy (nutrition labels): contacto, identificadores, uso del producto</li>
+      <li>Soporte: {LEGAL.supportEmail}</li>
+      <li>Eliminación de cuenta documentada → /eliminar-cuenta</li>
+    </ul>
+  </section>
+
+  <section class="legal-section">
+    <h2>Seguridad</h2>
+    <p>
+      Conexiones HTTPS, contraseñas hasheadas, sesiones firmadas y secretos en servidor.
+      Reportes de seguridad: <a href={`mailto:${LEGAL.supportEmail}`}>{LEGAL.supportEmail}</a>.
+    </p>
+  </section>
+</LegalLayout>

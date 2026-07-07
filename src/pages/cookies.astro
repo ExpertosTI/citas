@@ -1,0 +1,73 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { LEGAL } from '../lib/legal';
+---
+
+<LegalLayout
+  title="Política de cookies"
+  heading="Política de cookies"
+  intro="Explicamos qué cookies y tecnologías similares usa Citas en el sitio web."
+>
+  <section class="legal-section">
+    <h2>1. ¿Qué son las cookies?</h2>
+    <p>
+      Son pequeños archivos que el navegador guarda para recordar preferencias, mantener sesiones o medir uso básico.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>2. Cookies que usamos</h2>
+    <table class="legal-table">
+      <thead>
+        <tr>
+          <th>Nombre / tipo</th>
+          <th>Finalidad</th>
+          <th>Duración</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Sesión de cuenta</td>
+          <td>Mantener tu inicio de sesión en el panel</td>
+          <td>Hasta cerrar sesión o expirar</td>
+        </tr>
+        <tr>
+          <td>Sesión admin</td>
+          <td>Acceso al panel super administrador</td>
+          <td>8 horas</td>
+        </tr>
+        <tr>
+          <td>Geo / país</td>
+          <td>Detectar país para moneda, zona horaria y ciudad por defecto</td>
+          <td>30 días</td>
+        </tr>
+        <tr>
+          <td>Google OAuth</td>
+          <td>Flujo de inicio con Google (gestionado por Google)</td>
+          <td>Según Google</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="legal-section">
+    <h2>3. Cookies de terceros</h2>
+    <p>
+      Si usas «Continuar con Google», aplican las políticas de cookies de Google.
+      No usamos publicidad comportamental ni pixels de remarketing en {LEGAL.product}.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>4. Cómo gestionarlas</h2>
+    <p>
+      Puedes bloquear o borrar cookies desde la configuración de tu navegador.
+      Si desactivas cookies esenciales, partes del servicio (como el login) pueden dejar de funcionar.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>5. Más información</h2>
+    <p>Ver también nuestra <a href="/privacidad">Política de privacidad</a>.</p>
+  </section>
+</LegalLayout>

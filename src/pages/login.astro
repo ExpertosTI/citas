@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import GoogleSignIn from '../components/GoogleSignIn.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 import { isGoogleAuthConfigured } from '../lib/google-auth';
 
 const googleAuth = isGoogleAuthConfigured();
@@ -45,6 +46,7 @@ const initialError = authErrors[new URL(Astro.request.url).searchParams.get('err
         ¿Nuevo? <a class="font-semibold text-gold" href="/registro">Crear negocio</a>
       </p>
     </div>
+    <SiteFooter compact />
     </div>
   </div>
 

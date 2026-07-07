@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import FeatureDemo from '../components/FeatureDemo.astro';
 import LandingIcon from '../components/LandingIcon.astro';
 import ModulesShowcase from '../components/ModulesShowcase.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 import { geoFromRequest } from '../lib/geo';
 
 const geo = geoFromRequest(Astro.request);
@@ -147,8 +148,6 @@ const features = [
       </div>
     </section>
 
-    <footer class="reveal border-t border-black/5 py-10 text-center text-sm text-muted">
-      <p>Citas · renace.tech</p>
-    </footer>
+    <SiteFooter />
   </div>
 </BaseLayout>

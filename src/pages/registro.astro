@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import GoogleSignIn from '../components/GoogleSignIn.astro';
+import SiteFooter from '../components/SiteFooter.astro';
 import { geoFromRequest } from '../lib/geo';
 import { isGoogleAuthConfigured } from '../lib/google-auth';
 
@@ -55,6 +56,13 @@ const googleAuth = isGoogleAuthConfigured();
             <input class="input" id="password" name="password" type="password" required minlength="8" />
           </div>
         </div>
+        <label class="flex items-start gap-2.5 text-sm text-muted">
+          <input class="mt-1 h-4 w-4 shrink-0 accent-[var(--color-mustard-deep)]" type="checkbox" name="acceptTerms" id="acceptTerms" required />
+          <span>
+            Acepto los <a class="font-semibold text-mustard-deep hover:underline" href="/terminos" target="_blank" rel="noreferrer">Términos de servicio</a>
+            y la <a class="font-semibold text-mustard-deep hover:underline" href="/privacidad" target="_blank" rel="noreferrer">Política de privacidad</a>.
+          </span>
+        </label>
         <p id="form-error" class="hidden text-sm font-medium text-danger"></p>
         <button class="btn-primary w-full !py-3" type="submit">Crear cuenta</button>
       </form>
@@ -63,6 +71,7 @@ const googleAuth = isGoogleAuthConfigured();
         ¿Ya tienes cuenta? <a class="font-semibold text-gold" href="/login">Entrar</a>
       </p>
     </div>
+    <SiteFooter compact />
     </div>
   </div>
 
@@ -97,6 +106,13 @@ const googleAuth = isGoogleAuthConfigured();
       e.preventDefault();
       errorEl.classList.add('hidden');
       const data = Object.fromEntries(new FormData(form).entries());
+      if (!form.querySelector('#acceptTerms')?.checked) {
+        errorEl.textContent = 'Debes aceptar los términos y la política de privacidad';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      delete data.acceptTerms;
+      data.acceptTerms = true;
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

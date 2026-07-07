@@ -1,0 +1,99 @@
+---
+import LegalLayout from '../layouts/LegalLayout.astro';
+import { LEGAL } from '../lib/legal';
+---
+
+<LegalLayout
+  title="Términos de servicio"
+  heading="Términos de servicio"
+  intro={`Al usar ${LEGAL.product} aceptas estos términos entre tu negocio y ${LEGAL.company}.`}
+>
+  <section class="legal-section">
+    <h2>1. El servicio</h2>
+    <p>
+      {LEGAL.product} es una plataforma SaaS de reservas y gestión para negocios (barberías, salones, cafeterías y similares).
+      Ofrecemos funciones base y módulos opcionales según tu plan y configuración.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>2. Cuenta y elegibilidad</h2>
+    <ul>
+      <li>Debes ser mayor de 18 años y tener autoridad para representar al negocio registrado.</li>
+      <li>Eres responsable de la veracidad de los datos y de mantener tu contraseña segura.</li>
+      <li>Una cuenta por negocio salvo acuerdo expreso para multi-sucursal.</li>
+    </ul>
+  </section>
+
+  <section class="legal-section">
+    <h2>3. Uso aceptable</h2>
+    <p>Está prohibido:</p>
+    <ul>
+      <li>Usar el servicio para actividades ilegales, spam o fraude.</li>
+      <li>Intentar acceder a datos de otros tenants o vulnerar la seguridad.</li>
+      <li>Subir contenido que infrinja derechos de terceros.</li>
+      <li>Revender o sublicenciar el servicio sin autorización.</li>
+    </ul>
+  </section>
+
+  <section class="legal-section">
+    <h2>4. Datos de tus clientes</h2>
+    <p>
+      Como negocio eres responsable de informar a tus clientes finales sobre el tratamiento de sus datos al reservar.
+      {LEGAL.company} actúa como encargado del tratamiento respecto a los datos que tus clientes ingresan en tu enlace público.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>5. Planes y facturación</h2>
+    <p>
+      Los planes (Gratis, Inicio, Pro, Empresa) y módulos pueden cambiar con aviso razonable.
+      Las suscripciones de pago, cuando estén activas, se facturarán según el plan contratado.
+      Puedes cancelar según las condiciones de tu plan contactando a {LEGAL.supportEmail}.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>6. Disponibilidad</h2>
+    <p>
+      Procuramos alta disponibilidad pero no garantizamos servicio ininterrumpido.
+      Puede haber mantenimiento, actualizaciones o fallos de terceros (correo, Google, etc.).
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>7. Propiedad intelectual</h2>
+    <p>
+      {LEGAL.product}, su marca, código y diseño pertenecen a {LEGAL.company}.
+      Conservas los derechos sobre el contenido que subes (logos, textos, fotos de servicios).
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>8. Limitación de responsabilidad</h2>
+    <p>
+      En la medida permitida por la ley, {LEGAL.company} no será responsable por pérdidas indirectas, lucro cesante
+      o daños derivados del uso del servicio. Nuestra responsabilidad total se limita al monto pagado en los últimos 12 meses, si aplica.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>9. Terminación</h2>
+    <p>
+      Puedes cerrar tu cuenta en cualquier momento (ver <a href="/eliminar-cuenta">eliminar cuenta</a>).
+      Podemos suspender cuentas que violen estos términos o por impago.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>10. Ley aplicable</h2>
+    <p>
+      Estos términos se rigen por las leyes de {LEGAL.country}, sin perjuicio de derechos imperativos del consumidor en tu jurisdicción.
+    </p>
+  </section>
+
+  <section class="legal-section">
+    <h2>11. Contacto</h2>
+    <p>Consultas: <a href={`mailto:${LEGAL.supportEmail}`}>{LEGAL.supportEmail}</a></p>
+  </section>
+</LegalLayout>

@@ -20,6 +20,7 @@ export const POST: APIRoute = async ({ request }) => {
     city?: string;
     country?: string;
     slug?: string;
+    acceptTerms?: boolean;
   }>(request);
 
   const businessName = String(body.businessName || '').trim();
@@ -31,6 +32,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (ownerName.length < 2) return bad('Indica tu nombre');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad('Email inválido');
   if (password.length < 8) return bad('La contraseña debe tener al menos 8 caracteres');
+  if (body.acceptTerms !== true) return bad('Debes aceptar los términos y la política de privacidad');
 
   if (sessionSecretIssue()) {
     console.error('[auth/register] SESSION_SECRET missing or weak');

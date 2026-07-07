@@ -6,15 +6,20 @@ interface Props {
   title?: string;
   description?: string;
   bodyClass?: string;
+  canonical?: string;
+  noindex?: boolean;
 }
 
 const {
   title = 'Citas · Agenda inteligente para tu negocio',
   description = 'Plataforma de reservas para barberías, salones y centros de belleza.',
   bodyClass = '',
+  canonical,
+  noindex = false,
 } = Astro.props;
 
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL || 'https://citas.renace.tech').replace(/\/$/, '');
+const canonicalUrl = canonical || siteUrl;
 const geo = geoFromRequest(Astro.request);
 ---
 
@@ -24,9 +29,20 @@ const geo = geoFromRequest(Astro.request);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#f8fafc" />
+    <meta name="theme-color" content="#1e3a5f" />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Citas" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:locale" content="es_ES" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="canonical" href={siteUrl} />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="canonical" href={canonicalUrl} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

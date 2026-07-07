@@ -78,6 +78,14 @@ const publicUrl = `${siteUrl}/s/${t.slug}`;
     )}
   </div>
 
+  <footer class="app-legal-foot">
+    <a href="/privacidad">Privacidad</a>
+    <span aria-hidden="true">·</span>
+    <a href="/terminos">Términos</a>
+    <span aria-hidden="true">·</span>
+    <a href="/eliminar-cuenta">Eliminar cuenta</a>
+  </footer>
+
   <script>
     document.getElementById('logout-btn')?.addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
