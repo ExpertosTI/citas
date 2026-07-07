@@ -1,15 +1,18 @@
-import { GoogleGenAI } from '@google/genai';
+import { ApiError, GoogleGenAI, type Part } from '@google/genai';
 
-/** Stable Gemini 3 models (Jul 2026). See https://ai.google.dev/gemini-api/docs/models */
+/**
+ * Modelos vigentes — ver codegen_instructions.md de @google/genai
+ * https://github.com/googleapis/js-genai/blob/main/codegen_instructions.md
+ */
 const MODEL_FALLBACKS = [
+  'gemini-3-flash-preview',
   'gemini-3.5-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-3-flash',
   'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
 ];
 
 export function isGeminiConfigured() {
-  return Boolean((process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '').trim());
+  return Boolean(process.env.GEMINI_API_KEY?.trim());
 }
 
 export function geminiModelName() {
@@ -21,23 +24,40 @@ function modelCandidates() {
   return [preferred, ...MODEL_FALLBACKS.filter((m) => m !== preferred)];
 }
 
-function apiKeyRaw() {
-  return (process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || '').trim();
-}
-
-function apiKey() {
-  const key = apiKeyRaw();
-  if (!key) throw new Error('gemini_not_configured');
-  if (key.startsWith('gemini-')) {
-    throw new Error('gemini_key_looks_like_model: GEMINI_API_KEY contiene un nombre de modelo, no la clave');
-  }
-  return key;
+function keyMeta() {
+  const key = process.env.GEMINI_API_KEY?.trim() || '';
+  return {
+    length: key.length,
+    type: key.startsWith('AQ.') ? 'auth' : key.startsWith('AIza') ? 'standard' : key ? 'custom' : 'missing',
+  };
 }
 
 let client: GoogleGenAI | null = null;
+let clientKey = '';
 
+/** SDK oficial: lee GEMINI_API_KEY del entorno con `new GoogleGenAI({})` */
 function getClient() {
-  if (!client) client = new GoogleGenAI({ apiKey: apiKey() });
+  const key = process.env.GEMINI_API_KEY?.trim() || '';
+  if (!key) throw new Error('gemini_not_configured');
+  if (key.startsWith('gemini-')) {
+    throw new Error('gemini_key_looks_like_model');
+  }
+
+  const project = process.env.GOOGLE_CLOUD_PROJECT?.trim();
+  const useVertex =
+    process.env.GOOGLE_GENAI_VERTEX === 'true' || process.env.GOOGLE_GENAI_USE_VERTEXAI === 'true';
+  if (useVertex && project) {
+    return new GoogleGenAI({
+      vertexai: true,
+      project,
+      location: process.env.GOOGLE_CLOUD_LOCATION?.trim() || 'us-central1',
+    });
+  }
+
+  if (!client || clientKey !== key) {
+    client = new GoogleGenAI({ apiKey: key });
+    clientKey = key;
+  }
   return client;
 }
 
@@ -49,21 +69,29 @@ type CallResult =
   | { ok: true; text: string }
   | { ok: false; status: number; error: string };
 
-function errStatus(err: unknown) {
-  const e = err as { status?: number; code?: number };
-  return Number(e?.status || e?.code || 500);
+function toParts(parts: GeminiPart[]): Part[] {
+  return parts.map((p) => {
+    if ('text' in p) return { text: p.text };
+    return { inlineData: { mimeType: p.inlineData.mimeType, data: p.inlineData.data } };
+  });
 }
 
-function errMessage(err: unknown) {
-  if (err instanceof Error) return err.message;
-  return String(err);
+function parseError(err: unknown): { status: number; message: string } {
+  if (err instanceof ApiError) {
+    return { status: err.status || 500, message: err.message };
+  }
+  const e = err as { status?: number; message?: string };
+  return {
+    status: Number(e?.status || 500),
+    message: e?.message || String(err),
+  };
 }
 
-async function callGemini(
+async function callGenerate(
   model: string,
-  body: {
+  contents: Part[] | string,
+  config?: {
     systemInstruction?: string;
-    contents: unknown;
     json?: boolean;
     temperature?: number;
   },
@@ -71,29 +99,76 @@ async function callGemini(
   try {
     const response = await getClient().models.generateContent({
       model,
-      contents: body.contents as never,
+      contents,
       config: {
-        systemInstruction: body.systemInstruction,
-        temperature: body.temperature,
-        ...(body.json ? { responseMimeType: 'application/json' } : {}),
+        systemInstruction: config?.systemInstruction,
+        temperature: config?.temperature,
+        ...(config?.json ? { responseMimeType: 'application/json' } : {}),
       },
     });
     const text = response.text?.trim();
     if (!text) return { ok: false, status: 200, error: 'gemini_empty_response' };
     return { ok: true, text };
   } catch (err) {
-    const status = errStatus(err);
-    return {
-      ok: false,
-      status,
-      error: `gemini_http_${status}:${errMessage(err).slice(0, 200)}`,
-    };
+    const { status, message } = parseError(err);
+    return { ok: false, status, error: `gemini_http_${status}:${message.slice(0, 200)}` };
   }
 }
 
-/** Google Gen AI SDK — soporta claves AIza (legacy) y AQ.* (auth keys, 2026) */
+async function callChat(
+  model: string,
+  systemInstruction: string,
+  turns: GeminiChatTurn[],
+  config?: { json?: boolean; temperature?: number },
+): Promise<CallResult> {
+  try {
+    const history = turns.slice(0, -1).map((t) => ({
+      role: t.role,
+      parts: [{ text: t.text }],
+    }));
+    const last = turns[turns.length - 1];
+    if (!last || last.role !== 'user') {
+      return { ok: false, status: 400, error: 'gemini_no_user_turn' };
+    }
+
+    const chat = getClient().chats.create({
+      model,
+      history: history.length ? history : undefined,
+      config: {
+        systemInstruction,
+        temperature: config?.temperature ?? 0.75,
+        ...(config?.json ? { responseMimeType: 'application/json' } : {}),
+      },
+    });
+    const response = await chat.sendMessage({ message: last.text });
+    const text = response.text?.trim();
+    if (!text) return { ok: false, status: 200, error: 'gemini_empty_response' };
+    return { ok: true, text };
+  } catch (err) {
+    const { status, message } = parseError(err);
+    return { ok: false, status, error: `gemini_http_${status}:${message.slice(0, 200)}` };
+  }
+}
+
+async function withModelFallback(
+  fn: (model: string) => Promise<CallResult>,
+): Promise<CallResult> {
+  let last: CallResult = { ok: false, status: 500, error: 'gemini_failed' };
+  for (const model of modelCandidates()) {
+    const result = await fn(model);
+    if (result.ok) return result;
+    last = result;
+    if (result.status === 404 || result.status === 400 || result.error === 'gemini_empty_response') continue;
+    if (result.status === 401 || result.status === 403) throw new Error(result.error);
+  }
+  throw new Error(last.error);
+}
+
 export async function generateGeminiText(prompt: string, opts?: { json?: boolean; temperature?: number }) {
-  return generateGeminiContent([{ text: prompt }], opts);
+  const result = await withModelFallback((model) =>
+    callGenerate(model, prompt, { temperature: opts?.temperature, json: opts?.json }),
+  );
+  return result.text;
 }
 
 export async function generateGeminiChat(
@@ -101,42 +176,32 @@ export async function generateGeminiChat(
   turns: GeminiChatTurn[],
   opts?: { json?: boolean; temperature?: number },
 ) {
-  let lastErr = 'gemini_failed';
-  const contents = turns.map((t) => ({
-    role: t.role,
-    parts: [{ text: t.text }],
-  }));
-
-  for (const model of modelCandidates()) {
-    const result = await callGemini(model, {
-      systemInstruction,
-      contents,
-      json: opts?.json,
-      temperature: opts?.temperature ?? 0.75,
-    });
-    if (result.ok) return result.text;
-    lastErr = result.error;
-    if (result.status === 404 || result.status === 400 || result.error === 'gemini_empty_response') continue;
-    if (result.status === 401 || result.status === 403) throw new Error(lastErr);
-  }
-
-  throw new Error(lastErr);
+  const result = await withModelFallback((model) =>
+    callChat(model, systemInstruction, turns, opts),
+  );
+  return result.text;
 }
 
-/** Quick connectivity probe for deploy / health checks */
 export async function probeGemini() {
   const result = await probeGeminiStatus();
   return result.live;
 }
 
-export async function probeGeminiStatus(): Promise<{ live: boolean; error?: string }> {
+export async function probeGeminiStatus(): Promise<{
+  live: boolean;
+  error?: string;
+  keyType?: string;
+  keyLength?: number;
+}> {
+  const meta = keyMeta();
+  if (!meta.length) return { live: false, error: 'not_configured', ...meta };
   try {
     const text = await generateGeminiText('Responde solo: ok', { temperature: 0 });
-    return { live: text.toLowerCase().includes('ok') };
+    return { live: text.toLowerCase().includes('ok'), keyType: meta.type, keyLength: meta.length };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'gemini_failed';
     const code = msg.match(/gemini_http_(\d+)/)?.[1] || 'error';
-    return { live: false, error: `http_${code}` };
+    return { live: false, error: `http_${code}`, keyType: meta.type, keyLength: meta.length };
   }
 }
 
@@ -144,24 +209,12 @@ export async function generateGeminiContent(
   parts: GeminiPart[],
   opts?: { json?: boolean; temperature?: number },
 ) {
-  let lastErr = 'gemini_failed';
-
-  for (const model of modelCandidates()) {
-    const result = await callGemini(model, {
-      contents: [{ parts }],
-      json: opts?.json,
-      temperature: opts?.temperature ?? 0.6,
-    });
-    if (result.ok) return result.text;
-    lastErr = result.error;
-    if (result.status === 404 || result.status === 400 || result.error === 'gemini_empty_response') continue;
-    if (result.status === 401 || result.status === 403) throw new Error(lastErr);
-  }
-
-  throw new Error(lastErr);
+  const result = await withModelFallback((model) =>
+    callGenerate(model, toParts(parts), { temperature: opts?.temperature, json: opts?.json }),
+  );
+  return result.text;
 }
 
-/** Analyze logo image — suggest accent hex and short brand note */
 export async function analyzeLogoImage(base64: string, mimeType: string) {
   const prompt = `Analiza este logo de un negocio de belleza/barbería en Latinoamérica.
 Responde SOLO JSON: {"accentColor":"#hex6","note":"una frase corta sobre el estilo visual (máx 20 palabras)"}
@@ -182,7 +235,6 @@ El accentColor debe ser un color dominante o complementario del logo, formato #R
   return { accentColor: hex, note: String(parsed.note || '').trim() };
 }
 
-/** Match uploaded service photo to an existing service name */
 export async function matchServiceFromImage(
   base64: string,
   mimeType: string,

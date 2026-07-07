@@ -71,7 +71,7 @@ if [ -z "$SESSION_SECRET" ] || [ ${#SESSION_SECRET} -lt 24 ] || [[ "$SESSION_SEC
   exit 1
 fi
 export GEMINI_API_KEY="${GEMINI_API_KEY:-}"
-export GEMINI_MODEL="${GEMINI_MODEL:-gemini-3.5-flash}"
+export GEMINI_MODEL="${GEMINI_MODEL:-gemini-3-flash-preview}"
 export GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}"
 export GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"
 

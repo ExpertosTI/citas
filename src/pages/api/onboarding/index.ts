@@ -266,52 +266,27 @@ export const POST: APIRoute = async ({ request }) => {
     return bad('Mensaje requerido');
   }
 
-  if (isCleanupServicesRequest(last.content)) {
-    const answer = await cleanupInvalidServices(tenantId);
-    return json({
-      ok: true,
-      ...enrichResponse(tenant, {}, answer, mode, { serviceCount }),
-    });
-  }
-
-  if (isServicePhotoRequest(last.content)) {
-    const answer = await answerServicePhotoRequest(tenantId, last.content);
-    return json({
-      ok: true,
-      ...enrichResponse(tenant, {}, answer, mode, { serviceCount }),
-    });
-  }
-
-  if (isLogoPhotoRequest(last.content)) {
-    const answer = await answerLogoPhotoRequest();
-    return json({
-      ok: true,
-      ...enrichResponse(tenant, {}, answer, mode, { serviceCount }),
-    });
+  async function localHeuristics() {
+    if (isCleanupServicesRequest(last.content)) {
+      return cleanupInvalidServices(tenantId);
+    }
+    if (isServicePhotoRequest(last.content)) {
+      return answerServicePhotoRequest(tenantId, last.content);
+    }
+    if (isLogoPhotoRequest(last.content)) {
+      return answerLogoPhotoRequest();
+    }
+    if (chatMode === 'assistant') {
+      const bookingAnswer = await bookAppointmentFromText(tenantId, last.content);
+      if (bookingAnswer) return bookingAnswer;
+      const queryAnswer = await answerAppointmentQuery(tenantId, last.content);
+      if (queryAnswer) return queryAnswer;
+    }
+    return chatOnboardingFallback(tenant, messages, priorSetup, mode, existingServices);
   }
 
   if (!isGeminiConfigured()) {
-    if (chatMode === 'assistant') {
-      const bookingAnswer = await bookAppointmentFromText(tenantId, last.content);
-      if (bookingAnswer) {
-        return json({
-          ok: true,
-          ...enrichResponse(tenant, {}, bookingAnswer, mode, { serviceCount }),
-          fallback: true,
-        });
-      }
-
-      const queryAnswer = await answerAppointmentQuery(tenantId, last.content);
-      if (queryAnswer) {
-        return json({
-          ok: true,
-          ...enrichResponse(tenant, {}, queryAnswer, mode, { serviceCount }),
-          fallback: true,
-        });
-      }
-    }
-
-    const ai = chatOnboardingFallback(tenant, messages, priorSetup, mode, existingServices);
+    const ai = await localHeuristics();
     return json({
       ok: true,
       ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
@@ -334,36 +309,14 @@ export const POST: APIRoute = async ({ request }) => {
     const msg = err instanceof Error ? err.message : 'error';
     console.error('[onboarding/chat] request failed', msg);
 
-    if (chatMode === 'assistant') {
-      const bookingAnswer = await bookAppointmentFromText(tenantId, last.content);
-      if (bookingAnswer) {
-        return json({
-          ok: true,
-          ...enrichResponse(tenant, {}, bookingAnswer, mode, { serviceCount }),
-          fallback: true,
-          geminiError: msg,
-        });
-      }
-
-      const queryAnswer = await answerAppointmentQuery(tenantId, last.content);
-      if (queryAnswer) {
-        return json({
-          ok: true,
-          ...enrichResponse(tenant, {}, queryAnswer, mode, { serviceCount }),
-          fallback: true,
-          geminiError: msg,
-        });
-      }
-    }
-
-    const ai = chatOnboardingFallback(tenant, messages, priorSetup, mode, existingServices);
+    const ai = await localHeuristics();
     return json({
       ok: true,
       ...enrichResponse(tenant, ai.setup || {}, ai, mode, { serviceCount }),
       fallback: true,
       geminiError: msg,
       reply:
-        chatMode === 'assistant'
+        chatMode === 'assistant' && !ai.reply
           ? 'No pude conectar con Gemini ahora. Revisa tu conexión e intenta de nuevo en un momento.'
           : ai.reply,
     });
