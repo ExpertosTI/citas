@@ -390,9 +390,10 @@ export function createConfigChat(opts) {
       hideTyping();
       if (json.fallback && geminiBadge) {
         geminiBadge.classList.remove('hidden');
-        geminiBadge.textContent = json.geminiError ? 'IA no disponible' : 'Asistente local';
-        if (json.geminiError) {
-          toast('Gemini no respondió — intenta de nuevo', 'error');
+        const authDown = /401|403/.test(String(json.geminiError || ''));
+        geminiBadge.textContent = authDown ? 'Modo local' : 'Asistente local';
+        if (json.geminiError && !authDown) {
+          toast('Gemini no respondió — sigo en modo local', 'error');
         }
       } else if (geminiBadge) {
         geminiBadge.classList.add('hidden');

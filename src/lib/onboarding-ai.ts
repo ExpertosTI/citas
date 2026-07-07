@@ -392,6 +392,120 @@ function parseChipIntent(text: string) {
   return null;
 }
 
+function normalizeIntent(text: string) {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+type InfoIntent =
+  | 'owner'
+  | 'business'
+  | 'hours'
+  | 'services'
+  | 'contact'
+  | 'location'
+  | 'about_assistant'
+  | 'greeting'
+  | 'thanks';
+
+function detectInfoIntent(text: string): InfoIntent | null {
+  const n = normalizeIntent(text);
+  if (!n || n.length > 280) return null;
+
+  if (/^(klk|que lo que|hola|hey|buenas|hi|hello|que tal|q tal|wep|epa|dimelo|dale)\b/.test(n)) {
+    return 'greeting';
+  }
+  if (/^(amor|a'?mor|mor)\b/.test(n) || /^te quiero\b/.test(n)) return 'greeting';
+  if (/^(gracias|thank|perfecto|genial|excelente|bien hecho)\b/.test(n) && n.length < 40) {
+    return 'thanks';
+  }
+  if (/(dueno|dueño|propietario|owner|quien es el|de quien es|nombre del dueno|se llama el dueno|quien maneja)/.test(n)) {
+    return 'owner';
+  }
+  if (/(nombre del (negocio|local|barber|salon|shop)|como se llama (el|tu) (negocio|local|barber|salon|shop))/.test(n)) {
+    return 'business';
+  }
+  if (/(horario|cuando abr|a que hora|que hora abr|hora de apertura|hasta que hora)/.test(n)) {
+    return 'hours';
+  }
+  if (/(servicios?|precios?|cuanto cuesta|catalogo|que ofrec|lista de servicios)/.test(n)) {
+    return 'services';
+  }
+  if (/(whatsapp|instagram|telefono|tel|contacto|como llamo|como contact|numero)/.test(n)) {
+    return 'contact';
+  }
+  if (/(donde estan|direccion|ubicacion|ciudad|donde queda|donde estan ubicados)/.test(n)) {
+    return 'location';
+  }
+  if (/(como (chat|funciona|hablas)|eres (un |una )?(bot|ia|robot|asistente)|quien eres|que eres|como te llamas)/.test(n)) {
+    return 'about_assistant';
+  }
+  return null;
+}
+
+function currencyLabel(tenant: Tenant) {
+  return tenant.currency === 'DOP' ? 'RD$' : tenant.currency === 'USD' ? 'USD' : tenant.currency;
+}
+
+function answerInfoIntent(intent: InfoIntent, tenant: Tenant, existingServices: Service[]) {
+  const cur = currencyLabel(tenant);
+  const first = tenant.ownerName.split(' ')[0];
+
+  switch (intent) {
+    case 'owner':
+      return `El dueño de **${tenant.businessName}** es **${tenant.ownerName}**. ¿Quieres actualizar el nombre del local o algún dato de contacto?`;
+    case 'business':
+      return tenant.bio
+        ? `Tu negocio se llama **${tenant.businessName}**. En la página pública dice: "${tenant.bio}".`
+        : `Tu negocio se llama **${tenant.businessName}**. ¿Quieres agregar una bio corta para la página de reservas?`;
+    case 'hours': {
+      const closed = tenant.closedWeekdays?.length
+        ? ` Cierra: **${weekdayLabels(tenant.closedWeekdays)}**.`
+        : '';
+      const lunch =
+        tenant.lunchStartHour !== undefined && tenant.lunchEndHour !== undefined
+          ? ` Almuerzo ${formatHour(tenant.lunchStartHour)}–${formatHour(tenant.lunchEndHour)}.`
+          : '';
+      return `Tu horario es **${formatHour(tenant.openHour)} – ${formatHour(tenant.closeHour)}**.${lunch}${closed} ¿Lo cambiamos?`;
+    }
+    case 'services': {
+      const active = existingServices.filter((s) => s.active);
+      if (!active.length) {
+        return 'Aún no tienes servicios activos. Dime nombre, precio y duración — ej: "Corte 500, 30 min".';
+      }
+      const list = active.map((s) => `• **${s.name}** · ${cur}${s.price} · ${s.durationMin} min`).join('\n');
+      return `Tus servicios activos:\n${list}\n\n¿Subimos un precio, agregamos uno o subimos fotos 📎?`;
+    }
+    case 'contact': {
+      const parts = [
+        tenant.whatsapp ? `WhatsApp: **${tenant.whatsapp}**` : '',
+        tenant.phone ? `Tel: **${tenant.phone}**` : '',
+        tenant.instagram ? `IG: **@${tenant.instagram.replace(/^@/, '')}**` : '',
+      ].filter(Boolean);
+      return parts.length
+        ? `Contacto actual:\n${parts.join('\n')}\n\n¿Actualizamos algo?`
+        : 'Aún no tienes WhatsApp ni teléfono guardados. Dime — ej: "WhatsApp 8095551234".';
+    }
+    case 'location': {
+      const parts = [tenant.address, tenant.city, tenant.country].filter(Boolean);
+      return parts.length
+        ? `Están en **${parts.join(', ')}**. ¿Cambiamos dirección o ciudad?`
+        : 'No tengo dirección guardada. Dime ciudad y dirección — ej: "Santo Domingo, Av. X #12".';
+    }
+    case 'about_assistant':
+      return `Soy el asistente de **Citas** para **${tenant.businessName}**, ${first}. Te ayudo a configurar servicios, fotos 📎, horario, logo y ver la agenda — escribe natural, como si hablaras conmigo.`;
+    case 'greeting':
+      return `¡Klk ${first}! 👋 ¿Qué movemos — servicios, horario, fotos o la agenda?`;
+    case 'thanks':
+      return '¡De nada! Cuando quieras seguimos.';
+    default:
+      return '';
+  }
+}
+
 function buildAssistantStyleReply(
   tenant: Tenant,
   setup: OnboardingSetupDraft,
@@ -430,6 +544,11 @@ function buildAssistantStyleReply(
     return { reply: summarizeSetup(setup, tenant, existingServices) + ' Pulsa **Aplicar cambios**.', readyToApply: true };
   }
 
+  const infoIntent = detectInfoIntent(lastText);
+  if (infoIntent) {
+    return { reply: answerInfoIntent(infoIntent, tenant, existingServices), readyToApply: false };
+  }
+
   const intent = parseChipIntent(lastText);
   if (intent === 'add_service') {
     return {
@@ -457,19 +576,9 @@ function buildAssistantStyleReply(
     };
   }
 
-  const casual = /^(klk|que lo que|qué lo que|hola|hey|buenas|buen dia|buenos dias|hi|hello|qué tal|que tal)\b/i.test(
-    lastText.trim(),
-  );
-  if (casual) {
-    const first = tenant.ownerName.split(' ')[0];
-    return {
-      reply: `¡Klk ${first}! 👋 Todo bien por aquí. ¿Qué movemos — servicios, horario, fotos o la agenda?`,
-      readyToApply: false,
-    };
-  }
-
+  const first = tenant.ownerName.split(' ')[0];
   return {
-    reply: `Dime qué necesitas y lo hacemos — servicios, fotos 📎, horario o contacto.`,
+    reply: `No capté eso del todo, ${first}. Puedo ayudarte con **servicios**, **horario**, **fotos** 📎, **contacto** o **agenda**. ¿Qué necesitas?`,
     readyToApply: false,
   };
 }
@@ -690,7 +799,8 @@ ${JSON.stringify(priorSetup, null, 2)}`;
     return { ...local, usedFallback: true, geminiError: lastErr };
   }
 
-  throw new Error(lastErr);
+  const local = chatOnboardingFallback(tenant, messages, priorSetup, mode, existingServices);
+  return { ...local, usedFallback: true, geminiError: lastErr };
 }
 
 export async function applyOnboardingSetup(

@@ -368,6 +368,12 @@
   color: var(--color-ink);
 }
 
+[data-theme='dark'] .assistant-drawer__deco-comb,
+[data-theme='dark'] .assistant-drawer__deco-scissors {
+  opacity: 0.35;
+  color: var(--color-muted);
+}
+
 [data-theme='dark'] .asst-apt-card__badge--cancelled {
   background: rgba(239, 68, 68, 0.12);
   color: #fca5a5;

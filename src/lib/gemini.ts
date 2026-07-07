@@ -87,6 +87,145 @@ function parseError(err: unknown): { status: number; message: string } {
   };
 }
 
+function apiKey() {
+  return process.env.GEMINI_API_KEY?.trim() || '';
+}
+
+function isAuthKey() {
+  return apiKey().startsWith('AQ.');
+}
+
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+
+function extractGenerateText(payload: {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+}) {
+  return (
+    payload.candidates?.[0]?.content?.parts
+      ?.map((p) => p.text || '')
+      .join('')
+      .trim() || ''
+  );
+}
+
+async function callGenerateHttp(
+  model: string,
+  contents: Array<{ role: string; parts: Array<{ text: string }> }> | string,
+  config?: {
+    systemInstruction?: string;
+    json?: boolean;
+    temperature?: number;
+  },
+): Promise<CallResult> {
+  const key = apiKey();
+  if (!key) return { ok: false, status: 401, error: 'gemini_not_configured' };
+
+  const body: Record<string, unknown> = {
+    contents: typeof contents === 'string'
+      ? [{ role: 'user', parts: [{ text: contents }] }]
+      : contents,
+    generationConfig: {
+      temperature: config?.temperature ?? 0.75,
+      ...(config?.json ? { responseMimeType: 'application/json' } : {}),
+    },
+  };
+  if (config?.systemInstruction) {
+    body.systemInstruction = { parts: [{ text: config.systemInstruction }] };
+  }
+
+  try {
+    const res = await fetch(`${GEMINI_API_BASE}/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': key,
+      },
+      body: JSON.stringify(body),
+    });
+    const raw = await res.text();
+    if (!res.ok) {
+      return { ok: false, status: res.status, error: `gemini_http_${res.status}:${raw.slice(0, 200)}` };
+    }
+    const text = extractGenerateText(JSON.parse(raw));
+    if (!text) return { ok: false, status: 200, error: 'gemini_empty_response' };
+    return { ok: true, text };
+  } catch (err) {
+    return { ok: false, status: 500, error: String(err) };
+  }
+}
+
+async function callInteractionChat(
+  model: string,
+  systemInstruction: string,
+  turns: GeminiChatTurn[],
+  config?: { json?: boolean; temperature?: number },
+): Promise<CallResult> {
+  const last = turns[turns.length - 1];
+  if (!last || last.role !== 'user') {
+    return { ok: false, status: 400, error: 'gemini_no_user_turn' };
+  }
+
+  const history = turns
+    .slice(0, -1)
+    .map((t) => `${t.role === 'user' ? 'Usuario' : 'Asistente'}: ${t.text}`)
+    .join('\n');
+  const input = history ? `${history}\nUsuario: ${last.text}` : last.text;
+  const jsonHint = config?.json
+    ? '\n\nResponde SOLO con un objeto JSON válido, sin markdown ni texto extra.'
+    : '';
+
+  try {
+    const interaction = await getClient().interactions.create({
+      model,
+      input,
+      system_instruction: `${systemInstruction}${jsonHint}`,
+    });
+    const text = interaction.output_text?.trim();
+    if (!text) return { ok: false, status: 200, error: 'gemini_empty_response' };
+    return { ok: true, text };
+  } catch (err) {
+    const { status, message } = parseError(err);
+    return { ok: false, status, error: `gemini_http_${status}:${message.slice(0, 200)}` };
+  }
+}
+
+async function callChatHttp(
+  model: string,
+  systemInstruction: string,
+  turns: GeminiChatTurn[],
+  config?: { json?: boolean; temperature?: number },
+): Promise<CallResult> {
+  const contents = turns.map((t) => ({
+    role: t.role,
+    parts: [{ text: t.text }],
+  }));
+  return callGenerateHttp(model, contents, {
+    systemInstruction,
+    json: config?.json,
+    temperature: config?.temperature,
+  });
+}
+
+async function callChatWithFallbacks(
+  model: string,
+  systemInstruction: string,
+  turns: GeminiChatTurn[],
+  config?: { json?: boolean; temperature?: number },
+): Promise<CallResult> {
+  const strategies = isAuthKey()
+    ? [callInteractionChat, callChatHttp, callChat]
+    : [callChat, callChatHttp, callInteractionChat];
+
+  let last: CallResult = { ok: false, status: 500, error: 'gemini_failed' };
+  for (const strategy of strategies) {
+    const result = await strategy(model, systemInstruction, turns, config);
+    if (result.ok) return result;
+    last = result;
+    if (result.status === 404 || result.status === 400 || result.error === 'gemini_empty_response') break;
+  }
+  return last;
+}
+
 async function callGenerate(
   model: string,
   contents: Part[] | string,
@@ -159,15 +298,23 @@ async function withModelFallback(
     if (result.ok) return result;
     last = result;
     if (result.status === 404 || result.status === 400 || result.error === 'gemini_empty_response') continue;
-    if (result.status === 401 || result.status === 403) throw new Error(result.error);
+    if (result.status === 401 || result.status === 403) continue;
   }
   throw new Error(last.error);
 }
 
 export async function generateGeminiText(prompt: string, opts?: { json?: boolean; temperature?: number }) {
-  const result = await withModelFallback((model) =>
-    callGenerate(model, prompt, { temperature: opts?.temperature, json: opts?.json }),
-  );
+  const result = await withModelFallback(async (model) => {
+    const sdk = await callGenerate(model, prompt, { temperature: opts?.temperature, json: opts?.json });
+    if (sdk.ok) return sdk;
+    if (isAuthKey() || sdk.status === 401 || sdk.status === 403) {
+      return callGenerateHttp(model, prompt, {
+        temperature: opts?.temperature,
+        json: opts?.json,
+      });
+    }
+    return sdk;
+  });
   return result.text;
 }
 
@@ -177,7 +324,7 @@ export async function generateGeminiChat(
   opts?: { json?: boolean; temperature?: number },
 ) {
   const result = await withModelFallback((model) =>
-    callChat(model, systemInstruction, turns, opts),
+    callChatWithFallbacks(model, systemInstruction, turns, opts),
   );
   return result.text;
 }
@@ -209,9 +356,18 @@ export async function generateGeminiContent(
   parts: GeminiPart[],
   opts?: { json?: boolean; temperature?: number },
 ) {
-  const result = await withModelFallback((model) =>
-    callGenerate(model, toParts(parts), { temperature: opts?.temperature, json: opts?.json }),
-  );
+  const result = await withModelFallback(async (model) => {
+    const sdk = await callGenerate(model, toParts(parts), { temperature: opts?.temperature, json: opts?.json });
+    if (sdk.ok) return sdk;
+    const textPart = parts.find((p): p is { text: string } => 'text' in p)?.text || '';
+    if (isAuthKey() || sdk.status === 401 || sdk.status === 403) {
+      return callGenerateHttp(model, textPart, {
+        temperature: opts?.temperature,
+        json: opts?.json,
+      });
+    }
+    return sdk;
+  });
   return result.text;
 }
 
