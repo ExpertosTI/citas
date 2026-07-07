@@ -6,9 +6,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <div class="app-scene min-h-dvh">
     <div class="accent-line"></div>
     <div class="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
-    <a href="/" class="brand-mark mb-8 text-4xl">Citas</a>
-    <div class="card p-6 sm:p-8">
-      <h1 class="brand-mark text-4xl leading-none">Entrar</h1>
+    <a href="/" class="brand-mark reveal mb-8 text-4xl">Citas</a>
+    <div class="card reveal p-6 sm:p-8" style="transition-delay: 0.08s">
+      <h1 class="brand-mark text-4xl leading-none">
+        <span data-typewriter="Entrar" data-type-speed="50"></span>
+      </h1>
       <p class="mt-2 text-sm text-ink-soft">Accede a tu bahía de citas.</p>
 
       <form id="login-form" class="mt-6 space-y-4">

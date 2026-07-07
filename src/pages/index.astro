@@ -1,22 +1,23 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import LandingIcon from '../components/LandingIcon.astro';
 import { geoFromRequest } from '../lib/geo';
 
 const geo = geoFromRequest(Astro.request);
 
 const features = [
-  { t: 'Asistente AI', d: 'La IA configura servicios, precios, horario y colores de tu marca en minutos.', highlight: true },
-  { t: 'Bahía de citas', d: 'Vista del día con colores. Completa, reagenda o marca no-show al instante.' },
-  { t: 'Reservas en línea', d: 'Link propio para que tus clientes agenden solos, elijan servicio y estilo.' },
-  { t: 'Notificaciones', d: 'Confirmaciones y recordatorios por email.' },
-  { t: 'Lista de espera', d: 'Si no hay cupo, el cliente entra en espera automáticamente.' },
-  { t: 'Perfil de marca', d: 'Logo, bio y horarios desde el panel.' },
+  { icon: 'ai', t: 'Asistente AI', d: 'La IA configura servicios, precios, horario y colores de tu marca en minutos.', highlight: true },
+  { icon: 'bay', t: 'Bahía de citas', d: 'Vista del día con colores. Completa, reagenda o marca no-show al instante.' },
+  { icon: 'book', t: 'Reservas en línea', d: 'Link propio para que tus clientes agenden solos, elijan servicio y estilo.' },
+  { icon: 'notify', t: 'Notificaciones', d: 'Confirmaciones y recordatorios por email.' },
+  { icon: 'wait', t: 'Lista de espera', d: 'Si no hay cupo, el cliente entra en espera automáticamente.' },
+  { icon: 'brand', t: 'Perfil de marca', d: 'Logo, bio y horarios desde el panel.' },
 ];
 ---
 
 <BaseLayout>
   <div class="app-scene relative z-10">
-    <header class="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+    <header class="reveal mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
       <a href="/" class="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">Citas</a>
       <div class="flex items-center gap-2">
         <span class="geo-badge hidden sm:inline-flex">{geo.city}</span>
@@ -26,12 +27,12 @@ const features = [
     </header>
 
     <section class="mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-6 lg:grid-cols-2 lg:items-center">
-      <div>
+      <div class="reveal">
         <p class="hero-eyebrow text-[11px] font-semibold uppercase tracking-[0.2em] text-mustard-deep">
           Agenda inteligente · {geo.city}
         </p>
         <h1 class="hero-title font-display mt-4 text-4xl font-semibold tracking-tight text-ink sm:text-5xl lg:text-[3.35rem] lg:leading-[1.06]">
-          Tu negocio listo en minutos.
+          <span data-typewriter="Tu negocio listo en minutos." data-type-speed="38"></span>
         </h1>
         <p class="hero-copy mt-5 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
           Reservas para barberías, salones y spas. Panel con bahía del día, clientes y enlace público.
@@ -42,16 +43,20 @@ const features = [
         </div>
       </div>
 
-      <div class="hero-visual card p-5 sm:p-6">
-        <p class="text-xs font-semibold uppercase tracking-wider text-muted">Panel del día</p>
+      <div class="hero-visual card p-5 sm:p-6" data-parallax="0.08" data-tilt>
+        <div class="flex items-center gap-2">
+          <LandingIcon name="bay" class="landing-icon--sm" />
+          <p class="text-xs font-semibold uppercase tracking-wider text-muted">Panel del día</p>
+        </div>
         <p class="brand-mark mt-1 text-xl">Bahía de citas</p>
         <div class="mt-4 space-y-2">
           {[
-            { t: '09:00', n: 'Carlos M.', s: 'Corte ejecutivo' },
-            { t: '10:30', n: 'Ana R.', s: 'Color + corte' },
-            { t: '12:00', n: 'Miguel S.', s: 'Barba premium' },
-          ].map((row) => (
-            <div class="live-slot">
+            { t: '09:00', n: 'Carlos M.', s: 'Corte ejecutivo', c: 'gold' },
+            { t: '10:30', n: 'Ana R.', s: 'Color + corte', c: 'crimson' },
+            { t: '12:00', n: 'Miguel S.', s: 'Barba premium', c: 'navy' },
+          ].map((row, i) => (
+            <div class="live-slot reveal" style={`transition-delay: ${0.1 + i * 0.08}s`}>
+              <span class:list={['live-slot__dot', `live-slot__dot--${row.c}`]}></span>
               <span class="w-12 shrink-0 text-sm font-bold tabular-nums text-navy">{row.t}</span>
               <div class="min-w-0">
                 <p class="truncate font-semibold text-ink">{row.n}</p>
@@ -65,21 +70,44 @@ const features = [
 
     <section id="features" class="border-t border-black/5 py-14">
       <div class="mx-auto max-w-6xl px-4">
-        <div class="ai-spotlight card mx-auto mb-10 max-w-2xl p-6 text-center">
-          <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">Extra</p>
-          <h2 class="font-display mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">Configuración asistida</h2>
-          <p class="mx-auto mt-2 max-w-md text-xs text-muted">
-            Opcional — describe tu negocio y el panel se arma solo.
-          </p>
-          <a href="/registro" class="btn-ghost mt-4 !text-xs">Crear cuenta</a>
+        <div class="ai-spotlight card reveal mx-auto mb-10 max-w-2xl overflow-hidden p-6 text-center sm:p-8" data-parallax="0.04">
+          <div class="ai-spotlight__glow" aria-hidden="true"></div>
+          <div class="relative z-10">
+            <div class="mx-auto mb-3 flex w-fit items-center gap-2 rounded-full border border-gold/25 bg-gold-dim px-3 py-1">
+              <LandingIcon name="spark" class="landing-icon--xs landing-icon--gold" />
+              <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-mustard-deep">Extra</p>
+            </div>
+            <h2 class="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+              <span data-typewriter="Configuración asistida" data-type-speed="52"></span>
+            </h2>
+            <p class="mx-auto mt-2 max-w-md text-xs text-muted">
+              Opcional — describe tu negocio y el panel se arma solo.
+            </p>
+            <div class="ai-type-demo mx-auto mt-5 max-w-md rounded-xl border border-black/6 bg-white/80 px-4 py-3 text-left shadow-sm">
+              <div class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                <LandingIcon name="ai" class="landing-icon--xs" />
+                Asistente
+              </div>
+              <p id="ai-type-demo" class="ai-type-demo__text mt-1 min-h-[1.4em] font-mono text-sm text-navy"></p>
+            </div>
+            <a href="/registro" class="btn-primary mt-5 !text-xs">Crear cuenta</a>
+          </div>
         </div>
+
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <article class="feature-card card p-5">
-              {f.highlight && (
-                <span class="chip mb-2 border border-gold/30 bg-gold-dim text-mustard-deep">Destacado</span>
-              )}
-              <h3 class="brand-mark text-lg">{f.t}</h3>
+          {features.map((f, i) => (
+            <article
+              class="feature-card card reveal p-5"
+              style={`transition-delay: ${(i % 3) * 0.07}s`}
+              data-tilt
+            >
+              <div class="feature-card__head">
+                <LandingIcon name={f.icon} class:list={['landing-icon--feature', f.highlight && 'landing-icon--gold']} />
+                {f.highlight && (
+                  <span class="chip border border-gold/30 bg-gold-dim text-mustard-deep">Destacado</span>
+                )}
+              </div>
+              <h3 class="brand-mark mt-3 text-lg">{f.t}</h3>
               <p class="mt-1.5 text-sm text-muted">{f.d}</p>
             </article>
           ))}
@@ -87,7 +115,7 @@ const features = [
       </div>
     </section>
 
-    <footer class="border-t border-black/5 py-8 text-center text-sm text-muted">
+    <footer class="reveal border-t border-black/5 py-8 text-center text-sm text-muted">
       <p>Citas · renace.tech</p>
     </footer>
   </div>

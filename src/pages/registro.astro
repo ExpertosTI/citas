@@ -9,13 +9,15 @@ const geo = geoFromRequest(Astro.request);
   <div class="app-scene min-h-dvh">
     <div class="accent-line"></div>
     <div class="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-4 py-10">
-    <a href="/" class="brand-mark mb-6 text-4xl">Citas</a>
-    <div class="card p-6 sm:p-8">
+    <a href="/" class="brand-mark reveal mb-6 text-4xl">Citas</a>
+    <div class="card reveal p-6 sm:p-8" style="transition-delay: 0.08s">
       <div class="geo-badge mb-4">
-        <span>📍</span>
+        <span aria-hidden="true">📍</span>
         <span id="geo-label">{geo.name} · {geo.city}</span>
       </div>
-      <h1 class="brand-mark text-4xl leading-none">Registra tu negocio</h1>
+      <h1 class="brand-mark text-4xl leading-none">
+        <span data-typewriter="Registra tu negocio" data-type-speed="45"></span>
+      </h1>
       <p class="mt-2 text-sm text-ink-soft">La IA te guía para configurar servicios, precios y horario en minutos.</p>
 
       <form id="register-form" class="mt-6 space-y-4">

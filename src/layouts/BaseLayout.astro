@@ -48,5 +48,9 @@ const geo = geoFromRequest(Astro.request);
       </svg>
     </div>
     <slot />
+    <script>
+      import { initMotion } from '../scripts/motion.js';
+      initMotion();
+    </script>
   </body>
 </html>
