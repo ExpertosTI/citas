@@ -4,6 +4,8 @@ import { sessionSecret as getSessionSecret } from './security';
 const COOKIE = 'citas_admin';
 const TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
 
+const DEFAULT_SUPER_ADMINS = ['expertostird@gmail.com'];
+
 function secret() {
   return getSessionSecret();
 }
@@ -14,6 +16,21 @@ function adminPassword() {
 
 function adminEmail() {
   return (process.env.ADMIN_EMAIL || 'info@renace.tech').trim().toLowerCase();
+}
+
+export function superAdminEmails() {
+  const raw = process.env.SUPER_ADMIN_EMAILS || process.env.SUPER_ADMIN_EMAIL || '';
+  const fromEnv = raw
+    .split(/[,;\s]+/)
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  const merged = [...DEFAULT_SUPER_ADMINS, ...fromEnv];
+  return [...new Set(merged)];
+}
+
+export function isSuperAdminEmail(email: string) {
+  const key = email.trim().toLowerCase();
+  return key.length > 0 && superAdminEmails().includes(key);
 }
 
 function safeEqual(a: string, b: string) {
@@ -74,4 +91,12 @@ export function isAdminRequest(request: Request) {
 
 export function adminEmailConfigured() {
   return adminEmail();
+}
+
+export function createAdminSessionResponse(redirectPath = '/admin') {
+  const headers: Record<string, string> = {
+    Location: redirectPath,
+    'Set-Cookie': adminCookie(createAdminToken()),
+  };
+  return new Response(null, { status: 302, headers });
 }

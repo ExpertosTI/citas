@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { Tenant } from './store';
 import { countryPreset } from './geo';
 import { normalizeTenantModules } from './modules/tenant-modules';
+import { normalizeSubscription } from './subscription';
 
 function sanitizeBusinessHours(t: Tenant) {
   let openHour = t.openHour ?? 9;
@@ -48,6 +49,7 @@ export function normalizeTenant(t: Tenant): Tenant {
     bio: t.bio || 'Reserva tu cita en línea · Servicio profesional',
     onboardingComplete: t.onboardingComplete === true,
     modules: normalizeTenantModules(t.modules, t.createdAt),
+    subscription: normalizeSubscription(t.subscription, t.createdAt),
   };
 }
 

@@ -4,6 +4,7 @@ import { hashPassword, newId, slugify } from './auth';
 import { countryPreset } from './geo';
 import { googlePasswordHash } from './google-auth';
 import type { TenantModuleState } from './modules/types';
+import { normalizeSubscription, type TenantSubscription } from './subscription';
 import { appointmentCode, normalizeTenant } from './tenant';
 import { dayBoundsUtc, localDateKey, tenantTimezone, zonedDateTime } from './tz';
 
@@ -49,6 +50,7 @@ export type Tenant = {
   whatsapp: string;
   onboardingComplete?: boolean;
   modules?: Record<string, TenantModuleState>;
+  subscription?: TenantSubscription;
   createdAt: string;
 };
 

@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { createAdminSessionResponse, isSuperAdminEmail } from '../../../../lib/admin';
 import { createSessionToken, sessionCookie } from '../../../../lib/auth';
 import {
   exchangeGoogleCode,
@@ -42,6 +43,10 @@ export const GET: APIRoute = async ({ request }) => {
 
     if (!profile.emailVerified) {
       return redirect('/login?error=google_unverified');
+    }
+
+    if (isSuperAdminEmail(profile.email)) {
+      return createAdminSessionResponse('/admin');
     }
 
     let tenant = await getTenantByEmail(profile.email);

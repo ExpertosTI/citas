@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { isAdminRequest } from '../../../lib/admin';
 import { bad, json } from '../../../lib/http';
+import { catalogForTenant } from '../../../lib/modules/tenant-modules';
+import { subscriptionLabel } from '../../../lib/subscription';
 import { getServices, getTenants, safeTenant } from '../../../lib/store';
 
 export const prerender = false;
@@ -26,6 +28,15 @@ export const GET: APIRoute = async ({ request }) => {
         servicesCount: services.length,
         createdAt: t.createdAt,
         publicUrl: `/s/${safe.slug}`,
+        modules: catalogForTenant(t).map((m) => ({
+          id: m.id,
+          label: m.label,
+          icon: m.icon,
+          enabled: m.enabled,
+          required: Boolean(m.required),
+        })),
+        subscription: safe.subscription,
+        subscriptionLabel: subscriptionLabel(safe.subscription!),
       };
     }),
   );

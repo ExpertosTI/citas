@@ -1,16 +1,29 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import GoogleSignIn from '../../components/GoogleSignIn.astro';
 import { adminEmailConfigured, isAdminRequest } from '../../lib/admin';
+import { isGoogleAuthConfigured } from '../../lib/google-auth';
+import { listModuleDefs } from '../../lib/modules/registry';
+import { SUBSCRIPTION_PLANS, SUBSCRIPTION_STATUSES } from '../../lib/subscription';
 import { getServices, getTenants, safeTenant } from '../../lib/store';
 
 const isAdmin = isAdminRequest(Astro.request);
+const googleAuth = isGoogleAuthConfigured();
+const optionalModules = listModuleDefs().filter((m) => !m.required);
 
 const tenantRows = isAdmin
   ? await Promise.all(
       (await getTenants()).map(async (t) => {
         const safe = safeTenant(t);
         const services = await getServices(t.id);
+        const modules = optionalModules.map((mod) => ({
+          id: mod.id,
+          label: mod.label,
+          icon: mod.icon,
+          enabled: safe.modules?.[mod.id]?.enabled === true,
+        }));
         return {
+          id: t.id,
           businessName: safe.businessName,
           ownerName: safe.ownerName,
           email: t.email,
@@ -20,20 +33,23 @@ const tenantRows = isAdmin
           onboardingComplete: safe.onboardingComplete !== false,
           createdAt: t.createdAt.slice(0, 10),
           publicUrl: `/s/${safe.slug}`,
+          modules,
+          subscription: safe.subscription,
         };
       }),
     ).then((rows) => rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
   : [];
 ---
 
-<BaseLayout title="Admin · Citas">
+<BaseLayout title="Super Admin · Citas">
   <div class="app-scene min-h-dvh">
     <div class="accent-line"></div>
-    <div class="mx-auto max-w-6xl px-4 py-8">
-      <div class="mb-8 flex items-center justify-between">
+    <div class="mx-auto max-w-7xl px-4 py-8">
+      <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p class="text-xs font-semibold uppercase tracking-wider text-muted">Renace · Citas</p>
-          <h1 class="brand-mark brand-mark--gold text-4xl">Panel administrador</h1>
+          <h1 class="brand-mark brand-mark--gold text-3xl sm:text-4xl">Super Admin</h1>
+          <p class="mt-1 text-sm text-muted">Negocios, módulos y suscripciones</p>
         </div>
         {isAdmin && (
           <button id="logout-admin" type="button" class="btn-ghost !text-sm">Salir</button>
@@ -42,8 +58,11 @@ const tenantRows = isAdmin
 
       {!isAdmin ? (
         <div class="card mx-auto max-w-md p-6 sm:p-8">
-          <h2 class="brand-mark text-2xl">Acceso admin</h2>
-          <p class="mt-2 text-sm text-ink-soft">Gestión de negocios registrados en la plataforma.</p>
+          <h2 class="brand-mark text-2xl">Acceso super admin</h2>
+          <p class="mt-2 text-sm text-ink-soft">Entra con Google o credenciales de plataforma.</p>
+
+          <GoogleSignIn mode="login" enabled={googleAuth} />
+
           <form id="admin-login" class="mt-6 space-y-4">
             <div>
               <label class="label" for="email">Email</label>
@@ -60,40 +79,90 @@ const tenantRows = isAdmin
       ) : (
         <div>
           <p class="mb-4 text-sm text-muted">{tenantRows.length} negocios registrados</p>
-          <div class="card overflow-hidden">
-            <div class="overflow-x-auto">
-              <table class="w-full min-w-[720px] text-left text-sm">
-                <thead class="border-b border-border bg-surface-2 text-xs uppercase tracking-wider text-muted">
-                  <tr>
-                    <th class="px-4 py-3">Negocio</th>
-                    <th class="px-4 py-3">Dueño</th>
-                    <th class="px-4 py-3">Email</th>
-                    <th class="px-4 py-3">Ciudad</th>
-                    <th class="px-4 py-3">Servicios</th>
-                    <th class="px-4 py-3">Setup</th>
-                    <th class="px-4 py-3">Registro</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-border">
-                  {tenantRows.map((t) => (
-                    <tr class="hover:bg-white/[0.02]">
-                      <td class="px-4 py-3">
-                        <a class="font-semibold text-gold hover:underline" href={t.publicUrl} target="_blank" rel="noreferrer">
-                          {t.businessName}
-                        </a>
-                        <p class="text-xs text-muted">/{t.slug}</p>
-                      </td>
-                      <td class="px-4 py-3">{t.ownerName}</td>
-                      <td class="px-4 py-3 text-ink-soft">{t.email}</td>
-                      <td class="px-4 py-3">{t.city || '—'}</td>
-                      <td class="px-4 py-3">{t.servicesCount}</td>
-                      <td class="px-4 py-3">{t.onboardingComplete ? '✓ Listo' : 'Pendiente'}</td>
-                      <td class="px-4 py-3 text-muted">{t.createdAt}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div class="space-y-4">
+            {tenantRows.map((t) => (
+              <article class="card overflow-hidden" data-tenant-card={t.id}>
+                <div class="flex flex-wrap items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
+                  <div class="min-w-0">
+                    <a class="font-display text-lg font-semibold text-ink hover:text-mustard-deep" href={t.publicUrl} target="_blank" rel="noreferrer">
+                      {t.businessName}
+                    </a>
+                    <p class="text-sm text-muted">{t.ownerName} · {t.email}</p>
+                    <p class="text-xs text-muted">/{t.slug} · {t.city || '—'} · {t.servicesCount} servicios · {t.createdAt}</p>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="chip border border-border bg-surface-2 text-ink">
+                      {t.subscription?.plan || 'free'} · {t.subscription?.status || 'active'}
+                    </span>
+                    <button type="button" class="btn-primary btn-sm" data-toggle-tenant={t.id}>
+                      Gestionar
+                    </button>
+                  </div>
+                </div>
+
+                <div class="hidden border-t border-border bg-surface-2/50 p-4 sm:p-5" data-tenant-panel={t.id}>
+                  <div class="grid gap-5 lg:grid-cols-2">
+                    <div>
+                      <p class="label mb-3">Módulos</p>
+                      <div class="space-y-2">
+                        {t.modules.map((mod) => (
+                          <label class="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2.5">
+                            <span class="text-sm font-medium text-ink">
+                              <span class="mr-1.5">{mod.icon}</span>
+                              {mod.label}
+                            </span>
+                            <input
+                              type="checkbox"
+                              class="h-4 w-4 accent-[var(--color-mustard-deep)]"
+                              data-module-toggle
+                              data-tenant-id={t.id}
+                              data-module-id={mod.id}
+                              checked={mod.enabled}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <form class="space-y-3" data-subscription-form data-tenant-id={t.id}>
+                      <p class="label">Suscripción</p>
+                      <div>
+                        <label class="label" for={`plan-${t.id}`}>Plan</label>
+                        <select class="input" id={`plan-${t.id}`} name="plan">
+                          {SUBSCRIPTION_PLANS.map((p) => (
+                            <option value={p.id} selected={t.subscription?.plan === p.id}>{p.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label class="label" for={`status-${t.id}`}>Estado</label>
+                        <select class="input" id={`status-${t.id}`} name="status">
+                          {SUBSCRIPTION_STATUSES.map((s) => (
+                            <option value={s.id} selected={t.subscription?.status === s.id}>{s.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label class="label" for={`renews-${t.id}`}>Renueva</label>
+                        <input
+                          class="input"
+                          id={`renews-${t.id}`}
+                          name="renewsAt"
+                          type="date"
+                          value={t.subscription?.renewsAt?.slice(0, 10) || ''}
+                        />
+                      </div>
+                      <div>
+                        <label class="label" for={`notes-${t.id}`}>Notas</label>
+                        <textarea class="input" id={`notes-${t.id}`} name="notes" rows="2">{t.subscription?.notes || ''}</textarea>
+                      </div>
+                      <button type="submit" class="btn-primary btn-sm">Guardar suscripción</button>
+                    </form>
+                  </div>
+                  <p class="mt-3 hidden text-sm font-medium text-mustard-deep" data-tenant-msg={t.id}></p>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       )}
@@ -101,10 +170,72 @@ const tenantRows = isAdmin
   </div>
 
   <script define:vars={{ isAdmin }}>
+    import { toast } from '../../scripts/ui-feedback.js';
+
     if (isAdmin) {
       document.getElementById('logout-admin')?.addEventListener('click', async () => {
         await fetch('/api/admin/login', { method: 'DELETE' });
-        location.reload();
+        location.href = '/login';
+      });
+
+      document.querySelectorAll('[data-toggle-tenant]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-toggle-tenant');
+          const panel = document.querySelector(`[data-tenant-panel="${id}"]`);
+          panel?.classList.toggle('hidden');
+        });
+      });
+
+      document.querySelectorAll('[data-module-toggle]').forEach((input) => {
+        input.addEventListener('change', async () => {
+          const tenantId = input.getAttribute('data-tenant-id');
+          const moduleId = input.getAttribute('data-module-id');
+          const enabled = input.checked;
+          input.disabled = true;
+          const res = await fetch(`/api/admin/tenants/${tenantId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ modules: [{ moduleId, enabled }] }),
+          });
+          input.disabled = false;
+          if (res.ok) {
+            toast(enabled ? 'Módulo activado' : 'Módulo desactivado', 'success');
+          } else {
+            input.checked = !enabled;
+            const json = await res.json();
+            toast(json.error || 'No se pudo cambiar', 'error');
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-subscription-form]').forEach((form) => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const tenantId = form.getAttribute('data-tenant-id');
+          const fd = new FormData(form);
+          const res = await fetch(`/api/admin/tenants/${tenantId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscription: {
+                plan: fd.get('plan'),
+                status: fd.get('status'),
+                renewsAt: fd.get('renewsAt') || undefined,
+                notes: fd.get('notes'),
+              },
+            }),
+          });
+          const json = await res.json();
+          if (res.ok) {
+            toast('Suscripción guardada', 'success');
+            const chip = document.querySelector(`[data-tenant-card="${tenantId}"] .chip`);
+            if (chip && json.tenant?.subscription) {
+              chip.textContent = `${json.tenant.subscription.plan} · ${json.tenant.subscription.status}`;
+            }
+          } else {
+            toast(json.error || 'No se pudo guardar', 'error');
+          }
+        });
       });
     } else {
       document.getElementById('admin-login')?.addEventListener('submit', async (e) => {

@@ -38,6 +38,7 @@ set_var GEMINI_API_KEY
 set_var GEMINI_MODEL
 set_var GOOGLE_CLIENT_ID
 set_var GOOGLE_CLIENT_SECRET
+set_var SUPER_ADMIN_EMAILS
 set_var ADMIN_PASSWORD
 
 echo "seed-env: listo ($(wc -l < "$ENV_FILE" | tr -d ' ') líneas en .env)"
