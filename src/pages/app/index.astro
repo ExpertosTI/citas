@@ -1,9 +1,7 @@
 ---
 import AppLayout from '../../layouts/AppLayout.astro';
 import TimeInput12 from '../../components/TimeInput12.astro';
-import { statusLabel } from '../../lib/appointment-status';
 import { buildDayBoard } from '../../lib/day-board';
-import { cutStyleLabel } from '../../lib/cut-styles';
 import { tenantHasModule } from '../../lib/modules/tenant-modules';
 import { adminServiceMeta } from '../../lib/service-display';
 import { formatIsoTime, formatTimeHm } from '../../lib/time-12h';
@@ -25,8 +23,14 @@ const [board, stats, week] = await Promise.all([
 ]);
 
 const daySlots = buildDayBoard(tenant, dateStr, board.appointments);
+const visibleSlots = daySlots.filter((s) => s.kind !== 'past');
+const bookedCount = visibleSlots.filter((s) => s.kind === 'booked').length;
+const dayPendingCount = visibleSlots.filter(
+  (s) => s.kind === 'booked' && s.appointment?.status === 'pending',
+).length;
 const currency = board.tenant?.currency === 'DOP' ? 'RD$' : board.tenant?.currency || 'RD$';
 const defaultServiceId = board.services[0]?.id || '';
+const isToday = dateStr === todayStr;
 
 function formatWhen(iso: string) {
   return formatIsoTime(iso, board.tenant?.timezone);
@@ -36,22 +40,26 @@ function aptDay(iso: string) {
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+
+const pendingElsewhere = stats.pendingList.filter((a) => aptDay(a.startAt) !== dateStr);
 ---
 
-<AppLayout title="Centro de comandos" active="bahia">
-  <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+<AppLayout title="Bahía" active="bahia">
+  <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
-      <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-navy">Centro de comandos</p>
-      <h1 class="font-display mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">Bahía del día</h1>
-      <p class="mt-1 text-sm text-muted">Todos los horarios visibles · acciones directas en cada cita</p>
+      <h1 class="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">Bahía</h1>
+      <p class="mt-0.5 text-sm text-muted">
+        {isToday ? 'Hoy' : dateStr}
+        {bookedCount > 0 && ` · ${bookedCount} cita${bookedCount === 1 ? '' : 's'}`}
+        {dayPendingCount > 0 && ` · ${dayPendingCount} pendiente${dayPendingCount === 1 ? '' : 's'}`}
+      </p>
     </div>
-    <div class="flex w-full flex-wrap items-stretch gap-2 sm:w-auto sm:items-center">
+    <div class="flex w-full flex-wrap items-stretch gap-2 sm:w-auto">
       <input id="bay-date" class="input !w-full !rounded-lg sm:!w-auto" type="date" value={dateStr} />
-      <button id="print-day" type="button" class="btn-ghost btn-sm">Imprimir</button>
-      {showWaitlist && (
+      {showWaitlist && stats.waitlistCount > 0 && (
         <a href="/app/waitlist" class="btn-ghost btn-sm">Espera ({stats.waitlistCount})</a>
       )}
-      <button id="new-apt-btn" type="button" class="btn-primary btn-sm">+ Nueva cita</button>
+      <button id="new-apt-btn" type="button" class="btn-primary btn-sm">+ Cita</button>
     </div>
   </div>
 
@@ -60,88 +68,45 @@ function aptDay(iso: string) {
       <a
         href={`/app?date=${d.date}`}
         class:list={[
-          'chip shrink-0 border rounded-md',
-          d.date === dateStr ? 'border-navy bg-violet-dim text-navy font-bold' : 'border-border text-muted bg-surface',
+          'bay-week-chip',
+          d.date === dateStr && 'bay-week-chip--active',
         ]}
       >
-        {d.date?.slice(5) ?? '—'} · {d.count}
+        <span class="bay-week-chip__day">{d.date?.slice(5) ?? '—'}</span>
+        <span class="bay-week-chip__count">{d.count}</span>
       </a>
     ))}
   </div>
 
-  <div class="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-    <a href={`/app?date=${todayStr}#bay-board`} class="stat-card stat-card--link" aria-label="Ver citas de hoy">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Hoy</p>
-      <p class="stat-card__value mt-1">{stats.todayCount}</p>
-    </a>
-    <a href="#pendientes" class="stat-card stat-card--link" aria-label="Ver pendientes">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Pendientes</p>
-      <p class="stat-card__value stat-card__value--warn mt-1">{stats.pendingCount}</p>
-    </a>
-    <a href="/app/clientes" class="stat-card stat-card--link" aria-label="Ver clientes">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Clientes</p>
-      <p class="stat-card__value mt-1">{stats.clientsCount}</p>
-    </a>
-    <div class="stat-card">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Servicios</p>
-      <p class="stat-card__value mt-1">{stats.servicesCount}</p>
-    </div>
-    <div class="stat-card">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">Semana</p>
-      <p class="stat-card__value stat-card__value--accent mt-1 text-xl">{currency}{stats.weekRevenue.toLocaleString('es-DO')}</p>
-    </div>
-    <div class="stat-card">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-muted">No-show</p>
-      <p class="stat-card__value mt-1">{stats.noShowCount}</p>
-    </div>
-  </div>
-
-  <div id="pendientes" class="scroll-mt-24">
-  {stats.pendingList?.length > 0 && (
-    <div class="card mb-4 border-2 border-gold/40 bg-gold-dim p-4">
-      <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 class="font-display text-lg font-bold text-ink">
-          Pendientes de confirmar ({stats.pendingCount})
-        </h2>
-        <p class="text-xs text-muted">Confirma o rechaza antes de atender</p>
+  {pendingElsewhere.length > 0 && (
+    <div class="bay-pending-strip mb-4">
+      <div class="bay-pending-strip__head">
+        <span class="bay-pending-strip__badge">{pendingElsewhere.length}</span>
+        <span class="bay-pending-strip__title">Pendientes</span>
       </div>
-      <div class="space-y-2">
-        {stats.pendingList.map((a) => (
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gold/30 bg-surface p-3">
-            <div>
-              <p class="text-sm font-semibold text-ink">{a.client?.name || 'Cliente'}</p>
-              <p class="text-xs text-muted">
-                {a.service?.name} · {formatWhen(a.startAt)}
-                {a.code ? ` · ${a.code}` : ''}
-              </p>
+      <div class="bay-pending-strip__list">
+        {pendingElsewhere.slice(0, 6).map((a) => (
+          <div class="bay-pending-chip">
+            <div class="bay-pending-chip__info">
+              <p class="bay-pending-chip__name">{a.client?.name || 'Cliente'}</p>
+              <p class="bay-pending-chip__meta">{a.service?.name} · {formatWhen(a.startAt)}</p>
             </div>
-            <div class="flex flex-wrap gap-2">
-              <a href={`/app?date=${aptDay(a.startAt)}`} class="btn-ghost btn-sm">Ver en bahía</a>
-              <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={a.id} data-action="confirmed" data-notify="1">Confirmar</button>
-              <button type="button" class="btn-action btn-action--danger cmd-act" data-id={a.id} data-action="cancelled" data-notify="1">Rechazar</button>
+            <div class="bay-pending-chip__actions">
+              <button type="button" class="bay-pending-chip__ok cmd-act" data-id={a.id} data-action="confirmed" data-notify="1" aria-label="Confirmar">✓</button>
+              <button type="button" class="bay-pending-chip__no cmd-act" data-id={a.id} data-action="cancelled" data-notify="1" aria-label="Rechazar">✕</button>
             </div>
           </div>
         ))}
       </div>
     </div>
   )}
-  {stats.pendingCount === 0 && (
-    <p class="sr-only">No hay citas pendientes de confirmar.</p>
-  )}
-  </div>
 
-  <div id="bay-board" class="scroll-mt-24">
-  <div id="print-area" class="card p-4 sm:p-5">
-    <div class="cmd-board__header">
-      <span>Hora</span>
-      <span>Estado / acciones</span>
-    </div>
-    <div class="cmd-board mt-2">
-      {daySlots.length === 0 && (
-        <p class="py-8 text-center text-sm text-muted">Día cerrado o sin horario configurado.</p>
+  <div id="bay-board" class="scroll-mt-20 cmd-board">
+      {visibleSlots.length === 0 && (
+        <p class="py-10 text-center text-sm text-muted">Sin horarios para este día.</p>
       )}
-      {daySlots.map((slot) => (
-        <div class="cmd-row" style={slot.span > 1 ? `min-height:${slot.span * 4.5}rem` : undefined}>
+      {visibleSlots.map((slot) => (
+        <div class="cmd-row" style={slot.span > 1 ? `min-height:${slot.span * 3.75}rem` : undefined}>
           <div class="cmd-row__time">{formatTimeHm(slot.time)}</div>
 
           {slot.kind === 'free' && (
@@ -151,15 +116,8 @@ function aptDay(iso: string) {
               data-time={slot.time}
               data-start={slot.startAt}
             >
-              <span class="cmd-slot__label">+ Disponible — reservar</span>
-              <span class="text-[11px] text-muted">Clic para agendar</span>
+              <span class="cmd-slot__label">+ Reservar</span>
             </button>
-          )}
-
-          {slot.kind === 'past' && (
-            <div class="cmd-slot cmd-slot--past">
-              <span class="text-xs text-muted">Horario pasado</span>
-            </div>
           )}
 
           {slot.kind === 'lunch' && (
@@ -174,57 +132,50 @@ function aptDay(iso: string) {
                 'cmd-slot cmd-slot--booked',
                 `is-${slot.appointment.status}`,
               ]}
-              style={slot.span > 1 ? `min-height:${slot.span * 4.25 - 0.25}rem` : undefined}
+              style={slot.span > 1 ? `min-height:${slot.span * 3.5 - 0.25}rem` : undefined}
               data-id={slot.appointment.id}
             >
-              <div class="cmd-slot__top">
-                <div>
+              <div class="cmd-slot__row">
+                <div class="cmd-slot__info">
                   <p class="cmd-slot__client">{slot.appointment.client?.name || 'Cliente'}</p>
-                  <p class="cmd-slot__meta">
-                    {slot.appointment.service?.name}
-                    {slot.appointment.haircutStyle ? ` · ${cutStyleLabel(slot.appointment.haircutStyle)}` : ''}
-                    {slot.appointment.service?.pricingMode !== 'quote' ? ` · ${currency}${slot.appointment.service?.price || 0}` : ' · Precio variable'}
-                    {slot.appointment.code ? ` · ${slot.appointment.code}` : ''}
-                  </p>
+                  <p class="cmd-slot__meta">{slot.appointment.service?.name}</p>
                 </div>
-                <span class={`status-badge status-badge--${slot.appointment.status}`}>
-                  {statusLabel(slot.appointment.status)}
-                </span>
-              </div>
-              <div class="cmd-slot__actions">
+                <div class="cmd-slot__actions">
                 {slot.appointment.status === 'pending' && (
                   <>
-                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="confirmed" data-notify="1">✓ Confirmar</button>
-                    <button type="button" class="btn-action btn-action--danger cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">✕ Rechazar</button>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="confirmed" data-notify="1">Confirmar</button>
+                    <button type="button" class="btn-action btn-action--danger cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">Rechazar</button>
                   </>
                 )}
                 {slot.appointment.status === 'confirmed' && (
                   <>
-                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="received">→ Recibir</button>
-                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">✓ Hecho</button>
-                    <button type="button" class="btn-action cmd-act-reschedule" data-id={slot.appointment.id} data-time={slot.time}>↻ Hora</button>
-                    <button type="button" class="btn-action btn-action--danger cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">✕ Quitar</button>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="received">Recibir</button>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">Hecho</button>
+                    <details class="cmd-slot__more">
+                      <summary class="cmd-slot__more-btn" aria-label="Más acciones">···</summary>
+                      <div class="cmd-slot__more-menu">
+                        <button type="button" class="cmd-act-reschedule" data-id={slot.appointment.id} data-time={slot.time}>Cambiar hora</button>
+                        <button type="button" class="cmd-act" data-id={slot.appointment.id} data-action="no_show">No-show</button>
+                        <button type="button" class="cmd-act" data-id={slot.appointment.id} data-action="cancelled" data-notify="1">Cancelar</button>
+                      </div>
+                    </details>
                   </>
                 )}
                 {slot.appointment.status === 'received' && (
                   <>
-                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">✓ Hecho</button>
-                    <button type="button" class="btn-action cmd-act-reschedule" data-id={slot.appointment.id} data-time={slot.time}>↻ Hora</button>
+                    <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="completed">Hecho</button>
+                    <button type="button" class="cmd-act-reschedule cmd-slot__link-btn" data-id={slot.appointment.id} data-time={slot.time}>Hora</button>
                   </>
                 )}
                 {slot.appointment.status === 'completed' && (
-                  <button type="button" class="btn-action btn-action--confirm cmd-act" data-id={slot.appointment.id} data-action="invoiced">$ Facturar</button>
+                  <button type="button" class="btn-action cmd-act" data-id={slot.appointment.id} data-action="invoiced">Facturar</button>
                 )}
-                {(slot.appointment.status === 'confirmed' || slot.appointment.status === 'received') && (
-                  <button type="button" class="btn-action cmd-act" data-id={slot.appointment.id} data-action="no_show">⊘ No-show</button>
-                )}
+                </div>
               </div>
             </div>
           )}
         </div>
       ))}
-    </div>
-  </div>
   </div>
 
   <dialog id="apt-modal" class="apt-dialog">
@@ -426,6 +377,13 @@ function aptDay(iso: string) {
       });
     });
 
-    document.getElementById('print-day')?.addEventListener('click', () => window.print());
+    document.querySelectorAll('.cmd-slot__more').forEach((details) => {
+      details.addEventListener('toggle', () => {
+        if (!details.open) return;
+        document.querySelectorAll('.cmd-slot__more[open]').forEach((other) => {
+          if (other !== details) other.removeAttribute('open');
+        });
+      });
+    });
   </script>
 </AppLayout>

@@ -1862,6 +1862,182 @@ html.motion-enabled .module-card.is-live .module-pos-demo__item.is-hit {
   border: 0;
 }
 
+/* Bahía — vista simplificada */
+.bay-week-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 3rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  text-decoration: none;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.bay-week-chip--active {
+  border-color: var(--color-navy);
+  background: var(--color-violet-dim);
+  color: var(--color-navy);
+}
+
+.bay-week-chip__count {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.bay-pending-strip {
+  border-radius: 0.625rem;
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  background: var(--color-warn-dim);
+  padding: 0.65rem 0.75rem;
+}
+
+.bay-pending-strip__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.bay-pending-strip__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #d97706;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.bay-pending-strip__title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.bay-pending-strip__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bay-pending-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+}
+
+.bay-pending-chip__name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1.2;
+}
+
+.bay-pending-chip__meta {
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+  margin-top: 0.1rem;
+}
+
+.bay-pending-chip__actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.bay-pending-chip__ok,
+.bay-pending-chip__no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.bay-pending-chip__ok {
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.bay-pending-chip__ok:hover {
+  background: var(--color-success-dim);
+}
+
+.bay-pending-chip__no {
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.bay-pending-chip__no:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.bay-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  text-decoration: none;
+  color: inherit;
+}
+
+.bay-stat--active {
+  border-color: var(--color-navy);
+  background: var(--color-violet-dim);
+}
+
+.bay-stat--warn .bay-stat__value {
+  color: #d97706;
+}
+
+.bay-stat__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+}
+
+.bay-stat__value {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-ink);
+}
+
+.bay-stat__value--sm {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
 /* Centro de comandos — grid de horarios */
 .cmd-board {
   display: flex;
@@ -1883,9 +2059,9 @@ html.motion-enabled .module-card.is-live .module-pos-demo__item.is-hit {
 
 .cmd-row {
   display: grid;
-  grid-template-columns: 4.5rem 1fr;
+  grid-template-columns: 3.75rem 1fr;
   gap: 0.5rem;
-  min-height: 4.5rem;
+  min-height: 3.25rem;
 }
 
 .cmd-row__time {
@@ -1902,43 +2078,32 @@ html.motion-enabled .module-card.is-live .module-pos-demo__item.is-hit {
 .cmd-slot {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   border-radius: 0.5rem;
   border: 1px solid var(--color-border);
-  padding: 0.65rem 0.75rem;
-  min-height: 4.25rem;
+  padding: 0.5rem 0.65rem;
+  min-height: 3rem;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .cmd-slot--free {
   background: var(--color-success-dim);
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: rgba(16, 185, 129, 0.3);
   cursor: pointer;
   text-align: left;
   width: 100%;
-  animation: bay-free-pulse 2.8s ease-in-out infinite;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
 .cmd-slot--free:hover {
   border-color: #10b981;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18), 0 8px 20px rgba(16, 185, 129, 0.12);
-  transform: translateY(-2px);
-}
-
-.cmd-slot--free:active {
-  transform: translateY(0) scale(0.99);
-}
-
-@keyframes bay-free-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.12); }
-  50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.08); }
+  background: rgba(16, 185, 129, 0.12);
 }
 
 .cmd-slot--free .cmd-slot__label {
   color: #047857;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .cmd-slot--past {
@@ -1968,18 +2133,14 @@ html.motion-enabled .module-card.is-live .module-pos-demo__item.is-hit {
 
 .cmd-slot--booked {
   background: var(--color-surface);
-  border-left: 4px solid var(--color-navy);
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
-  transition: box-shadow 0.2s, transform 0.2s;
-}
-
-.cmd-slot--booked:hover {
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  border-left: 3px solid var(--color-navy);
+  box-shadow: none;
 }
 
 .cmd-slot--booked.is-pending {
   border-left-color: var(--color-warn);
   background: var(--color-warn-dim);
+  border-color: rgba(217, 119, 6, 0.25);
 }
 
 .cmd-slot--booked.is-confirmed {
@@ -1992,7 +2153,60 @@ html.motion-enabled .module-card.is-live .module-pos-demo__item.is-hit {
 
 .cmd-slot--booked.is-completed {
   border-left-color: var(--color-success);
-  opacity: 0.85;
+  opacity: 0.9;
+}
+
+.cmd-slot__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  width: 100%;
+}
+
+.cmd-slot__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cmd-slot__info {
+  min-width: 0;
+  flex: 1;
+}
+
+.cmd-slot__status {
+  flex-shrink: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+}
+
+.cmd-slot__status--pending {
+  background: rgba(217, 119, 6, 0.15);
+  color: #b45309;
+}
+
+.cmd-slot__status--confirmed {
+  background: var(--color-violet-dim);
+  color: var(--color-navy);
+}
+
+.cmd-slot__status--received {
+  background: rgba(6, 182, 212, 0.12);
+  color: #0e7490;
+}
+
+.cmd-slot__status--completed,
+.cmd-slot__status--invoiced {
+  background: var(--color-success-dim);
+  color: #047857;
 }
 
 .cmd-slot__top {
@@ -2004,62 +2218,146 @@ html.motion-enabled .module-card.is-live .module-pos-demo__item.is-hit {
 }
 
 .cmd-slot__client {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: var(--color-ink);
+  line-height: 1.2;
 }
 
 .cmd-slot__meta {
   font-size: 0.75rem;
   color: var(--color-muted);
-  margin-top: 0.15rem;
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cmd-slot__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--color-border);
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  flex-shrink: 0;
   position: relative;
   z-index: 2;
 }
 
+.cmd-slot__more {
+  position: relative;
+  margin-left: auto;
+}
+
+.cmd-slot__more-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 1.75rem;
+  padding: 0 0.4rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.cmd-slot__more-btn::-webkit-details-marker {
+  display: none;
+}
+
+.cmd-slot__more-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  z-index: 20;
+  min-width: 9rem;
+  padding: 0.35rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.cmd-slot__more-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  font-size: 0.8125rem;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.cmd-slot__more-menu button:hover {
+  background: var(--color-surface-2);
+}
+
+.cmd-slot__link-btn {
+  border: none;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.25rem 0.35rem;
+}
+
 @media (max-width: 639px) {
   .cmd-board__header {
-    grid-template-columns: 3.25rem 1fr;
+    grid-template-columns: 3rem 1fr;
     font-size: 0.6rem;
   }
 
   .cmd-row {
-    grid-template-columns: 3.25rem 1fr;
-    min-height: 3.75rem;
+    grid-template-columns: 3rem 1fr;
+    min-height: 2.75rem;
   }
 
   .cmd-row__time {
-    padding: 0.5rem 0.35rem 0 0;
-    font-size: 0.75rem;
+    padding: 0.45rem 0.25rem 0 0;
+    font-size: 0.6875rem;
   }
 
   .cmd-slot {
-    padding: 0.55rem 0.6rem;
-    min-height: 3.5rem;
+    padding: 0.45rem 0.5rem;
+    min-height: 2.75rem;
+  }
+
+  .cmd-slot__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
   }
 
   .cmd-slot__client {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
   }
 
   .cmd-slot__meta {
     font-size: 0.6875rem;
-    line-height: 1.35;
+  }
+
+  .cmd-slot__actions {
+    justify-content: flex-start;
   }
 
   .cmd-slot__actions .btn-action {
-    flex: 1 1 calc(50% - 0.2rem);
-    justify-content: center;
+    flex: 0 1 auto;
     min-width: 0;
+    padding: 0.35rem 0.55rem;
+    font-size: 0.6875rem;
   }
 }
 
