@@ -33,6 +33,10 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3-flash-preview}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL:-}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
+      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-}
+      WHATSAPP_PLATFORM_TO: ${WHATSAPP_PLATFORM_TO:-}
     volumes:
       - citas_data:/app/data
     networks:

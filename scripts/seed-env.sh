@@ -40,5 +40,26 @@ set_var GOOGLE_CLIENT_ID
 set_var GOOGLE_CLIENT_SECRET
 set_var SUPER_ADMIN_EMAILS
 set_var ADMIN_PASSWORD
+set_var EVOLUTION_API_URL
+set_var EVOLUTION_API_KEY
+set_var EVOLUTION_INSTANCE
+set_var WHATSAPP_PLATFORM_TO
+
+# Cargar .evolution.local si existe
+if [ -f "$PROJECT_DIR/.evolution.local" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    line="$(echo "$line" | tr -d '\r')"
+    [ -z "$line" ] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    case "$key" in
+      EVOLUTION_API_URL|EVOLUTION_API_KEY|EVOLUTION_INSTANCE|WHATSAPP_PLATFORM_TO)
+        export "$key=$val"
+        set_var "$key"
+        ;;
+    esac
+  done < "$PROJECT_DIR/.evolution.local"
+fi
 
 echo "seed-env: listo ($(wc -l < "$ENV_FILE" | tr -d ' ') líneas en .env)"

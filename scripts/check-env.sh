@@ -61,6 +61,10 @@ GOOGLE_CLIENT_ID="$(env_val GOOGLE_CLIENT_ID)"
 GOOGLE_CLIENT_SECRET="$(env_val GOOGLE_CLIENT_SECRET)"
 PUBLIC_SITE_URL="$(env_val PUBLIC_SITE_URL)"; [ -n "$PUBLIC_SITE_URL" ] || PUBLIC_SITE_URL="https://citas.renace.tech"
 ADMIN_EMAIL="$(env_val ADMIN_EMAIL)"; [ -n "$ADMIN_EMAIL" ] || ADMIN_EMAIL="info@renace.tech"
+EVOLUTION_API_URL="$(env_val EVOLUTION_API_URL)"
+EVOLUTION_API_KEY="$(env_val EVOLUTION_API_KEY)"
+EVOLUTION_INSTANCE="$(env_val EVOLUTION_INSTANCE)"
+WHATSAPP_PLATFORM_TO="$(env_val WHATSAPP_PLATFORM_TO)"
 
 echo "Archivo .env:"
 status_ok SMTP_HOST "$SMTP_HOST"
@@ -112,14 +116,22 @@ fi
 status_ok PUBLIC_SITE_URL "$PUBLIC_SITE_URL"
 status_ok ADMIN_EMAIL "$ADMIN_EMAIL"
 
+if [ -n "$EVOLUTION_API_URL" ] && [ -n "$EVOLUTION_API_KEY" ] && [ -n "$EVOLUTION_INSTANCE" ]; then
+  status_ok WhatsApp/Evolution "$EVOLUTION_INSTANCE"
+else
+  status_fail WhatsApp/Evolution "EVOLUTION_* incompleto"
+fi
+[ -n "$WHATSAPP_PLATFORM_TO" ] && status_ok WHATSAPP_PLATFORM_TO "configurado"
+
 echo ""
 echo "Servicio Docker (claves inyectadas):"
 for key in SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASS SMTP_FROM_NAME SMTP_REPLY_TO \
   PUBLIC_SITE_URL SESSION_SECRET REMINDER_SECRET GEMINI_API_KEY GEMINI_MODEL \
-  GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ADMIN_EMAIL; do
+  GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ADMIN_EMAIL \
+  EVOLUTION_API_URL EVOLUTION_API_KEY EVOLUTION_INSTANCE WHATSAPP_PLATFORM_TO; do
   if service_has_key "$key"; then
     rlen="$(runtime_env_len "$key")"
-    if [ "$key" = "GEMINI_API_KEY" ] || [ "$key" = "GOOGLE_CLIENT_SECRET" ] || [ "$key" = "SMTP_PASS" ] || [ "$key" = "SESSION_SECRET" ] || [ "$key" = "REMINDER_SECRET" ]; then
+    if [ "$key" = "GEMINI_API_KEY" ] || [ "$key" = "GOOGLE_CLIENT_SECRET" ] || [ "$key" = "SMTP_PASS" ] || [ "$key" = "SESSION_SECRET" ] || [ "$key" = "REMINDER_SECRET" ] || [ "$key" = "EVOLUTION_API_KEY" ]; then
       if [ "${rlen:-0}" -gt 0 ]; then
         status_ok "$key (runtime)" "${rlen} chars"
         if [ "$key" = "GEMINI_API_KEY" ] && [ -n "$GEMINI_API_KEY" ] && [ "$rlen" != "${#GEMINI_API_KEY}" ]; then

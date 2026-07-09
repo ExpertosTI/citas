@@ -3,6 +3,7 @@ import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import type { Appointment, Client, Service, Tenant } from './store';
 import { cutStyleLabel } from './cut-styles';
 import { sanitizeEmailSubject } from './security';
+import { sendPlatformWhatsApp, sendWhatsAppMessage } from './whatsapp';
 
 function env(name: string, fallback = '') {
   const raw = process.env[name] ?? fallback;
@@ -149,6 +150,78 @@ export async function sendWelcomeEmail(tenant: Tenant) {
   return send(tenant.email, `Bienvenido a Citas · ${tenant.businessName}`, html);
 }
 
+function formatWhenShort(iso: string, timezone = 'America/Santo_Domingo') {
+  return new Intl.DateTimeFormat('es', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: timezone,
+  }).format(new Date(iso));
+}
+
+function buildWhatsAppTexts(opts: {
+  tenant: Tenant;
+  client: Client;
+  service: Service;
+  appointment: Appointment;
+  kind: 'created' | 'pending' | 'confirmed' | 'reminder' | 'cancelled';
+}) {
+  const { tenant, client, service, appointment, kind } = opts;
+  const when = formatWhenShort(appointment.startAt, tenant.timezone);
+  const code = appointment.code || '—';
+
+  const clientBodies = {
+    created: `Hola ${client.name}, tu cita en *${tenant.businessName}* quedó agendada.\n📅 ${when}\n✂️ ${service.name}\nCódigo: ${code}`,
+    pending: `Hola ${client.name}, recibimos tu solicitud en *${tenant.businessName}*.\n📅 ${when}\n✂️ ${service.name}\nTe confirmaremos pronto.`,
+    confirmed: `Hola ${client.name}, tu cita en *${tenant.businessName}* fue *confirmada*.\n📅 ${when}\n✂️ ${service.name}\nCódigo: ${code}`,
+    reminder: `Hola ${client.name}, recordatorio de tu cita en *${tenant.businessName}*.\n📅 ${when}\n✂️ ${service.name}`,
+    cancelled: `Hola ${client.name}, tu cita en *${tenant.businessName}* fue cancelada.\n📅 ${when}\nPuedes reservar otro horario cuando quieras.`,
+  };
+
+  const ownerBodies = {
+    created: `🆕 *Nueva reserva* — ${tenant.businessName}\n👤 ${client.name}\n📅 ${when}\n✂️ ${service.name}\nCódigo: ${code}`,
+    pending: `🆕 *Nueva solicitud* — ${tenant.businessName}\n👤 ${client.name}\n📅 ${when}\n✂️ ${service.name}\nRevisa tu bahía para confirmar.`,
+    confirmed: `✅ Cita confirmada — ${client.name}\n📅 ${when}\n✂️ ${service.name}`,
+    reminder: `⏰ Recordatorio — ${client.name}\n📅 ${when}\n✂️ ${service.name}`,
+    cancelled: `❌ Cita cancelada — ${client.name}\n📅 ${when}\n✂️ ${service.name}`,
+  };
+
+  return { client: clientBodies[kind], owner: ownerBodies[kind] };
+}
+
+async function sendAppointmentWhatsApp(opts: {
+  tenant: Tenant;
+  client: Client;
+  service: Service;
+  appointment: Appointment;
+  kind: 'created' | 'pending' | 'confirmed' | 'reminder' | 'cancelled';
+}) {
+  const { tenant, client, kind } = opts;
+  const country = tenant.country || 'DO';
+  const texts = buildWhatsAppTexts(opts);
+  const results = { client: false, owner: false, platform: false };
+
+  if (client.phone) {
+    const r = await sendWhatsAppMessage(client.phone, texts.client, country);
+    results.client = r.ok;
+  }
+
+  const ownerPhone = tenant.whatsapp || tenant.phone;
+  if (ownerPhone) {
+    const r = await sendWhatsAppMessage(ownerPhone, texts.owner, country);
+    results.owner = r.ok;
+  }
+
+  if (kind === 'pending' || kind === 'created') {
+    const r = await sendPlatformWhatsApp(`🆕 Citas · ${tenant.businessName}\n${texts.owner}`);
+    results.platform = r.ok;
+  }
+
+  return results;
+}
+
 export async function sendAppointmentNotifications(opts: {
   tenant: Tenant;
   client: Client;
@@ -223,7 +296,13 @@ export async function sendAppointmentNotifications(opts: {
   const r2 = await send(tenant.email, `${titles[kind]}: ${client.name} · ${service.name}`, ownerHtml, client.email || undefined);
   results.owner = r2.ok;
 
-  return results;
+  const wa = await sendAppointmentWhatsApp(opts).catch(() => ({
+    client: false,
+    owner: false,
+    platform: false,
+  }));
+
+  return { ...results, whatsapp: wa };
 }
 
 export async function processDueReminders() {
@@ -257,7 +336,7 @@ export async function processDueReminders() {
         kind: 'reminder',
       });
 
-      if (result.client || result.owner) {
+      if (result.client || result.owner || result.whatsapp?.client || result.whatsapp?.owner) {
         await updateAppointment(tenant.id, apt.id, { reminderSentAt: new Date().toISOString() });
         sent += 1;
       }

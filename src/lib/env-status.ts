@@ -62,9 +62,18 @@ export function collectEnvStatus() {
     detail: env('PUBLIC_SITE_URL', 'https://citas.renace.tech'),
   };
 
-  const checks = [smtp, gemini, google, session, reminder, site];
+  const whatsapp: EnvCheck = {
+    ok: Boolean(env('EVOLUTION_API_URL') && env('EVOLUTION_API_KEY') && env('EVOLUTION_INSTANCE')),
+    label: 'whatsapp',
+    detail: env('EVOLUTION_INSTANCE')
+      ? `Evolution · ${env('EVOLUTION_INSTANCE')}`
+      : 'EVOLUTION_* vacío',
+  };
+
+  const checks = [smtp, gemini, google, session, reminder, site, whatsapp];
+  const required = [smtp, gemini, google, session, reminder, site];
   return {
-    ok: checks.every((c) => c.ok),
+    ok: required.every((c) => c.ok),
     checks,
     mailFrom: env('SMTP_FROM_NAME', 'Citas · Renace'),
     replyTo: env('SMTP_REPLY_TO', 'info@renace.tech'),
