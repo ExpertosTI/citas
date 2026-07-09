@@ -52,9 +52,3 @@ export async function sendWhatsAppMessage(
   if (!phone) return { ok: false as const, error: 'invalid_phone' };
   return sendText(phone, text);
 }
-
-export async function sendPlatformWhatsApp(text: string) {
-  const platformTo = env('WHATSAPP_PLATFORM_TO');
-  if (!platformTo) return { ok: false as const, error: 'no_platform_to' };
-  return sendWhatsAppMessage(platformTo, text);
-}

@@ -64,7 +64,6 @@ ADMIN_EMAIL="$(env_val ADMIN_EMAIL)"; [ -n "$ADMIN_EMAIL" ] || ADMIN_EMAIL="info
 EVOLUTION_API_URL="$(env_val EVOLUTION_API_URL)"
 EVOLUTION_API_KEY="$(env_val EVOLUTION_API_KEY)"
 EVOLUTION_INSTANCE="$(env_val EVOLUTION_INSTANCE)"
-WHATSAPP_PLATFORM_TO="$(env_val WHATSAPP_PLATFORM_TO)"
 
 echo "Archivo .env:"
 status_ok SMTP_HOST "$SMTP_HOST"
@@ -121,14 +120,13 @@ if [ -n "$EVOLUTION_API_URL" ] && [ -n "$EVOLUTION_API_KEY" ] && [ -n "$EVOLUTIO
 else
   status_fail WhatsApp/Evolution "EVOLUTION_* incompleto"
 fi
-[ -n "$WHATSAPP_PLATFORM_TO" ] && status_ok WHATSAPP_PLATFORM_TO "configurado"
 
 echo ""
 echo "Servicio Docker (claves inyectadas):"
 for key in SMTP_HOST SMTP_PORT SMTP_USER SMTP_PASS SMTP_FROM_NAME SMTP_REPLY_TO \
   PUBLIC_SITE_URL SESSION_SECRET REMINDER_SECRET GEMINI_API_KEY GEMINI_MODEL \
   GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ADMIN_EMAIL \
-  EVOLUTION_API_URL EVOLUTION_API_KEY EVOLUTION_INSTANCE WHATSAPP_PLATFORM_TO; do
+  EVOLUTION_API_URL EVOLUTION_API_KEY EVOLUTION_INSTANCE; do
   if service_has_key "$key"; then
     rlen="$(runtime_env_len "$key")"
     if [ "$key" = "GEMINI_API_KEY" ] || [ "$key" = "GOOGLE_CLIENT_SECRET" ] || [ "$key" = "SMTP_PASS" ] || [ "$key" = "SESSION_SECRET" ] || [ "$key" = "REMINDER_SECRET" ] || [ "$key" = "EVOLUTION_API_KEY" ]; then

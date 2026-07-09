@@ -3,7 +3,7 @@ import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import type { Appointment, Client, Service, Tenant } from './store';
 import { cutStyleLabel } from './cut-styles';
 import { sanitizeEmailSubject } from './security';
-import { sendPlatformWhatsApp, sendWhatsAppMessage } from './whatsapp';
+import { sendWhatsAppMessage } from './whatsapp';
 
 function env(name: string, fallback = '') {
   const raw = process.env[name] ?? fallback;
@@ -201,7 +201,7 @@ async function sendAppointmentWhatsApp(opts: {
   const { tenant, client, kind } = opts;
   const country = tenant.country || 'DO';
   const texts = buildWhatsAppTexts(opts);
-  const results = { client: false, owner: false, platform: false };
+  const results = { client: false, owner: false };
 
   if (client.phone) {
     const r = await sendWhatsAppMessage(client.phone, texts.client, country);
@@ -212,11 +212,6 @@ async function sendAppointmentWhatsApp(opts: {
   if (ownerPhone) {
     const r = await sendWhatsAppMessage(ownerPhone, texts.owner, country);
     results.owner = r.ok;
-  }
-
-  if (kind === 'pending' || kind === 'created') {
-    const r = await sendPlatformWhatsApp(`🆕 Citas · ${tenant.businessName}\n${texts.owner}`);
-    results.platform = r.ok;
   }
 
   return results;
@@ -299,7 +294,6 @@ export async function sendAppointmentNotifications(opts: {
   const wa = await sendAppointmentWhatsApp(opts).catch(() => ({
     client: false,
     owner: false,
-    platform: false,
   }));
 
   return { ...results, whatsapp: wa };

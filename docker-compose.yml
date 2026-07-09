@@ -36,7 +36,6 @@ services:
       EVOLUTION_API_URL: ${EVOLUTION_API_URL:-}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-}
       EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE:-}
-      WHATSAPP_PLATFORM_TO: ${WHATSAPP_PLATFORM_TO:-}
     volumes:
       - citas_data:/app/data
     networks:

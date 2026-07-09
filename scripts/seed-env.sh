@@ -43,7 +43,6 @@ set_var ADMIN_PASSWORD
 set_var EVOLUTION_API_URL
 set_var EVOLUTION_API_KEY
 set_var EVOLUTION_INSTANCE
-set_var WHATSAPP_PLATFORM_TO
 
 # Cargar .evolution.local si existe
 if [ -f "$PROJECT_DIR/.evolution.local" ]; then
@@ -54,7 +53,7 @@ if [ -f "$PROJECT_DIR/.evolution.local" ]; then
     key="${line%%=*}"
     val="${line#*=}"
     case "$key" in
-      EVOLUTION_API_URL|EVOLUTION_API_KEY|EVOLUTION_INSTANCE|WHATSAPP_PLATFORM_TO)
+      EVOLUTION_API_URL|EVOLUTION_API_KEY|EVOLUTION_INSTANCE)
         export "$key=$val"
         set_var "$key"
         ;;

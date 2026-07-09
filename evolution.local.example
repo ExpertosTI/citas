@@ -4,6 +4,3 @@
 EVOLUTION_API_URL=https://evoapi.renace.tech
 EVOLUTION_API_KEY=
 EVOLUTION_INSTANCE=RENACE.TECH
-
-# Opcional: copia de alertas de nuevas reservas al admin Renace
-WHATSAPP_PLATFORM_TO=
